@@ -5,6 +5,7 @@ const HomePage = () => {
     return (
         <div className="homepage-container">
             <div className="links-container">
+                <StyledLink to="/AdminLogin">Admin Login</StyledLink>
                 <StyledLink to="/DoctorLogin">Doctor Login</StyledLink>
                 <StyledLink to="/ReceptionistLogin">Receptionist Login</StyledLink>
                 <StyledLink to="/PharmacistLogin">Pharmacist Login</StyledLink>

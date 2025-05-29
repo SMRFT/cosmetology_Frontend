@@ -97,18 +97,23 @@ function BookedAppointments() {
 
     const timeSlots = generateTimeSlots();
 
-    const handleViewDetailsClick = (appointment) => {
-        navigate('/Doctor/prescription', { 
-            state: { 
-                appointment, 
-                appointmentDate: appointment.appointmentDate, 
-                patientUID: appointment.patientUID,
-                patientName: appointment.patientName,
-                mobileNumber: appointment.mobileNumber,
-                branch_code: branchCode // Pass branch code to next page if needed
-            } 
-        });
-    };
+const handleViewDetailsClick = (appointment) => {
+    const role = localStorage.getItem('userRole'); // or use context/state if you store role there
+
+    const basePath = role === 'Admin' ? '/Admin/prescription' : '/Doctor/prescription';
+
+    navigate(basePath, { 
+        state: { 
+            appointment,
+            appointmentDate: appointment.appointmentDate,
+            patientUID: appointment.patientUID,
+            patientName: appointment.patientName,
+            mobileNumber: appointment.mobileNumber,
+            branch_code: branchCode
+        }
+    });
+};
+
 
     const nextPage = () => {
         if ((currentPage + 1) * cardsPerPage < timeSlots.length) {
@@ -127,11 +132,6 @@ function BookedAppointments() {
     return (
         <StyledContainer className="appointments-container">
             <h3 className="text-center mb-4">Booked Appointments</h3>
-            {branchCode ? (
-                <small className="text-center d-block mb-2">Branch: {branchCode}</small>
-            ) : (
-                <div className="alert alert-warning mb-3">Branch code not found. Please login again.</div>
-            )}
             <div className="date-picker-wrapper">
                 <input type="date" value={selectedDate} onChange={handleDateChange} className="date-picker" />
             </div>

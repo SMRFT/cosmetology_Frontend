@@ -73,11 +73,6 @@ function VitalForm({ patientUID, patientName, mobileNumber }) {
         <FormContainer>
             <ToastContainer position="top-right" autoClose={5000}/> 
             <h3 className="text-center mb-4">Patient Vitals</h3>
-            {formData.branch_code ? (
-                <small className="text-center d-block mb-2">Branch: {formData.branch_code}</small>
-            ) : (
-                <div className="alert alert-warning mb-3">Branch code not found. Please login again.</div>
-            )}
             <Form onSubmit={handleSubmit}>
                 <FormRow>
                     <FormGroup>

@@ -8,12 +8,12 @@ import { MdDelete } from "react-icons/md";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 const ComplaintsContainer = styled.div`
-  flex: 1;
-  margin-right: 10px;
-  padding: 20px;
-  background-color: #B798C0; // Light brown background
-  border-radius: 10px;
-  text-align: center;
+flex: 1;
+margin: 0 15px; // Adjusted margin for balanced spacing
+padding: 20px;
+background-color: #b798c0; // Light brown background
+border-radius: 10px;
+text-align: center;
 `;
 const FlexContainer = styled.div`
   display: flex;
@@ -165,19 +165,11 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
             </Form.Group>
           </Col>
           <Col sm="1" className="text-end">
-            <BsPatchPlusFill
-              size={24}
-              onClick={handleAddNewSection}
-              style={{ cursor: "pointer", marginLeft: "10px" }}
-            />
-            {index !== 0 && (
-              <MdDelete
-                size={24}
-                onClick={() => handleRemoveSection(index)}
-                style={{ cursor: "pointer", marginLeft: "10px" }}
-              />
-            )}
-          </Col>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <BsPatchPlusFill size={24} onClick={handleAddNewSection} style={{ cursor: 'pointer', marginLeft: '10px' }} />
+              {index !== 0 && ( <MdDelete size={24} onClick={() => handleRemoveSection(index)} style={{ cursor: 'pointer', marginLeft: '10px' }} /> )}
+            </div>
+          </Col>          
         </Row>
       ))}
       {showAddInput && (

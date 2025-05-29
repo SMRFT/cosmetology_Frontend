@@ -65,19 +65,19 @@ const Report = () => {
       <StyledContainer>
         <IconsContainer>
           <IconWrapper>
-            <Icon to="/Doctor/BillingReport">
+            <Icon to="/Admin/BillingReport">
               <FaFileInvoiceDollar />
             </Icon>
             <IconLabel>Billing Report</IconLabel>
           </IconWrapper>
           <IconWrapper>
-            <Icon to="/Doctor/BillingProcedureReport">
+            <Icon to="/Admin/BillingProcedureReport">
               <HiDocumentDuplicate />
             </Icon>
             <IconLabel>Procedure Report</IconLabel>
           </IconWrapper>
           <IconWrapper>
-            <Icon to="/Doctor/SummaryReport">
+            <Icon to="/Admin/SummaryReport">
               <HiDocumentText />
             </Icon>
             <IconLabel>Summary Report</IconLabel>

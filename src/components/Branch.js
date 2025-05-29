@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
-import styled from "styled-components";
-import { FaStore } from "react-icons/fa";
-import { useNavigate } from 'react-router-dom';
-import Cookies from 'js-cookie'; // Import js-cookie package
+"use client"
+
+import { useState, useEffect } from "react"
+import styled from "styled-components"
+import { FaStore } from "react-icons/fa"
+import { useNavigate } from "react-router-dom"
+import Cookies from "js-cookie"
 
 const BranchContainer = styled.div`
   display: flex;
@@ -12,7 +14,7 @@ const BranchContainer = styled.div`
   height: 100vh;
   background: linear-gradient(to right, #B5A7C1, rgb(226, 216, 235));
   font-family: 'Poppins', sans-serif;
-`;
+`
 
 const Title = styled.h1`
   font-size: 2rem;
@@ -21,7 +23,7 @@ const Title = styled.h1`
   display: flex;
   align-items: center;
   gap: 10px;
-`;
+`
 
 const Dropdown = styled.select`
   padding: 12px 20px;
@@ -31,17 +33,15 @@ const Dropdown = styled.select`
   font-size: 1rem;
   color: #333;
   outline: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
   width: 250px;
+  margin-bottom: 20px;
 
   &:hover {
     border-color: rgb(105, 67, 133);
   }
-`;
+`
 
 const Button = styled.button`
-  margin-top: 20px;
   padding: 12px 24px;
   background-color: #7E569B;
   color: white;
@@ -49,7 +49,6 @@ const Button = styled.button`
   border-radius: 10px;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.3s ease;
 
   &:hover {
     background-color: rgb(105, 67, 133);
@@ -59,100 +58,119 @@ const Button = styled.button`
     background-color: #cccccc;
     cursor: not-allowed;
   }
-`;
-
-// Define a mapping for branch codes to readable names
-const branchNames = {
-  "SSC001": "Branch 1 - Salem",
-  "SSC002": "Branch 2 - Kumarapalayam",
-  // Add more branch mappings as needed
-};
+`
 
 const Branch = () => {
-  const navigate = useNavigate();
-  const [selectedBranch, setSelectedBranch] = useState("");
-  const [availableBranches, setAvailableBranches] = useState([]);
-  const userRole = localStorage.getItem("userRole");
+  const navigate = useNavigate()
+  const [selectedBranch, setSelectedBranch] = useState("")
+  const [branches, setBranches] = useState([])
+
+  // Define role-based navigation mapping (same as in Login.js)
+  const getNavigationPath = (userRole, endpoint) => {
+    const navigationMap = {
+      Admin: {
+        AdminLogin: "/Admin/BookedAppointments",
+        DoctorLogin: "/Doctor/BookedAppointments",
+        PharmacistLogin: "/Pharmacy",
+        ReceptionistLogin: "/Reception/Appointment",
+      },
+      Doctor: {
+        DoctorLogin: "/Doctor/BookedAppointments",
+        PharmacistLogin: "/Pharmacy",
+        ReceptionistLogin: "/Reception/Appointment",
+      },
+      Receptionist: {
+        ReceptionistLogin: "/Reception/Appointment",
+      },
+      Pharmacist: {
+        PharmacistLogin: "/Pharmacy",
+      },
+    }
+
+    return navigationMap[userRole]?.[endpoint] || "/"
+  }
 
   useEffect(() => {
-    // Check if user is logged in
-    const userId = localStorage.getItem("userId");
+    const userId = localStorage.getItem("userId")
     if (!userId) {
-      navigate("/");
-      return;
+      navigate("/")
+      return
     }
 
-    // Get available branches from localStorage
-    const branchesData = localStorage.getItem("availableBranches");
-    if (branchesData) {
+    const fetchBranches = async () => {
       try {
-        const branches = JSON.parse(branchesData);
-        setAvailableBranches(branches);
-      } catch (error) {
-        console.error("Error parsing branch data:", error);
-        setAvailableBranches([]);
-      }
-    } else {
-      // If no branches found, redirect to home
-      navigate("/");
-    }
-  }, [navigate]);
+        const response = await fetch("http://127.0.0.1:8000/branches/")
+        if (!response.ok) {
+          throw new Error("Failed to fetch branches")
+        }
 
-  const handleBranchSelect = (e) => {
-    setSelectedBranch(e.target.value);
-  };
+        const data = await response.json()
+        console.log("Fetched branches from API:", data)
+
+        if (Array.isArray(data)) {
+          setBranches(data)
+        } else {
+          console.error("Expected branches to be an array")
+        }
+      } catch (error) {
+        console.error("Error fetching branches:", error)
+      }
+    }
+
+    fetchBranches()
+  }, [navigate])
 
   const handleProceed = () => {
-    if (selectedBranch) {
-      // Set branch_code in cookies with expiration of 7 days
-      Cookies.set('branch_code', selectedBranch, { expires: 7, path: '/' });
-      
-      // Store selected branch in localStorage for reference
-      localStorage.setItem("branch_id", selectedBranch);
-      
-      // Navigate based on user role
-      const endpoint = localStorage.getItem("loggedInAs");
-      
-      if (userRole === 'Pharmacist' && endpoint === 'PharmacistLogin') {
-        navigate('/Pharmacy');
-      } else if (userRole === 'Receptionist' && endpoint === 'ReceptionistLogin') {
-        navigate('/Reception/Appointment');
-      } else if (userRole === 'Doctor' && endpoint === 'DoctorLogin') {
-        navigate('/Doctor/BookedAppointments');
-      } else if (userRole === 'Doctor' && endpoint === 'PharmacistLogin') {
-        navigate('/Pharmacy');
-      } else if (userRole === 'Doctor' && endpoint === 'ReceptionistLogin') {
-        navigate('/Reception/Appointment');
-      } else {
-        navigate('/HomePage');
-      }
-    }
-  };
+    if (!selectedBranch) return
 
-  if (availableBranches.length === 0) {
+    // Set branch code in cookies
+    Cookies.set("branch_code", selectedBranch, { expires: 7, path: "/" })
+    localStorage.setItem("branch_id", selectedBranch)
+
+    const userRole = localStorage.getItem("userRole")
+    const endpoint = localStorage.getItem("loggedInAs")
+
+    console.log("Branch selection - Role:", userRole, "Endpoint:", endpoint)
+
+    // Use the same navigation logic as Login.js
+    const path = getNavigationPath(userRole, endpoint)
+
+    console.log("Navigating to:", path)
+    navigate(path)
+  }
+
+  if (!branches.length) {
     return (
       <BranchContainer>
-        <Title><FaStore /> Loading branches...</Title>
+        <Title>
+          <FaStore /> No branches available
+        </Title>
+        <p style={{ color: "#7E569B", textAlign: "center" }}>
+          Please contact your administrator or try logging in again.
+        </p>
       </BranchContainer>
-    );
+    )
   }
 
   return (
     <BranchContainer>
-      <Title><FaStore /> Select Your Branch</Title>
-      <Dropdown value={selectedBranch} onChange={handleBranchSelect}>
+      <Title>
+        <FaStore /> Select Your Branch
+      </Title>
+      <Dropdown value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}>
         <option value="">-- Choose Branch --</option>
-        {availableBranches.map((branch) => (
-          <option key={branch} value={branch}>
-            {branchNames[branch] || branch}
+        {branches.map(({ branch_code, branch_name }) => (
+          <option key={branch_code} value={branch_code}>
+            {branch_name}
           </option>
         ))}
       </Dropdown>
+
       <Button onClick={handleProceed} disabled={!selectedBranch}>
         Continue
       </Button>
     </BranchContainer>
-  );
-};
+  )
+}
 
-export default Branch;
+export default Branch

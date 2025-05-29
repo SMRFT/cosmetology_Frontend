@@ -348,11 +348,6 @@ const handleSubmit = (e) => {
     <StyledContainer>
       <ToastContainer position="top-right" autoClose={5000} />
       <h3 className="text-center mb-4">Pharmacy Stock</h3>
-      {branchCode ? (
-        <small className="text-center d-block mb-2">Branch: {branchCode}</small>
-      ) : (
-        <Alert variant="warning" className="mb-3">Branch code not found. Please login again.</Alert>
-      )}
       <ActionButtonsContainer>
         <ActionButton title='Download Excel' onClick={downloadExcel}>
           <FaDownload />

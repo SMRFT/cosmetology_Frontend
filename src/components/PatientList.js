@@ -71,11 +71,6 @@ const PatientList = ({ onSelectPatient }) => {
         <StyledContainer className="patient">
             <ToastContainer position="top-right" autoClose={5000}/>
             <h3 className="text-center mb-4">Patient List</h3>
-            {branchCode ? (
-                <small className="text-center d-block mb-2">Branch: {branchCode}</small>
-            ) : (
-                <div className="alert alert-warning mb-3">Branch code not found. Please login again.</div>
-            )}
             <SearchHeader className="header1">
                 <SearchBar className="search-bar">
                     <IoSearch className="search-icon" />

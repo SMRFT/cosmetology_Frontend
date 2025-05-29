@@ -8,12 +8,12 @@ import styled from 'styled-components';
 
 
 const TestsContainer = styled.div`
-  flex: 1;
-  margin-right: 10px;
-  padding: 20px;
-  background-color: #b798c0; // Light brown background
-  border-radius: 10px;
-  text-align: center;
+flex: 1;
+margin: 0 15px; // Adjusted margin for balanced spacing
+padding: 20px;
+background-color: #b798c0; // Light brown background
+border-radius: 10px;
+text-align: center;
 `;
 
 const CenteredFormGroup = styled.div`

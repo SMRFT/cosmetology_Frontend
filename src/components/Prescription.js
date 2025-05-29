@@ -229,27 +229,12 @@ export const UploadText = styled.p`
 `;
 
 export const PrescriptionContainer = styled.section`
-  flex: 1;
-  margin-right: 10px;
-  padding: 20px;
-  background-color: #b798c0; // Light brown background
-  border-radius: 10px;
-  text-align: center;
-
-  .form-group {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: space-between;
-  }
-
-  .form-check-inline {
-    margin-right: 10px;
-  }
-
-  .form-control,
-  .form-check {
-    min-width: 50px; /* Adjust based on the minimum size needed */
-  }
+flex: 1;
+margin: 0 15px; // Adjusted margin for balanced spacing
+padding: 20px;
+background-color: #b798c0; // Light brown background
+border-radius: 10px;
+text-align: center;
 `;
 
 export const FlexContainer = styled.div`
@@ -260,17 +245,17 @@ export const FlexContainer = styled.div`
 export const ContainerRow = styled.div`
   display: flex;
   justify-content: center;
-  margin: 0 15px; // Adjusted margin for balanced spacing
+  margin: 0 10px; // Adjusted margin for balanced spacing
   margin-top: 10px;
 `;
 
 const NextVisitonContainer = styled.div`
-  flex: 1;
-  margin: 0 15px; // Adjusted margin for balanced spacing
-  padding: 20px;
-  background-color: #b798c0; // Light brown background
-  border-radius: 10px;
-  text-align: center;
+flex: 1;
+margin: 0 15px; // Adjusted margin for balanced spacing
+padding: 20px;
+background-color: #b798c0; // Light brown background
+border-radius: 10px;
+text-align: center;
 `;
 
 export const PlanContainer = styled.div`
@@ -466,6 +451,7 @@ const shouldHideDosage = (selectedPrescription) => {
     );
   };
 
+
   const handleSubmit2 = async () => {
     if (images.length === 0) {
       setMessage('Please select at least one image');
@@ -473,7 +459,7 @@ const shouldHideDosage = (selectedPrescription) => {
     }
     const formData = new FormData();
     formData.append('patient_name', appointment.patientName+'_'+appointment.patientUID+'_'+appointmentDate);
-    formData.append('branch_code', branchCode); // Include branch_code in formData
+    formData.append('branch_code', branchCode); // Include branch_code in 
     images.forEach(image => formData.append('images', image)); // Append each image to formData
     try {
       const response = await axios.post('http://127.0.0.1:8000/upload_file/', formData, {
@@ -599,17 +585,15 @@ const parsePrescriptions = (prescriptionString) => {
       plan3: lines[2]?.split(": ")[1]?.trim() || "",
     };
   };
-
-// Modified handleSubmit function - only save typed data
 const handleSubmit = async () => {
   try {
-    // Filter out empty prescriptions - only include those with actual data
+    const userName = localStorage.getItem("userName") || "Unknown";
+
     const validPrescriptions = prescriptionInputs.filter(input => 
       input.selectedPrescription?.length > 0 && 
       input.selectedPrescription[0]?.label?.trim() !== ''
     );
 
-    // Filter out empty plans - only include non-empty plan values
     const validPlans = Object.entries(planDetails)
       .filter(([key, value]) => value && value.trim() !== '')
       .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
@@ -621,6 +605,7 @@ const handleSubmit = async () => {
       mobileNumber,
       appointmentDate,
       branch_code: branchCode,
+      patient_handledby: userName,
       diagnosis: selectedDiagnosis.map(d => d.diagnosis).join(', '),
       complaints: JSON.stringify(
         selectedComplaints.map(input => ({
@@ -792,11 +777,6 @@ const getSummaryDetails = () => {
   const summaryContent = (
     <SummaryDetailsContainer>
       <SummaryTitle>Summary</SummaryTitle>
-      {branchCode ? (
-        <small className="text-center d-block mb-2">Branch: {branchCode}</small>
-      ) : (
-        <Alert variant="warning" className="mb-3">Branch code not found. Please login again.</Alert>
-      )}
       
       {/* Patient Details */}
       <PatientDetailsRow>
@@ -1085,58 +1065,12 @@ const getSummaryDetails = () => {
         <ContainerRow>
         <Diagnosis onSelectDiagnosis={handleSelectDiagnosis} preSelectedDiagnosis={summaryData?.diagnosis || ''} />
         <Findings onSelectFindings ={handleSelectfindings} preSelectedFindings={summaryData?.findings || ''}  />
-
-         <ImageContainer>
-          <label htmlFor="upload-button" style={{ cursor: 'pointer' }}>
-            <BiImageAdd style={{ fontSize: '3rem', color: '#757575' }} />
-          </label>
-
-      <Form.Group controlId="formFileMultiple" className="mb-3">
-        <input
-          id="upload-button"
-          type="file"
-          multiple
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-      </Form.Group>
-
-      {uploadedImages.length === 0 && (
-        <UploadText>No images uploaded yet.</UploadText>
-      )}
-
-      {uploadedImages.map((image, index) => (
-        <Row key={index} className="mb-2">
-          <Col>
-            <UploadedImage src={image.src} alt={image.alt} />
-          </Col>
-          <Col>
-            <BiTrash
-              style={{ cursor: 'pointer', fontSize: '2rem', color: '#ff0000' }}
-              onClick={() => handleRemoveImage(index)}
-            />
-          </Col>
-        </Row>
-      ))}
-
-    </ImageContainer>
-    <PdfContainer>
-      <input type="file" accept="application/pdf" multiple onChange={handleFileChange2} />
-      <button onClick={handleSubmit3}>Upload PDFs</button>
-      {message && <p>{message}</p>}
-      <ul>
-        {uploadedPdfs.map((pdf, index) => (
-          <PdfItem key={index}>
-            {pdf.name}
-            <RemoveButton onClick={() => handleRemoveFile(index)}>Remove</RemoveButton>
-          </PdfItem>
-        ))}
-      </ul>
-    </PdfContainer>
          </ContainerRow>
+
          <ContainerRow>
          <Complaints onSelectComplaints ={handleSelectComplaints} preSelectedComplaints={summaryData?.complaints || ''} />
          </ContainerRow>
+         
       </RightContent>
         </Tab.Pane>
             <Tab.Pane eventKey="instructions" className='mt-3'>
@@ -1211,8 +1145,9 @@ const getSummaryDetails = () => {
               </Form.Group>
             ))}
           </PrescriptionContainer>
-
         </ContainerRow>
+
+        <ContainerRow>
         <PlanContainer className="mt-2">
           <Row className="justify-content-around">
             <Col md="3" className="text-center">
@@ -1250,14 +1185,12 @@ const getSummaryDetails = () => {
             </Col>
           </Row>
         </PlanContainer>
+        </ContainerRow>
 
         <ContainerRow>
          <Tests onSelectTests ={handleSelectTests} preSelectedTests={summaryData?.tests || ''} />
          <Procedures onSelectProcedures={handleSelectprocedure} preSelectedProcedures={summaryData?.proceduresList || ''}/>
-        </ContainerRow>
-
-        <ContainerRow>
-          <NextVisitonContainer>
+         <NextVisitonContainer>
             <SectionTitle>Next Visit</SectionTitle>
             <DatePicker
               selected={selectedDate}
@@ -1275,6 +1208,7 @@ const getSummaryDetails = () => {
             </DateDisplay>
           </NextVisitonContainer>
         </ContainerRow>
+
           </Tab.Pane>
           <Tab.Pane eventKey="summary">
         <br/>
