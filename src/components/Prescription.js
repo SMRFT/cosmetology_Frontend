@@ -22,9 +22,9 @@ import jsPDF from 'jspdf';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'jspdf-autotable';
-import Cookies from 'js-cookie'; // Added import for cookies
-import PDFHeader from './images/PDF_Header_branch1.png';
-import PDFFooter from './images/PDF_Footer_branch1.png';
+import Cookies from 'js-cookie';
+import PDFMain1 from "./images/PDF_Summary_branch1.jpeg"
+import PDFMain2 from "./images/PDF_Summary_branch2.jpeg"
 
 const darkGray = '#b3a591';
 
@@ -96,7 +96,7 @@ export const CenteredFormGroup = styled(Form.Group)`
 
 export const SummaryContainer = styled.div`
   padding: 10px;
-  background-color: #b798c0; // Updated background color
+  background-color: #b798c0;
   border-radius: 10px;
   width: 100%;
   height: auto;
@@ -110,23 +110,24 @@ const SummaryDetailsContainer = styled.div`
   align-items: flex-start;
   margin-top: 20px;
   padding: 20px;
-  background-color: #ffffff; // Changed to white background
+  background-color: #ffffff;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   width: 100%;
   margin: 0 auto;
 `;
+
 const SummaryTitle = styled.h3`
   text-align: center;
   width: 100%;
   margin-bottom: 20px;
-  color: #333; // Dark gray color
+  color: #333;
 `;
 
 const SummaryItemTitle = styled.h4`
   margin-top: 10px;
   margin-bottom: 10px;
-  color: ${darkGray}; // Dark gray color
+  color: ${darkGray};
 `;
 
 const PatientDetailsRow = styled.div`
@@ -165,7 +166,7 @@ export const ImageContainer = styled.section`
   flex: 1;
   margin-right: 10px;
   padding: 20px;
-  background-color: #b798c0; // Light brown background
+  background-color: #b798c0;
   border-radius: 10px;
   display: flex;
   flex-wrap: wrap;
@@ -178,11 +179,12 @@ export const UploadedImage = styled.img`
   margin: 5px;
   object-fit: cover;
 `;
+
 export const PdfContainer = styled.section`
   flex: 1;
   margin-right: 10px;
   padding: 20px;
-  background-color:  #b798c0; // Light blue background
+  background-color:  #b798c0;
   border-radius: 10px;
   display: flex;
   flex-wrap: wrap;
@@ -192,8 +194,8 @@ export const PdfContainer = styled.section`
 export const PdfItem = styled.div`
   margin: 10px;
   padding: 10px;
-  background-color: #ffffff; // White background for individual PDF items
-  border: 1px solid #cccccc; // Light gray border
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
   border-radius: 5px;
   display: flex;
   align-items: center;
@@ -201,38 +203,39 @@ export const PdfItem = styled.div`
 `;
 
 export const RemoveButton = styled.button`
-  background-color: #ff6b6b; // Red background
-  color: #ffffff; // White text
+  background-color: #ff6b6b;
+  color: #ffffff;
   border: none;
   border-radius: 5px;
   padding: 5px 10px;
   cursor: pointer;
   
   &:hover {
-    background-color: #ee5253; // Darker red on hover
+    background-color: #ee5253;
   }
 `;
+
 export const SectionTitle2 = styled.h4`
   margin-top: 20px;
   margin-bottom: 10px;
-  color: ${darkGray}; // Dark gray color
+  color: ${darkGray};
 `;
 
 export const UploadIcon = styled.i`
   font-size: 3rem;
-  color: #757575; // Gray color
+  color: #757575;
 `;
 
 export const UploadText = styled.p`
   font-size: 1rem;
-  color: #757575; // Gray color
+  color: #757575;
 `;
 
 export const PrescriptionContainer = styled.section`
 flex: 1;
-margin: 0 15px; // Adjusted margin for balanced spacing
+margin: 0 15px;
 padding: 20px;
-background-color: #b798c0; // Light brown background
+background-color: #b798c0;
 border-radius: 10px;
 text-align: center;
 `;
@@ -245,24 +248,24 @@ export const FlexContainer = styled.div`
 export const ContainerRow = styled.div`
   display: flex;
   justify-content: center;
-  margin: 0 10px; // Adjusted margin for balanced spacing
+  margin: 0 10px;
   margin-top: 10px;
 `;
 
 const NextVisitonContainer = styled.div`
 flex: 1;
-margin: 0 15px; // Adjusted margin for balanced spacing
+margin: 0 15px;
 padding: 20px;
-background-color: #b798c0; // Light brown background
+background-color: #b798c0;
 border-radius: 10px;
 text-align: center;
 `;
 
 export const PlanContainer = styled.div`
 flex: 1;
-margin: 0 15px; // Adjusted margin for balanced spacing
+margin: 0 15px;
 padding: 20px;
-background-color: #b798c0; // Light brown background
+background-color: #b798c0;
 border-radius: 10px;
 text-align: center;
 `;
@@ -311,18 +314,19 @@ const PrescriptionDetails = () => {
   const [medicineOptions, setMedicineOptions] = useState([]);
   const [vital, setVital] = useState([]);
 
-  useEffect(() => {
-    // Get branch_code from cookies when component mounts
-    const code = Cookies.get('branch_code');
-    if (code) {
-      setBranchCode(code);
-      console.log('Branch code retrieved from cookies:', code);
-    } else {
-      console.warn('Branch code not found in cookies');
-    }
-    
-    // Fetch medicine options from the API
-  // Fetch medicine options from the API
+useEffect(() => {
+  const code = Cookies.get('branch_code');
+  if (code) {
+    setBranchCode(code);
+    console.log('Branch code retrieved from cookies:', code);
+  } else {
+    console.warn('Branch code not found in cookies');
+  }
+}, []);
+
+useEffect(() => {
+  if (!branchCode) return;
+
   axios.get('http://127.0.0.1:8000/pharmacy/data/', {
     params: { branch_code: branchCode }
   })
@@ -330,7 +334,7 @@ const PrescriptionDetails = () => {
       const medicineData = response.data.map(medicine => ({
         label: medicine.medicine_name,
         category: medicine.medicine_category,
-        fullData: medicine // Store full medicine data for reference
+        fullData: medicine
       }));
       setMedicineOptions(medicineData);
     })
@@ -339,17 +343,14 @@ const PrescriptionDetails = () => {
     });
 }, [branchCode]);
 
-// Helper function to check if dosage should be hidden
 const shouldHideDosage = (selectedPrescription) => {
   if (!selectedPrescription || selectedPrescription.length === 0) return false;
   
   const selectedMedicine = selectedPrescription[0];
-  // Check if it's a custom entry (no category) or if category is Topicals
   if (selectedMedicine.category) {
     return selectedMedicine.category === 'Topicals';
   }
   
-  // For custom entries, check if the name matches any Topicals medicine
   const matchedMedicine = medicineOptions.find(option => 
     option.label.toLowerCase() === selectedMedicine.label.toLowerCase()
   );
@@ -357,7 +358,7 @@ const shouldHideDosage = (selectedPrescription) => {
 };
 
   useEffect(() => {
-    if (!patientUID || !branchCode) return; // Only fetch if patientUID and branchCode are provided
+    if (!patientUID || !branchCode) return;
 
     axios.get(`http://127.0.0.1:8000/vitalform/`, {
       params: { 
@@ -366,7 +367,7 @@ const shouldHideDosage = (selectedPrescription) => {
       }
     })
       .then(response => {
-        const vitalResponse = response.data.vital[0]; // Assuming you only get one record
+        const vitalResponse = response.data.vital[0];
         setVital(vitalResponse);
       })
       .catch(error => {
@@ -374,7 +375,6 @@ const shouldHideDosage = (selectedPrescription) => {
       });
   }, [patientUID, branchCode]);
 
-  // Add a new prescription input
   const handlePrescriptionAddInput = () => {
     setPrescriptionInputs((prev) => [
       ...prev,
@@ -391,12 +391,10 @@ const shouldHideDosage = (selectedPrescription) => {
     ]);
   };
 
-  // Delete a prescription input
   const handlePrescriptionDeleteInput = (index) => {
     setPrescriptionInputs((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Handle changes in prescription inputs
   const handlePrescriptionChange = (index, key, value) => {
     setPrescriptionInputs((prev) => {
       const updated = [...prev];
@@ -405,7 +403,6 @@ const shouldHideDosage = (selectedPrescription) => {
     });
   };
 
-  // Handle checkbox changes for M, A, E, N
   const handleCheckboxChange = (index, key) => {
     setPrescriptionInputs((prev) => {
       const updated = [...prev];
@@ -451,7 +448,6 @@ const shouldHideDosage = (selectedPrescription) => {
     );
   };
 
-
   const handleSubmit2 = async () => {
     if (images.length === 0) {
       setMessage('Please select at least one image');
@@ -459,13 +455,13 @@ const shouldHideDosage = (selectedPrescription) => {
     }
     const formData = new FormData();
     formData.append('patient_name', appointment.patientName+'_'+appointment.patientUID+'_'+appointmentDate);
-    formData.append('branch_code', branchCode); // Include branch_code in 
-    images.forEach(image => formData.append('images', image)); // Append each image to formData
+    formData.append('branch_code', branchCode);
+    images.forEach(image => formData.append('images', image));
     try {
       const response = await axios.post('http://127.0.0.1:8000/upload_file/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'X-Branch-Code': branchCode // Include branch_code in headers
+          'X-Branch-Code': branchCode
         },
       });
       toast.success('Images uploaded successfully');
@@ -475,7 +471,6 @@ const shouldHideDosage = (selectedPrescription) => {
   };
 
   const [summaryData, setSummaryData] = useState(null);  
-  // Fetch summary data
   useEffect(() => {
     if (!patientUID || !appointmentDate || !branchCode) return;
 
@@ -495,15 +490,13 @@ const shouldHideDosage = (selectedPrescription) => {
         if (response.data && response.data.length > 0) {
           const data = response.data[0];
           setSummaryData(data);  
-          // Set `nextVisit` in state if available
           if (data.nextVisit) {
-            const parsedDate = parseNextVisit(data.nextVisit); // Ensure valid date
+            const parsedDate = parseNextVisit(data.nextVisit);
             setSelectedDate(parsedDate);
           }
   
-          // Populate plan details if they exist
           if (data.plans) {
-            const plans = parsePlans(data.plans); // Parse the stored plans string
+            const plans = parsePlans(data.plans);
             setPlanDetails(plans);
           }
         } else {
@@ -517,14 +510,13 @@ const shouldHideDosage = (selectedPrescription) => {
     fetchSummaryData();
   }, [patientUID, appointmentDate, branchCode]);
   
-  // Helper function to parse `nextVisit` date
   const parseNextVisit = (nextVisit) => {
     try {
-      const [day, month, year] = nextVisit.split('/'); // Assuming `dd/MM/yyyy` format
+      const [day, month, year] = nextVisit.split('/');
       return new Date(`${year}-${month}-${day}`);
     } catch (error) {
       console.error("Error parsing nextVisit date:", error);
-      return null; // Fallback for invalid dates
+      return null;
     }
   };
   
@@ -535,28 +527,20 @@ const shouldHideDosage = (selectedPrescription) => {
     }
   }, [summaryData]);  
 
-  // Helper function to parse prescriptions from the database format
 const parsePrescriptions = (prescriptionString) => {
   if (!prescriptionString) return [];
 
-  // Split by newlines to get individual prescriptions
   const prescriptionLines = prescriptionString.split('\n').filter(line => line.trim() !== '');
   
   return prescriptionLines.map((prescriptionLine) => {
-    // Split by ' - ' to get different parts
     const parts = prescriptionLine.split(' - ');
     
-    // Extract prescription name (remove "Prescription: " prefix)
     const prescriptionName = parts[0]?.replace('Prescription:', '').trim() || '';
     
-    // Extract dosage (remove "Dosage: " prefix)
     const dosage = parts[1]?.replace('Dosage:', '').trim() || '';
     
-    // Extract timing (M, A, E, N) - this is the third part
     const timingPart = parts[2]?.trim() || '';
     
-    // Extract duration (remove "Duration: " prefix and split)
-    // Find the part that contains "Duration:" - it might not always be at index 3
     const durationPartIndex = parts.findIndex(part => part.includes('Duration:'));
     const durationPart = durationPartIndex !== -1 ? parts[durationPartIndex].replace('Duration:', '').trim() : '';
     const durationParts = durationPart.split(' ');
@@ -574,17 +558,17 @@ const parsePrescriptions = (prescriptionString) => {
   });
 };
 
-  // Helper function to parse plans
   const parsePlans = (plansString) => {
-    if (!plansString) return { plan1: '', plan2: '', plan3: '' }; // Default values if no plans exist
+    if (!plansString) return { plan1: '', plan2: '', plan3: '' };
 
     const lines = plansString.split("\n");
     return {
-      plan1: lines[0]?.split(": ")[1]?.trim() || "", // Extract value and trim whitespace
+      plan1: lines[0]?.split(": ")[1]?.trim() || "",
       plan2: lines[1]?.split(": ")[1]?.trim() || "",
       plan3: lines[2]?.split(": ")[1]?.trim() || "",
     };
   };
+
 const handleSubmit = async () => {
   try {
     const userName = localStorage.getItem("userName") || "Unknown";
@@ -615,7 +599,6 @@ const handleSubmit = async () => {
         }))
       ),
       findings: selectedfindings.map(f => f.findings).join(', '),
-      // IMPORTANT: Create fresh prescription string from current state only
       prescription: validPrescriptions.map(input => {
         const times = ['M', 'A', 'E', 'N']
           .map(time => (input[time.toLowerCase()] ? time : ''))
@@ -624,7 +607,6 @@ const handleSubmit = async () => {
         const totalDosage = calculateTotalDosage(input);
         return `Prescription: ${input.selectedPrescription?.map(p => p.label).join(', ')} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration} - Total Dosage: ${totalDosage}`;
       }).join('\n'),
-      // Only save valid plans
       plans: validPlans,
       tests: selectedTests && selectedTests.length > 0 ? selectedTests.map(test => test.test).join(', ') : '',
       uploadedImages: uploadedImages.map(img => ({ src: img.src, alt: img.alt })),
@@ -643,7 +625,6 @@ const handleSubmit = async () => {
         .join('\n'),
     };
 
-    // Check if data already exists
     const getResponse = await axios.get('http://127.0.0.1:8000/summary_get/', {
       params: { 
         patientUID, 
@@ -656,7 +637,6 @@ const handleSubmit = async () => {
     });
 
     if (getResponse.data && getResponse.data.length > 0) {
-      // PATCH request will completely replace the existing data
       const patchResponse = await axios.patch('http://127.0.0.1:8000/summary/post/', summaryData, {
         headers: {
           'X-Branch-Code': branchCode
@@ -664,7 +644,6 @@ const handleSubmit = async () => {
       });
       toast.success(`Updated Successfully`);
     } else {
-      // POST request for new data
       const postResponse = await axios.post('http://127.0.0.1:8000/summary/post/', summaryData, {
         headers: {
           'X-Branch-Code': branchCode
@@ -704,14 +683,14 @@ const handleSubmit = async () => {
     }
     const formData = new FormData();
     formData.append('patient_name', `${appointment.patientName}_${appointment.patientUID}_${appointmentDate}`);
-    formData.append('branch_code', branchCode); // Include branch_code in formData
-    pdfFiles.forEach(pdf => formData.append('pdf_files', pdf)); // Append each PDF to formData
+    formData.append('branch_code', branchCode);
+    pdfFiles.forEach(pdf => formData.append('pdf_files', pdf));
 
     try {
       const response = await axios.post('http://127.0.0.1:8000/upload_pdf/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'X-Branch-Code': branchCode // Include branch_code in headers
+          'X-Branch-Code': branchCode
         },
       });
       toast.success('PDFs uploaded successfully!');
@@ -731,20 +710,17 @@ const handleSubmit = async () => {
   };
 
   const summaryRef = useRef(null);
-// Modified getSummaryDetails function - only display typed data
+
 const getSummaryDetails = () => {
-  // Filter out empty prescriptions for display
   const validPrescriptions = prescriptionInputs.filter(input => 
     input.selectedPrescription?.length > 0 && 
     input.selectedPrescription[0]?.label?.trim() !== ''
   );
 
-  // Filter out empty plans for display
   const validPlans = Object.entries(planDetails)
     .filter(([key, value]) => value && value.trim() !== '')
     .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`);
 
-  // Content generation
   const diagnosissummary = selectedDiagnosis.map((diagnosis) => (
     <li key={diagnosis.id}>{diagnosis.diagnosis}</li>
   ));
@@ -765,7 +741,6 @@ const getSummaryDetails = () => {
     </li>
   ));
 
-  // Only show valid prescriptions
   const prescriptionSummary = validPrescriptions.map((input, index) => {
     const times = ['M', 'A', 'E', 'N'].map(time => input[time.toLowerCase()] ? time : '').filter(Boolean).join(' ');
     return `${index + 1}. ${input.selectedPrescription?.map(p => p.label).join(', ')} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration}`;
@@ -778,7 +753,6 @@ const getSummaryDetails = () => {
     <SummaryDetailsContainer>
       <SummaryTitle>Summary</SummaryTitle>
       
-      {/* Patient Details */}
       <PatientDetailsRow>
         <PatientDetailsColumn>
           <div><strong>NAME:</strong> {appointment.patientName}</div>
@@ -786,11 +760,11 @@ const getSummaryDetails = () => {
         </PatientDetailsColumn>
         <PatientDetailsColumn>
           <div><strong>MOBILE:</strong> {appointment.mobileNumber}</div>
+          <div><strong>DATE:</strong> {appointmentDate}</div>
         </PatientDetailsColumn>
       </PatientDetailsRow>
       <Divider />
 
-      {/* Diagnosis */}
       {selectedDiagnosis.length > 0 && (
         <>
           <SummaryItemTitle>Diagnosis</SummaryItemTitle>
@@ -799,7 +773,6 @@ const getSummaryDetails = () => {
         </>
       )}
 
-      {/* Complaints */}
       {selectedComplaints.length > 0 && (
         <>
           <SummaryItemTitle>Complaints</SummaryItemTitle>
@@ -808,7 +781,6 @@ const getSummaryDetails = () => {
         </>
       )}
 
-      {/* Findings */}
       {selectedfindings.length > 0 && (
         <>
           <SummaryItemTitle>Findings</SummaryItemTitle>
@@ -817,7 +789,6 @@ const getSummaryDetails = () => {
         </>
       )}
 
-      {/* Procedures */}
       {selectedprocedure.length > 0 && (
         <>
           <SummaryItemTitle>Procedures</SummaryItemTitle>
@@ -826,7 +797,6 @@ const getSummaryDetails = () => {
         </>
       )}
 
-      {/* Prescription - Only show if there are valid prescriptions */}
       {validPrescriptions.length > 0 && (
         <>
           <SummaryItemTitle>Prescription</SummaryItemTitle>
@@ -837,7 +807,6 @@ const getSummaryDetails = () => {
         </>
       )}
 
-      {/* Plans - Only show if there are valid plans */}
       {validPlans.length > 0 && (
         <>
           <SummaryItemTitle>Plans</SummaryItemTitle>
@@ -850,7 +819,6 @@ const getSummaryDetails = () => {
         </>
       )}
 
-      {/* Tests */}
       {selectedTests.length > 0 && (
         <>
           <SummaryItemTitle>Tests</SummaryItemTitle>
@@ -861,7 +829,6 @@ const getSummaryDetails = () => {
         </>
       )}
 
-      {/* Next Visit */}
       {selectedDate && (
         <>
           <SummaryItemTitle>Next Visit</SummaryItemTitle>
@@ -890,134 +857,182 @@ const getSummaryDetails = () => {
       img.onerror = error => console.error('Error converting image to Base64:', error);
     };
 
- // Modified exportToPDF function - only include typed data
-  const exportToPDF = () => {
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const headerFooterHeight = 35;
+// Enhanced exportToPDF function with better patient details presentation
+const exportToPDF = () => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  
+// Select PDF background based on branch code
+const backgroundImageMap = {
+  SCC001: PDFMain1,
+  SCC002: PDFMain2,
+};
+
+const PDFMain = backgroundImageMap[branchCode] || PDFMain1;
+
+// Determine startY based on branch code
+let startY = 50; // Default
+
+if (branchCode === "SCC002") {
+  startY = 80;
+}
+
+convertToBase64(PDFMain, (mainImage) => {
+  // Add full background image
+  pdf.addImage(mainImage, 'PNG', 0, 0, pageWidth, pageHeight);    
+    // Enhanced patient details styling
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.setTextColor(40, 40, 40);
+    pdf.text(`Patient: ${appointment.patientName.toUpperCase()}`, 16, startY);
     
-    convertToBase64(PDFHeader, headerImage => {
-      convertToBase64(PDFFooter, footerImage => {
-        pdf.addImage(headerImage, 'PNG', 0, 0, pageWidth, headerFooterHeight);
-        let startY = headerFooterHeight + 10;
-        
-        const createSubTableRows = (label, entries) => {
-          if (!entries || entries.length === 0) {
-            return [];
-          }
-          return entries.map((entry, index) => [index === 0 ? label : '', entry]);
-        };
+    // Patient details with improved formatting
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(11);
+    pdf.text(`Patient UID: ${appointment.patientUID}`, 16, startY + 10);
+    pdf.text(`Mobile: ${appointment.mobileNumber}`, 16, startY + 20);
 
-        let data = [];
-        data.push(['Branch Code', branchCode || 'Not Available']);
-        
-        // Only add sections with data
-        if (selectedDiagnosis.length > 0) {
-          data = data.concat(createSubTableRows('Diagnosis', selectedDiagnosis.map(d => d.diagnosis)));
-        }
-        
-        if (selectedComplaints.length > 0) {
-          data = data.concat(
-            createSubTableRows(
-              'Complaints', 
-              selectedComplaints.map(input => {
-                const complaintText = input.selectedComplaints.map(complaint => complaint.complaints).join(', ') || 'No complaint provided';
-                const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || 'N/A'}` : '';
-                return `${complaintText}${duration}`;
-              })
-            )
-          );
-        }
-        
-        if (selectedfindings.length > 0) {
-          data = data.concat(createSubTableRows('Findings', selectedfindings.map(f => f.findings)));
-        }
-        
-        if (selectedprocedure.length > 0) {
-          data = data.concat(createSubTableRows('Procedures', selectedprocedure.map(p => `${p.selectedProcedures.map(proc => proc.procedure).join(', ')} - Date: ${p.selectedDate ? formatDate(new Date(p.selectedDate)) : 'None'}`)));
-        }
-        
-        // Only add prescription if there are valid prescriptions
-        if (validPrescriptions.length > 0) {
-          data.push(['Prescription', prescriptionSummary]);
-        }
-        
-        // Only add plans if there are valid plans
-        if (validPlans.length > 0) {
-          data.push(['Plans', validPlans.join(', ')]);
-        }
-        
-        if (selectedTests.length > 0) {
-          data = data.concat(createSubTableRows('Tests', selectedTests.map(test => test.test)));
-        }
-        
-        if (selectedDate) {
-          data.push(['Next Visit Date', selectedDate.toLocaleDateString()]);
-        }
+    pdf.text(`Date: ${appointmentDate}`, 140, startY);
+    pdf.text(`Gender: ${appointment.gender}`, 140, startY + 10);
+    
+    startY += 15;
+    
+    const createSubTableRows = (label, entries) => {
+      if (!entries || entries.length === 0) {
+        return [];
+      }
+      return entries.map((entry, index) => [index === 0 ? label : '', entry]);
+    };
 
-        // Create table only if there's data
-        if (data.length > 1) { // More than just branch code
-          pdf.autoTable({
-            startY,
-            head: [['Section', 'Details']],
-            body: data,
-            theme: 'grid',
-            headStyles: { fillColor: [22, 160, 133] },
-            styles: {
-              cellWidth: 'wrap',
-              minCellHeight: 10,
-              overflow: 'linebreak',
-              tableWidth: 'auto',
-              margin: { left: 10, right: 10 },
-            },
-            columnStyles: {
-              0: { cellWidth: 60 },
-              1: { cellWidth: pageWidth - 80 },
-            },
-            margin: { top: startY, bottom: headerFooterHeight },
-            didDrawPage: (data) => {
-              pdf.addImage(headerImage, 'PNG', 0, 0, pageWidth, headerFooterHeight);
-              pdf.addImage(footerImage, 'PNG', 0, pageHeight - headerFooterHeight, pageWidth, headerFooterHeight);
-            }
-          });
-        }
+    let data = [];
+    
+    // Filter out empty prescriptions for display
+    const validPrescriptions = prescriptionInputs.filter(input => 
+      input.selectedPrescription?.length > 0 && 
+      input.selectedPrescription[0]?.label?.trim() !== ''
+    );
 
-        // Rest of the image handling code remains the same...
-        let currentY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 10 : startY;
-        pdf.setFontSize(14);
-        pdf.setTextColor(0, 0, 0);
-        currentY += 10;
+    // Filter out empty plans for display
+    const validPlans = Object.entries(planDetails)
+      .filter(([key, value]) => value && value.trim() !== '')
+      .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`);
 
-        const imageWidth = 25;
-        const imageHeight = 30;
-        const imagesPerRow = Math.floor((pageWidth - 20) / (imageWidth + 5));
-        let currentRow = 0;
+    const prescriptionSummary = validPrescriptions.map((input, index) => {
+      const times = ['M', 'A', 'E', 'N'].map(time => input[time.toLowerCase()] ? time : '').filter(Boolean).join(' ');
+      return `${index + 1}. ${input.selectedPrescription?.map(p => p.label).join(', ')} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration}`;
+    }).join('\n');
+    
+    // Only add sections with data
+    if (selectedDiagnosis.length > 0) {
+      data = data.concat(createSubTableRows('Diagnosis', selectedDiagnosis.map(d => d.diagnosis)));
+    }
+    
+    if (selectedComplaints.length > 0) {
+      data = data.concat(
+        createSubTableRows(
+          'Complaints', 
+          selectedComplaints.map(input => {
+            const complaintText = input.selectedComplaints.map(complaint => complaint.complaints).join(', ') || 'No complaint provided';
+            const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || 'N/A'}` : '';
+            return `${complaintText}${duration}`;
+          })
+        )
+      );
+    }
+    
+    if (selectedfindings.length > 0) {
+      data = data.concat(createSubTableRows('Findings', selectedfindings.map(f => f.findings)));
+    }
+    
+    if (selectedprocedure.length > 0) {
+      data = data.concat(createSubTableRows('Procedures', selectedprocedure.map(p => `${p.selectedProcedures.map(proc => proc.procedure).join(', ')} - Date: ${p.selectedDate ? formatDate(new Date(p.selectedDate)) : 'None'}`)));
+    }
+    
+    // Only add prescription if there are valid prescriptions
+    if (validPrescriptions.length > 0) {
+      data.push(['Prescription', prescriptionSummary]);
+    }
+    
+    // Only add plans if there are valid plans
+    if (validPlans.length > 0) {
+      data.push(['Plans', validPlans.join(', ')]);
+    }
+    
+    if (selectedTests.length > 0) {
+      data = data.concat(createSubTableRows('Tests', selectedTests.map(test => test.test)));
+    }
+    
+    if (selectedDate) {
+      data.push(['Next Visit Date', selectedDate.toLocaleDateString()]);
+    }
 
-        uploadedImages.forEach((img, index) => {
-          const x = 10 + (index % imagesPerRow) * (imageWidth + 5);
-          
-          if (currentY + imageHeight + 20 > pageHeight - headerFooterHeight - 20) {
-            pdf.addPage();
-            currentY = headerFooterHeight + 10;
-            pdf.addImage(headerImage, 'PNG', 0, 0, pageWidth, headerFooterHeight);
-            pdf.addImage(footerImage, 'PNG', 0, pageHeight - headerFooterHeight, pageWidth, headerFooterHeight);
-            currentRow = 0;
-          }
-
-          pdf.addImage(img.src, 'JPEG', x, currentY, imageWidth, imageHeight);
-          pdf.setFontSize(10);
-          pdf.text(`Image ${index + 1}`, x + imageWidth / 4, currentY + imageHeight + 5);
-
-          if ((index + 1) % imagesPerRow === 0) {
-            currentY += imageHeight + 20;
-          }
-        });
-
-        pdf.save(`${branchCode}_${appointment.patientName}_${appointment.patientUID}_${appointmentDate}`);
+    // Create table only if there's data
+    if (data.length > 0) {
+      pdf.autoTable({
+        startY,
+        head: [['Section', 'Details']],
+        body: data,
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+          font: 'helvetica'
+        },
+        styles: {
+          cellWidth: 'wrap',
+          minCellHeight: 10,
+          overflow: 'linebreak',
+          tableWidth: 'auto',
+        },
+        columnStyles: {
+          0: { cellWidth: 60 },
+          1: { cellWidth: pageWidth - 80 },
+        },
+        margin: { left: 14, right: 14 },
       });
+    }
+
+    // Handle images section
+    let currentY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 10 : startY;
+    pdf.setFontSize(14);
+    pdf.setTextColor(0, 0, 0);
+    currentY += 10;
+
+    const imageWidth = 25;
+    const imageHeight = 30;
+    const imagesPerRow = Math.floor((pageWidth - 20) / (imageWidth + 5));
+
+    uploadedImages.forEach((img, index) => {
+      const x = 10 + (index % imagesPerRow) * (imageWidth + 5);
+      
+      // Check if we need a new page
+      if (currentY + imageHeight + 20 > pageHeight - 20) {
+        pdf.addPage();
+        // Add background to new page
+        pdf.addImage(mainImage, 'PNG', 0, 0, pageWidth, pageHeight);
+        currentY = 85; // Reset Y position for new page
+      }
+
+      pdf.addImage(img.src, 'JPEG', x, currentY, imageWidth, imageHeight);
+      pdf.setFontSize(10);
+      pdf.text(`Image ${index + 1}`, x + imageWidth / 4, currentY + imageHeight + 5);
+
+      if ((index + 1) % imagesPerRow === 0) {
+        currentY += imageHeight + 20;
+      }
     });
-  };
+
+    // Save the PDF
+    pdf.save(`${branchCode}_${appointment.patientName}_${appointment.patientUID}_${appointmentDate}`);
+  });
+};
   
   return (
     <div ref={summaryRef}>
@@ -1026,9 +1041,10 @@ const getSummaryDetails = () => {
     </div>
   );
 };
+
   return (
     <StyledContainer>
-      <ToastContainer position="top-right" autoClose={5000}/> {/* Toast container */}
+      <ToastContainer position="top-right" autoClose={5000}/>
       <Tab.Container defaultActiveKey="consulting-room">
       <Nav style={{ justifyContent: 'center' }}>
         <Nav.Item>
@@ -1099,7 +1115,6 @@ const getSummaryDetails = () => {
                     allowNew={true}
                   />
                 </Col>
-                  {/* Conditionally render Dosage field */}
                     <Col sm="2">
                       <Form.Control
                         type="text"
@@ -1119,14 +1134,14 @@ const getSummaryDetails = () => {
                   <Form.Control
                     type="text"
                     placeholder="Number"
-                    value={input.durationNumber || ''} // Ensure it's from the state
+                    value={input.durationNumber || ''}
                     onChange={(e) => handlePrescriptionChange(index, 'durationNumber', e.target.value)}
                   />
                 </Col>
                 <Col sm="2">
                   <Form.Control
                     as="select"
-                    value={input.duration || ''} // Ensure it's from the state
+                    value={input.duration || ''}
                     onChange={(e) => handlePrescriptionChange(index, 'duration', e.target.value)}
                   >
                     <option value="">Duration</option>
@@ -1195,7 +1210,7 @@ const getSummaryDetails = () => {
             <DatePicker
               selected={selectedDate}
               onChange={(date) => {
-                setSelectedDate(date); // Update the selected date
+                setSelectedDate(date);
               }}
               customInput={<CalendarIcon />}
               popperPlacement="bottom-end"
@@ -1203,7 +1218,7 @@ const getSummaryDetails = () => {
             />
             <DateDisplay>
               {selectedDate
-                ? `Next Visit on: ${selectedDate.toLocaleDateString('en-GB')}` // Format date as `dd/MM/yyyy`
+                ? `Next Visit on: ${selectedDate.toLocaleDateString('en-GB')}`
                 : 'Next Visit on: Select a date'}
             </DateDisplay>
           </NextVisitonContainer>

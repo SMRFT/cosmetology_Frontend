@@ -16,7 +16,8 @@ import "react-toastify/dist/ReactToastify.css"
 import Cookies from "js-cookie"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import PDFMain from "./images/PDF_Main_branch1.jpeg"
+import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
+import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
 
 const BillingProcedureReport = () => {
   const [billingData, setBillingData] = useState(null)
@@ -114,6 +115,7 @@ const BillingProcedureReport = () => {
       "Patient UID",
       "Consumer Billnumber",
       "Appointment Date",
+      "Doctor Name",
       "Procedure",
       "Procedure Date",
       "Price",
@@ -132,6 +134,7 @@ const BillingProcedureReport = () => {
           item.patientUID,
           item.consumerBillNumber,
           item.appointmentDate,
+          item.patient_handledby,
           proc.procedure,
           proc.procedureDate,
           proc.price,
@@ -213,11 +216,16 @@ const BillingProcedureReport = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    convertToBase64(PDFMain, (mainImage) => {
-      // Add background image
-      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+    // Select PDF background based on branch code without directly using branch names
+    const backgroundImageMap = {
+      SCC001: PDFMain1,
+      SCC002: PDFMain2,
+    }
+    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
 
-      let startY = 85 // Start position after background image
+    convertToBase64(PDFMain, (mainImage) => {
+      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+      let startY = 85
 
       // Set font style for patient name - make it more prominent
       doc.setFont("helvetica", "bold")
@@ -230,8 +238,6 @@ const BillingProcedureReport = () => {
       doc.setFontSize(11)
       doc.text(`Patient UID: ${patientData.patientUID}`, 16, startY + 8)
       doc.text(`Bill Number: ${patientData.procedureBillNumber}`, 16, startY + 16)
-      doc.text(`Date: ${patientData.appointmentDate}`, 140, startY + 8)
-      doc.text(`Branch: ${branchCode}`, 140, startY + 16)
 
       startY += 30
 
@@ -239,10 +245,10 @@ const BillingProcedureReport = () => {
       const procedureTable = patientData.procedures.map((proc) => [
         proc.procedure,
         proc.procedureDate,
-        `₹${proc.price}`,
+        `${proc.price}`,
         `${proc.gstRate}%`,
-        `₹${proc.gst}`,
-        `₹${proc.total}`,
+        `${proc.gst}`,
+        `${proc.total}`,
       ])
 
       doc.autoTable({
@@ -268,7 +274,7 @@ const BillingProcedureReport = () => {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(0, 100, 0)
-      doc.text(`Total Amount: ₹${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
+      doc.text(`Total Amount: ${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
 
       // Open in new window instead of auto-print
       const pdfBlob = doc.output("blob")
@@ -290,10 +296,15 @@ const BillingProcedureReport = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    convertToBase64(PDFMain, (mainImage) => {
-      // Add background image
-      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+    // Select PDF background based on branch code without directly using branch names
+    const backgroundImageMap = {
+      SCC001: PDFMain1,
+      SCC002: PDFMain2,
+    }
+    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
 
+    convertToBase64(PDFMain, (mainImage) => {
+      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
       let startY = 85
 
       // Set font style for patient name - make it more prominent
@@ -313,7 +324,7 @@ const BillingProcedureReport = () => {
       startY += 30
 
       // Consumer Table
-      const consumerTable = patientData.consumer.map((con) => [con.item, con.qty, `₹${con.total}`])
+      const consumerTable = patientData.consumer.map((con) => [con.item, con.qty, `${con.total}`])
 
       doc.autoTable({
         head: [["Item", "Quantity", "Total"]],
@@ -338,7 +349,7 @@ const BillingProcedureReport = () => {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(0, 100, 0)
-      doc.text(`Total Amount: ₹${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
+      doc.text(`Total Amount: ${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
 
       // Open in new window instead of auto-print
       const pdfBlob = doc.output("blob")
@@ -412,9 +423,7 @@ const BillingProcedureReport = () => {
     <Container>
       <ToastContainer position="top-right" autoClose={5000} />
       <Header>
-        <h3 className="text-center mb-2">Billing Report</h3>
-        {branchCode && <small className="text-center d-block mb-2">Branch: {branchCode}</small>}
-        {!branchCode && <div className="alert alert-warning mb-3">Branch code not found. Please login again.</div>}
+        <h3 className="text-center mb-2">Procedure Billing Report</h3>
       </Header>
       <IntervalSelector>
         <ButtonGroup>
@@ -518,6 +527,7 @@ const BillingProcedureReport = () => {
                       <th>Patient UID</th>
                       <th>Procedure Billnumber</th>
                       <th>Appointment Date</th>
+                      <th>Doctor Name</th>
                       <th>Procedure</th>
                       <th>Procedure Date</th>
                       <th>Price</th>
@@ -538,6 +548,7 @@ const BillingProcedureReport = () => {
                                 <td rowSpan={item.procedures.length}>{item.patientUID}</td>
                                 <td rowSpan={item.procedures.length}>{item.procedureBillNumber}</td>
                                 <td rowSpan={item.procedures.length}>{item.appointmentDate}</td>
+                                <td rowSpan={item.procedures.length}>{item.patient_handledby}</td>
                               </>
                             )}
                             <td>{proc.procedure}</td>

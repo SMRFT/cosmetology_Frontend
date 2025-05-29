@@ -16,7 +16,8 @@ import "react-toastify/dist/ReactToastify.css"
 import Cookies from "js-cookie"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import PDFMain from "./images/PDF_Main_branch1.jpeg"
+import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
+import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
 
 // Utility function to format text
 const formatText = (text) => {
@@ -126,14 +127,15 @@ const BillingReport = () => {
     const headers = [
       "Patient Name",
       "Particulars",
-      "billnumber",
-      "billdate",
+      "bill Number",
+      "Bill Date",
+      "Doctor Name",
       "Quantity",
       "Price",
-      "CGST_percentage",
-      "CGST_value",
-      "SGST_percentage",
-      "SGST_value",
+      "CGST Percentage",
+      "CGST Value",
+      "SGST Percentage",
+      "SGST Value",
       "Total",
     ]
     const rows = billingData.flatMap((item) =>
@@ -142,6 +144,7 @@ const BillingReport = () => {
         data.particulars,
         item.billNumber,
         item.appointmentDate,
+        item.patient_handledby,
         data.qty,
         data.price,
         data.CGST_percentage,
@@ -193,11 +196,16 @@ const BillingReport = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    convertToBase64(PDFMain, (mainImage) => {
-      // Add background image
-      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+    // Select PDF background based on branch code without directly using branch names
+    const backgroundImageMap = {
+      SCC001: PDFMain1,
+      SCC002: PDFMain2,
+    }
+    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
 
-      let startY = 85 // Start position after background image
+    convertToBase64(PDFMain, (mainImage) => {
+      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+      let startY = 85
 
       // Set font style for patient name - make it more prominent
       doc.setFont("helvetica", "bold")
@@ -210,8 +218,6 @@ const BillingReport = () => {
       doc.setFontSize(11)
       doc.text(`Patient UID: ${patientData.patientUID}`, 16, startY + 8)
       doc.text(`Bill Number: ${patientData.billNumber}`, 16, startY + 16)
-      doc.text(`Date: ${patientData.appointmentDate}`, 140, startY + 8)
-      doc.text(`Branch: ${branchCode}`, 140, startY + 16)
 
       startY += 30
 
@@ -219,12 +225,12 @@ const BillingReport = () => {
       const medicineTable = patientData.table_data.map((data) => [
         data.particulars,
         data.qty,
-        `₹${data.price}`,
+        `${data.price}`,
         `${data.CGST_percentage}%`,
-        `₹${data.CGST_value}`,
+        `${data.CGST_value}`,
         `${data.SGST_percentage}%`,
-        `₹${data.SGST_value}`,
-        `₹${data.total}`,
+        `${data.SGST_value}`,
+        `${data.total}`,
       ])
 
       doc.autoTable({
@@ -250,7 +256,7 @@ const BillingReport = () => {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(0, 100, 0)
-      doc.text(`Total Amount: ₹${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
+      doc.text(`Total Amount: ${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
 
       // Open in new window instead of auto-print
       const pdfBlob = doc.output("blob")
@@ -446,16 +452,14 @@ const BillingReport = () => {
             />
           )}
           {selectedInterval === "week" && (
-            <>
-              <DatePicker
-                selected={selectedDate}
-                onChange={handleDateChange}
-                dateFormat="yyyy-MM"
-                showMonthYearPicker
-                showPopperArrow={false}
-                customInput={<CustomDateInput />}
-              />
-            </>
+            <DatePicker
+              selected={selectedDate}
+              onChange={handleDateChange}
+              dateFormat="yyyy-MM"
+              showMonthYearPicker
+              showPopperArrow={false}
+              customInput={<CustomDateInput />}
+            />
           )}
           {selectedInterval === "month" && (
             <DatePicker
@@ -495,6 +499,7 @@ const BillingReport = () => {
                   <th>Patient Name</th>
                   <th>Bill Number</th>
                   <th>Bill Date</th>
+                  <th>Doctor Name</th>
                   <th>Particulars</th>
                   <th>Quantity</th>
                   <th>Price</th>
@@ -518,6 +523,7 @@ const BillingReport = () => {
                             )}
                             <td>{item.billNumber}</td>
                             <td>{item.appointmentDate}</td>
+                            <td>{item.patient_handledby}</td>
                             <td>{data.particulars}</td>
                             <td>{data.qty}</td>
                             <td>{data.price}</td>

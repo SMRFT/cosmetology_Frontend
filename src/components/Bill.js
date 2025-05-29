@@ -2,7 +2,7 @@
 
 import { useState, useEffect, forwardRef } from "react"
 import styled from "styled-components"
-import { Row, Col, Alert } from "react-bootstrap"
+import { Row, Col } from "react-bootstrap"
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
 import { FaCalendarAlt } from "react-icons/fa"
@@ -11,7 +11,8 @@ import { IoMdArrowRoundBack } from "react-icons/io"
 import jsPDF from "jspdf"
 import Cookies from "js-cookie"
 import "jspdf-autotable"
-import PDFMain from "./images/PDF_Main_branch1.jpeg"
+import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
+import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
@@ -648,6 +649,7 @@ const Bill = () => {
     const dataToSubmit = {
       patientName: selectedPatient.patientName,
       patientUID: selectedPatient.patientUID,
+      patient_handledby: selectedPatient.patient_handledby || "N/A",
       appointmentDate: format(startDate, "yyyy-MM-dd"),
       table_data: table_data,
       paymentType,
@@ -794,6 +796,13 @@ const Bill = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
+    // Select PDF background based on branch code without directly using branch names
+    const backgroundImageMap = {
+      SCC001: PDFMain1,
+      SCC002: PDFMain2,
+    }
+    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
       let startY = 85
@@ -808,10 +817,8 @@ const Bill = () => {
       doc.setFont("helvetica", "normal")
       doc.setFontSize(11)
       doc.text(`Patient UID: ${selectedPatient.patientUID}`, 16, startY + 10)
-      doc.text(`Date: ${selectedPatient.appointmentDate}`, 16, startY + 20)
-      doc.text(`Branch: ${branchCode}`, 140, startY + 10)
 
-      startY += 35
+      startY += 15
 
       // Enhanced table styling
       doc.autoTable({
@@ -840,7 +847,7 @@ const Bill = () => {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(14)
       doc.setTextColor(0, 100, 0)
-      doc.text(`Net Amount: ₹${netAmount || "N/A"}`, 14, yOffset)
+      doc.text(`Net Amount: ${netAmount || "N/A"}`, 14, yOffset)
       doc.save(`${selectedPatient.patientName}_Bill.pdf`)
     })
   }
@@ -848,13 +855,6 @@ const Bill = () => {
   return (
     <Container>
       <ToastContainer position="top-right" autoClose={5000} />
-      {branchCode ? (
-        <small className="text-center d-block mb-2">Branch: {branchCode}</small>
-      ) : (
-        <Alert variant="warning" className="mb-3">
-          Branch code not found. Please login again.
-        </Alert>
-      )}
       <h3 className="text-center mb-4">Billing</h3>
       {selectedPatient && (
         <button style={{ marginLeft: "80px" }} onClick={handleBackClick}>
@@ -907,7 +907,7 @@ const Bill = () => {
               </PatientInfo>
               <DoctorInfo>
                 <div>
-                  <strong>Doctor Name:</strong> Dr. S. Vijay Kannan M.ch (Plastic)
+                  <strong>Doctor Name:</strong> {selectedPatient.patient_handledby || "N/A"}
                 </div>
               </DoctorInfo>
             </InfoText>

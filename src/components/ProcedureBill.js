@@ -6,15 +6,16 @@ import styled from "styled-components"
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
 import { format } from "date-fns"
-import { FaArrowLeft, FaCalendarAlt, FaPlus, FaTrash } from "react-icons/fa"
+import { FaCalendarAlt, FaPlus, FaTrash } from "react-icons/fa"
 import "bootstrap/dist/css/bootstrap.min.css"
 import { Row, Col } from "react-bootstrap"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import PDFHeader from "./images/PDF_Header_branch1.png"
-import PDFFooter from "./images/PDF_Footer_branch1.png"
+import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
+import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
 import { consumerItems } from "./constant"
 import CreatableSelect from "react-select/creatable"
+import { IoMdArrowRoundBack } from "react-icons/io"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import Cookies from "js-cookie"
@@ -181,6 +182,53 @@ const ConsumerNetInput = styled.input`
 const Container = styled.div`
   margin-top: 65px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+`
+
+const InfoContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 100%;
+  margin: 0 auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #ad97b4 0%, #9b85a8 100%);
+`
+
+const InfoText = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+`
+
+const PatientInfo = styled.div`
+  flex: 1;
+  
+  div {
+    margin-bottom: 5px;
+    font-weight: 500;
+    
+    strong {
+      font-weight: 600;
+      margin-right: 8px;
+    }
+  }
+`
+
+const DoctorInfo = styled.div`
+  flex: 1;
+  text-align: right;
+  
+  div {
+    font-weight: 500;
+    
+    strong {
+      font-weight: 600;
+    }
+  }
 `
 
 const ProcedureComponent = () => {
@@ -409,6 +457,7 @@ const ProcedureComponent = () => {
       const payload = {
         patientName: selectedPatient.patientName,
         patientUID: selectedPatient.patientUID,
+        patient_handledby: selectedPatient.patient_handledby || "N/A",
         procedures: proceduresWithoutPatientInfo,
         consumer: consumerRecords,
         appointmentDate: appointmentDate,
@@ -458,83 +507,73 @@ const ProcedureComponent = () => {
     const doc = new jsPDF("p", "mm", "a4")
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
-    const headerFooterHeight = 35
-    const containerPadding = 10
-    const containerHeight = 25
-    const containerYPosition = 40
 
-    convertToBase64(PDFHeader, (headerImage) => {
-      convertToBase64(PDFFooter, (footerImage) => {
-        // Add header image
-        doc.addImage(headerImage, "PNG", 0, 0, pageWidth, headerFooterHeight)
+    // Select PDF background based on branch code without directly using branch names
+    const backgroundImageMap = {
+      SCC001: PDFMain1,
+      SCC002: PDFMain2,
+    }
+    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
 
-        // Draw a container below the header image
-        doc.setFillColor(230, 230, 230)
-        doc.rect(14, containerYPosition, pageWidth - 28, containerHeight, "F")
+    convertToBase64(PDFMain, (mainImage) => {
+      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+      let startY = 85
 
-        // Enhanced patient name styling
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(14)
-        doc.setTextColor(40, 40, 40)
-        const textYOffset = containerYPosition + containerPadding
+      // Enhanced patient name styling
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(16)
+      doc.setTextColor(40, 40, 40)
+      doc.text(`Patient: ${selectedPatient.patientName.toUpperCase()}`, 16, startY)
 
-        if (selectedPatient) {
-          doc.text(`Patient: ${selectedPatient.patientName.toUpperCase()}`, 16, textYOffset)
-          doc.setFont("helvetica", "normal")
-          doc.setFontSize(11)
-          doc.text(`Patient UID: ${selectedPatient.patientUID}`, 16, textYOffset + 8)
-        }
+      // Patient details with improved formatting
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(11)
+      doc.text(`Patient UID: ${selectedPatient.patientUID}`, 16, startY + 10)
 
-        const formattedAppointmentDate = new Date(selectedPatient.appointmentDate).toLocaleDateString()
-        doc.text(`Date: ${formattedAppointmentDate}`, 140, textYOffset)
-        doc.text(`Branch: ${branchCode}`, 140, textYOffset + 8)
+      let yOffset = startY + 20
 
-        let yOffset = containerYPosition + containerHeight + 10
+      // Add procedure details table with enhanced styling
+      if (detailedRecords.length > 0) {
+        const procedureTable = detailedRecords.flatMap((record) =>
+          record.procedures.map((procedure) => [
+            procedure.procedure,
+            procedure.procedureDate,
+            `${procedure.price}`,
+            `${procedure.gstRate}%`,
+            `${calculateGST(procedure.price, procedure.gstRate)}`,
+            `${calculateTotal(procedure.price, calculateGST(procedure.price, procedure.gstRate))}`,
+          ]),
+        )
 
-        // Add procedure details table with enhanced styling
-        if (detailedRecords.length > 0) {
-          const procedureTable = detailedRecords.flatMap((record) =>
-            record.procedures.map((procedure) => [
-              procedure.procedure,
-              procedure.procedureDate,
-              `₹${procedure.price}`,
-              `${procedure.gstRate}%`,
-              `₹${calculateGST(procedure.price, procedure.gstRate)}`,
-              `₹${calculateTotal(procedure.price, calculateGST(procedure.price, procedure.gstRate))}`,
-            ]),
-          )
+        doc.autoTable({
+          head: [["Procedure", "Procedure Date", "Price", "GST Rate (%)", "GST", "Total"]],
+          body: procedureTable,
+          startY: yOffset,
+          theme: "grid",
+          headStyles: {
+            fillColor: [116, 180, 155],
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+            fontSize: 10,
+          },
+          bodyStyles: {
+            fontSize: 9,
+            textColor: [40, 40, 40],
+            font: "helvetica",
+          },
+          margin: { left: 14, right: 14 },
+        })
 
-          doc.autoTable({
-            head: [["Procedure", "Procedure Date", "Price", "GST Rate (%)", "GST", "Total"]],
-            body: procedureTable,
-            startY: yOffset,
-            theme: "grid",
-            headStyles: {
-              fillColor: [116, 180, 155],
-              textColor: [255, 255, 255],
-              fontStyle: "bold",
-              fontSize: 10,
-            },
-            bodyStyles: {
-              fontSize: 9,
-              textColor: [40, 40, 40],
-              font: "helvetica",
-            },
-            margin: { bottom: 10 },
-          })
+        yOffset = doc.lastAutoTable.finalY + 10
+      }
 
-          yOffset = doc.previousAutoTable.finalY + 10
-        }
+      // Add consumer records table with enhanced styling
+      if (consumerRecords.length > 0 && consumerRecords.some((record) => record.item)) {
+        const consumerTable = consumerRecords
+          .filter((record) => record.item)
+          .map((record) => [record.item, record.qty, `${record.price}`, `${record.total}`])
 
-        // Add consumer records table with enhanced styling
-        if (consumerRecords.length > 0) {
-          const consumerTable = consumerRecords.map((record) => [
-            record.item,
-            record.qty,
-            `₹${record.price}`,
-            `₹${record.total}`,
-          ])
-
+        if (consumerTable.length > 0) {
           doc.autoTable({
             head: [["Item", "Qty", "Price", "Total"]],
             body: consumerTable,
@@ -551,219 +590,232 @@ const ProcedureComponent = () => {
               textColor: [40, 40, 40],
               font: "helvetica",
             },
-            margin: { bottom: 10 },
+            margin: { left: 14, right: 14 },
           })
 
-          yOffset = doc.previousAutoTable.finalY + 10
+          yOffset = doc.lastAutoTable.finalY + 10
         }
+      }
 
-        // Enhanced total amount styling
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(14)
-        doc.setTextColor(0, 100, 0)
-        doc.text(`Total Amount: ₹${totalAmount}`, 14, yOffset)
+      // Enhanced total amount styling
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(14)
+      doc.setTextColor(0, 100, 0)
+      doc.text(`Total Amount: ${totalAmount}`, 14, yOffset)
 
-        // Add footer image
-        doc.addImage(footerImage, "PNG", 0, pageHeight - headerFooterHeight, pageWidth, headerFooterHeight)
-
-        // Save the PDF
-        doc.save(`${selectedPatient.patientName}_procedure_bill.pdf`)
-      })
+      // Save the PDF
+      doc.save(`${selectedPatient.patientName}_procedure_bill.pdf`)
     })
   }
 
   return (
     <Container className="container">
       <ToastContainer position="top-right" autoClose={5000} />
+      <h3 className="text-center mb-4">Procedure Bill</h3>
+      {selectedPatient && (
+        <button onClick={handleBackClick}>
+          <IoMdArrowRoundBack />
+        </button>
+      )}
       {viewDetails ? (
         <div>
-          <FlexRow>
-            <button className="mt-4" onClick={handleBackClick}>
-              <FaArrowLeft />
-            </button>
-            <span style={{ fontSize: "18px", fontWeight: "600" }}>
-              {selectedPatient.patientName.toUpperCase()} ({selectedPatient.patientUID})
-            </span>
-          </FlexRow>
-          <center>
-            <h4 style={{ fontWeight: "600", marginTop: "20px" }}>Procedure Bill</h4>
-          </center>
-          {detailedRecords.length > 0 && (
-            <>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Procedure</th>
-                    <th>Procedure Date</th>
-                    <th>Price</th>
-                    <th>GST Rate (%)</th>
-                    <th>GST</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detailedRecords.map((record, recordIndex) => {
-                    return record.procedures.map((procedure, index) => {
-                      const gst = calculateGST(procedure.price, procedure.gstRate)
-                      const total = calculateTotal(procedure.price, gst)
+          <div>
+            {selectedPatient ? (
+              <InfoContainer className="mt-2">
+                <InfoText>
+                  <PatientInfo>
+                    <div>
+                      <strong>Name:</strong> {selectedPatient.patientName}
+                    </div>
+                    <div>
+                      <strong>PatientUID:</strong> {selectedPatient.patientUID}
+                    </div>
+                  </PatientInfo>
+                  <DoctorInfo>
+                    <div>
+                      <strong>Doctor Name:</strong> {selectedPatient.patient_handledby || "N/A"}
+                    </div>
+                  </DoctorInfo>
+                </InfoText>
+              </InfoContainer>
+            ) : null}
+          </div>
+          <br />
+          <div>
+            {detailedRecords.length > 0 && (
+              <>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Procedure</th>
+                      <th>Procedure Date</th>
+                      <th>Price</th>
+                      <th>GST Rate (%)</th>
+                      <th>GST</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailedRecords.map((record, recordIndex) => {
+                      return record.procedures.map((procedure, index) => {
+                        const gst = calculateGST(procedure.price, procedure.gstRate)
+                        const total = calculateTotal(procedure.price, gst)
 
-                      return (
-                        <tr key={`${recordIndex}-${index}`}>
-                          <td>{procedure.procedure}</td>
-                          <td>{procedure.procedureDate}</td>
+                        return (
+                          <tr key={`${recordIndex}-${index}`}>
+                            <td>{procedure.procedure}</td>
+                            <td>{procedure.procedureDate}</td>
+                            <td>
+                              <input
+                                type="text"
+                                value={procedure.price}
+                                onChange={(e) => handlePriceChange(index, e.target.value)}
+                                className="form-control"
+                                placeholder="Enter price"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                value={procedure.gstRate}
+                                onChange={(e) => handleGstRateChange(index, e.target.value)}
+                                className="form-control"
+                                placeholder="Enter GST rate"
+                              />
+                            </td>
+                            <td>{gst}</td>
+                            <td>
+                              <input
+                                type="text"
+                                value={total}
+                                onChange={(e) => handleTotalChange(index, e.target.value)}
+                                className="form-control"
+                                placeholder="Enter total"
+                              />
+                            </td>
+                          </tr>
+                        )
+                      })
+                    })}
+                  </tbody>
+                </table>
+                <br />
+                <ProcedureNetContainer>
+                  <ProcedureNetLabel htmlFor="Net">Net Amount:</ProcedureNetLabel>
+                  <ProcedureNetInput
+                    type="text"
+                    id="Net"
+                    value={procedureNetAmount}
+                    onChange={(e) => setProcedureNetAmount(e.target.value)}
+                  />
+                </ProcedureNetContainer>
+                <div className="mt-4">
+                  <center>
+                    <h4 style={{ fontWeight: "600" }}>Consumable Bill</h4>
+                  </center>
+                  <div className="d-flex justify-content-end">
+                    <button onClick={addConsumerRow}>
+                      <FaPlus />
+                    </button>
+                  </div>
+                  <br />
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {consumerRecords.map((record, index) => (
+                        <tr key={index}>
+                          <td>
+                            <CreatableSelect
+                              options={consumerOptions}
+                              isClearable
+                              isSearchable
+                              onChange={(selectedOption) => handleSelectChange(selectedOption, index)}
+                              value={
+                                consumerOptions.find((option) => option.value === record.item) || {
+                                  value: record.item,
+                                  label: record.item,
+                                }
+                              }
+                              placeholder="Select or enter item"
+                            />
+                          </td>
                           <td>
                             <input
                               type="text"
-                              value={procedure.price}
-                              onChange={(e) => handlePriceChange(index, e.target.value)}
+                              value={record.qty}
+                              onChange={(e) => handleConsumerChange(index, "qty", e.target.value)}
+                              className="form-control"
+                              placeholder="Enter quantity"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={record.price}
+                              onChange={(e) => handleConsumerChange(index, "price", e.target.value)}
                               className="form-control"
                               placeholder="Enter price"
                             />
                           </td>
+                          <td>{record.total}</td>
                           <td>
-                            <input
-                              type="text"
-                              value={procedure.gstRate}
-                              onChange={(e) => handleGstRateChange(index, e.target.value)}
-                              className="form-control"
-                              placeholder="Enter GST rate"
-                            />
-                          </td>
-                          <td>{gst}</td>
-                          <td>
-                            <input
-                              type="text"
-                              value={total}
-                              onChange={(e) => handleTotalChange(index, e.target.value)}
-                              className="form-control"
-                              placeholder="Enter total"
+                            <FaTrash
+                              onClick={() => {
+                                setConsumerRecords((prevRecords) => prevRecords.filter((_, i) => i !== index))
+                              }}
                             />
                           </td>
                         </tr>
-                      )
-                    })
-                  })}
-                </tbody>
-              </table>
-              <br />
-              <ProcedureNetContainer>
-                <ProcedureNetLabel htmlFor="Net">Net Amount:</ProcedureNetLabel>
-                <ProcedureNetInput
-                  type="text"
-                  id="Net"
-                  value={procedureNetAmount}
-                  onChange={(e) => setProcedureNetAmount(e.target.value)}
-                />
-              </ProcedureNetContainer>
-              <div className="mt-4">
-                <center>
-                  <h4 style={{ fontWeight: "600" }}>Consumable Bill</h4>
-                </center>
-                <div className="d-flex justify-content-end">
-                  <button onClick={addConsumerRow}>
-                    <FaPlus />
-                  </button>
+                      ))}
+                    </tbody>
+                  </table>
+                  <br />
+                  <ConsumerNetContainer>
+                    <ConsumerNetLabel htmlFor="Net">Net Amount:</ConsumerNetLabel>
+                    <ConsumerNetInput
+                      type="text"
+                      id="Net"
+                      value={consumerNetAmount}
+                      onChange={(e) => setConsumerNetAmount(e.target.value)}
+                    />
+                    <FlexRow>
+                      <ProcedureNetLabel htmlFor="Total">Total Amount:</ProcedureNetLabel>
+                      <ProcedureNetInput type="text" id="Total" value={totalAmount} readOnly />
+                    </FlexRow>
+                  </ConsumerNetContainer>
+                  <PaymentTypeContainer>
+                    <PaymentTypeLabel>Payment Type : </PaymentTypeLabel>
+                    <PaymentTypeInput value={PaymentType} onChange={handlePaymentTypeChange}>
+                      <option value="Card">Card</option>
+                      <option value="Cash">Cash</option>
+                    </PaymentTypeInput>
+                  </PaymentTypeContainer>
+                  <div className="d-flex flex-column align-items-center">
+                    <Row className="g-3">
+                      <Col xs="auto">
+                        <button onClick={handleSave}>Save</button>
+                      </Col>
+                      <Col xs="auto">
+                        <button onClick={handleDownload}>Download as PDF</button>
+                      </Col>
+                    </Row>
+                  </div>
                 </div>
-                <br />
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Item</th>
-                      <th>Qty</th>
-                      <th>Price</th>
-                      <th>Total</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {consumerRecords.map((record, index) => (
-                      <tr key={index}>
-                        <td>
-                          <CreatableSelect
-                            options={consumerOptions}
-                            isClearable
-                            isSearchable
-                            onChange={(selectedOption) => handleSelectChange(selectedOption, index)}
-                            value={
-                              consumerOptions.find((option) => option.value === record.item) || {
-                                value: record.item,
-                                label: record.item,
-                              }
-                            }
-                            placeholder="Select or enter item"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            value={record.qty}
-                            onChange={(e) => handleConsumerChange(index, "qty", e.target.value)}
-                            className="form-control"
-                            placeholder="Enter quantity"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            value={record.price}
-                            onChange={(e) => handleConsumerChange(index, "price", e.target.value)}
-                            className="form-control"
-                            placeholder="Enter price"
-                          />
-                        </td>
-                        <td>{record.total}</td>
-                        <td>
-                          <FaTrash
-                            onClick={() => {
-                              setConsumerRecords((prevRecords) => prevRecords.filter((_, i) => i !== index))
-                            }}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <br />
-                <ConsumerNetContainer>
-                  <ConsumerNetLabel htmlFor="Net">Net Amount:</ConsumerNetLabel>
-                  <ConsumerNetInput
-                    type="text"
-                    id="Net"
-                    value={consumerNetAmount}
-                    onChange={(e) => setConsumerNetAmount(e.target.value)}
-                  />
-                  <FlexRow>
-                    <ProcedureNetLabel htmlFor="Total">Total Amount:</ProcedureNetLabel>
-                    <ProcedureNetInput type="text" id="Total" value={totalAmount} readOnly />
-                  </FlexRow>
-                </ConsumerNetContainer>
-                <PaymentTypeContainer>
-                  <PaymentTypeLabel>Payment Type : </PaymentTypeLabel>
-                  <PaymentTypeInput value={PaymentType} onChange={handlePaymentTypeChange}>
-                    <option value="Card">Card</option>
-                    <option value="Cash">Cash</option>
-                  </PaymentTypeInput>
-                </PaymentTypeContainer>
-                <div className="d-flex flex-column align-items-center">
-                  <Row className="g-3">
-                    <Col xs="auto">
-                      <button onClick={handleSave}>Save</button>
-                    </Col>
-                    <Col xs="auto">
-                      <button onClick={handleDownload}>Download as PDF</button>
-                    </Col>
-                  </Row>
-                </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       ) : (
         <div>
           <center>
-            <h3 className="mt-4" style={{ fontWeight: "600" }}>
-              Procedure Bill
-            </h3>
             <br />
             <DatePickerWrapper>
               <FaCalendarAlt className="calendar-icon" onClick={() => datePickerRef.current.setFocus()} />
