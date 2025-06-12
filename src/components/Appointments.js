@@ -39,7 +39,7 @@ const Appointment = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [showErrorMessage, setShowErrorMessage] = useState(false)
   const datePickerRef = useRef(null)
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     const code = Cookies.get("branch_code")
     if (code) {
@@ -80,7 +80,7 @@ const Appointment = () => {
 
   const fetchAppointments = (code) => {
     axios
-      .get(`http://127.0.0.1:8000/AppointmentView/?branch_code=${code}`)
+      .get(`${Cosmetologybaseurl}AppointmentView/?branch_code=${code}`)
       .then((response) => {
         setAppointmentsData(response.data)
       })
@@ -90,7 +90,7 @@ const Appointment = () => {
   }
 
   const fetchDoctors = () => {
-    const url = `http://127.0.0.1:8000/get_doctors/`
+    const url = `${Cosmetologybaseurl}get_doctors/`
     axios
       .get(url, {
         withCredentials: true,
@@ -182,7 +182,7 @@ const Appointment = () => {
 
     // Save the appointment
     axios
-      .post(`http://127.0.0.1:8000/Appointmentpost/`, appointmentData, {
+      .post(`${Cosmetologybaseurl}Appointmentpost/`, appointmentData, {
         headers: {
           "Content-Type": "application/json",
           "X-Branch-Code": branchCode,

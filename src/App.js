@@ -2,10 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Routes, Route, useLocation, Navigate } from "react-router-dom"
-import styled from "styled-components"
 import Register from "./components/Register"
-import Logo from "../src/components/images/salem-cosmetic-logo.png"
-import "bootstrap/dist/css/bootstrap.min.css"
 import UnifiedLogin from "./components/Login" // Import the new unified login
 import Pharmacy from "./components/Pharmacy"
 import Reception from "./components/Reception"
@@ -24,9 +21,9 @@ import SummaryReport from "./components/SummaryReport"
 import ProcedureComponent from "./components/ProcedureBill"
 import Report from "./components/Report"
 import UserManagement from "./components/UserManagement"
-import "./App.css"
 import NewBill from "./components/NewBill"
 import NewProcedureBill from "./components/NewProcedureBill"
+import "./App.css"
 
 function App() {
   const location = useLocation()
@@ -84,16 +81,6 @@ function App() {
     return children
   }
 
-  // Determine if we should show the main logo (updated for unified login)
-  const shouldShowLogo =
-    !(
-      (location.pathname.startsWith("/Admin") && location.pathname !== "/login") ||
-      (location.pathname.startsWith("/Doctor") && location.pathname !== "/login") ||
-      (location.pathname.startsWith("/Reception") && location.pathname !== "/login") ||
-      (location.pathname.startsWith("/Manager") && location.pathname !== "/login") ||
-      (location.pathname !== "/login")
-    ) && location.pathname !== "/" // Don't show logo on unified login page
-
   // Determine if we should show the unified header (updated for unified login)
   const shouldShowHeader =
     isLoggedIn &&
@@ -115,16 +102,11 @@ function App() {
   }
 
   return (
-    <AppContainer>
-      {shouldShowLogo && (
-        <LogoContainer>
-          <LogoImage src={Logo || "/placeholder.svg"} alt="Salem Cosmetic Clinic Logo" />
-        </LogoContainer>
-      )}
+    <div className="App">
 
       {shouldShowHeader && <Header userRole={getHeaderUserRole()} />}
 
-      <MainContent shouldShowHeader={shouldShowHeader}>
+      <div className="main-content" shouldShowHeader={shouldShowHeader}>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<HomePage />} />
@@ -419,58 +401,9 @@ function App() {
           {/* Redirect all unknown routes to home */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
-      </MainContent>
-    </AppContainer>
+      </div>
+    </div>
   )
 }
-
-// Styled Components
-const AppContainer = styled.div`
-  min-height: 100vh;
-  background-color: #f8f9fa;
-`
-
-const LogoContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  position: fixed;
-  background: white; /* Optional: add background to avoid content behind the logo */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 6px 0; 
-  
-  @media (max-width: 768px) {
-    padding: 15px;
-  }
-`
-
-const LogoImage = styled.img`
-  max-width: 50%; /* Adjust as necessary */
-  height: auto;
-  
-  @media (max-width: 768px) {
-    max-height: 60px;
-  }
-  
-  @media (max-width: 480px) {
-    max-height: 50px;
-  }
-`
-
-const MainContent = styled.div`
-  margin-top: ${(props) => (props.shouldShowHeader ? "140px" : "")};
-  min-height: calc(100vh - ${(props) => (props.shouldShowHeader ? "120px" : "0px")});
-  
-  @media (max-width: 768px) {
-    margin-top: ${(props) => (props.shouldShowHeader ? "140px" : "0")};
-    min-height: calc(100vh - ${(props) => (props.shouldShowHeader ? "140px" : "0px")});
-  }
-  
-  @media (max-width: 480px) {
-    margin-top: ${(props) => (props.shouldShowHeader ? "160px" : "0")};
-    min-height: calc(100vh - ${(props) => (props.shouldShowHeader ? "160px" : "0px")});
-  }
-`
 
 export default App

@@ -241,13 +241,13 @@ const NewBill = () => {
   const [section, setSection] = useState("Pharmacy")
   const [branchCode, setBranchCode] = useState("")
   const navigate = useNavigate()
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   // Fetch medicine options for dropdown
   useEffect(() => {
     if (!branchCode) return
 
     axios
-      .get(`http://127.0.0.1:8000/pharmacy/data/`, {
+      .get(`${Cosmetologybaseurl}pharmacy/data/`, {
         params: { branch_code: branchCode },
       })
       .then((response) => {
@@ -481,7 +481,7 @@ const NewBill = () => {
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/save/billing/data/`, {
+      const response = await fetch(`${Cosmetologybaseurl}save/billing/data/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -520,7 +520,7 @@ const NewBill = () => {
 
     for (const stockUpdate of additionalStockUpdates) {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/update_stock/`, {
+        const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",

@@ -36,7 +36,7 @@ const PharmacyComponent = () => {
   const [activeView, setActiveView] = useState("all") // "all", "low", "expired"
   const [isCompactView, setIsCompactView] = useState(false)
   const tableRef = useRef(null)
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     // Get branch_code from cookies when component mounts
     const code = Cookies.get("branch_code")
@@ -61,7 +61,7 @@ const PharmacyComponent = () => {
   const fetchPharmacyData = async (code) => {
     setLoading(true)
     try {
-      const response = await fetch(`http://127.0.0.1:8000/pharmacy/data/?branch_code=${code || ""}`)
+      const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?branch_code=${code || ""}`)
       const data = await response.json()
 
       if (data.length === 0) {
@@ -207,7 +207,7 @@ const PharmacyComponent = () => {
         branch_code: branchCode,
       }
 
-      const response = await fetch("http://127.0.0.1:8000/pharmacy/data/", {
+      const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -308,7 +308,7 @@ const PharmacyComponent = () => {
 
       // Handle new entries
       if (newEntries.length > 0) {
-        const response = await fetch("http://127.0.0.1:8000/pharmacy/data/", {
+        const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -327,7 +327,7 @@ const PharmacyComponent = () => {
 
       // Handle updates
       if (updatedEntries.length > 0) {
-        const response = await fetch("http://127.0.0.1:8000/pharmacy/data/", {
+        const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -406,7 +406,7 @@ const PharmacyComponent = () => {
     if (itemToRemove._id && itemToRemove.medicineName && itemToRemove.batchNumber) {
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/pharmacy/data/?medicine_name=${encodeURIComponent(itemToRemove.medicineName)}&batch_number=${encodeURIComponent(itemToRemove.batchNumber)}&branch_code=${branchCode}`,
+          `${Cosmetologybaseurl}pharmacy/data/?medicine_name=${encodeURIComponent(itemToRemove.medicineName)}&batch_number=${encodeURIComponent(itemToRemove.batchNumber)}&branch_code=${branchCode}`,
           {
             method: "DELETE",
             headers: {

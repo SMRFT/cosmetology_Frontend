@@ -48,10 +48,10 @@ const Procedures = ({ onSelectProcedures, preSelectedProcedures }) => {
   const [proceduresInputs, setProceduresInputs] = useState([]);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newProcedure, setNewProcedure] = useState('');
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     axios
-      .get('http://127.0.0.1:8000/Procedure/')
+      .get(`${Cosmetologybaseurl}Procedure/`)
       .then((response) => {
         const formattedProceduresList = response.data.map((procedure) => ({
           procedure: procedure.procedure || '', // Ensure "procedure" key exists and has a string value
@@ -106,7 +106,7 @@ const Procedures = ({ onSelectProcedures, preSelectedProcedures }) => {
     const newProcedureData = { procedure: newProcedure };
 
     axios
-      .post('http://127.0.0.1:8000/Procedure/', newProcedureData)
+      .post(`${Cosmetologybaseurl}Procedure/`, newProcedureData)
       .then((response) => {
         setProceduresList([...proceduresList, response.data]);
         setShowAddInput(false);

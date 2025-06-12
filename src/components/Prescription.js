@@ -297,7 +297,7 @@ const PrescriptionDetails = () => {
   const handleSelectprocedure = (procedure) => setSelectedprocedure(procedure);
   const handleSelectTests = (tests) => setSelectedTests(tests);
   const handleDateChange = (date) => setSelectedDate(date);
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   const formatDate = (date) => {
     if (!(date instanceof Date) || isNaN(date.getTime())) {
       return 'Invalid Date';
@@ -327,7 +327,7 @@ useEffect(() => {
 useEffect(() => {
   if (!branchCode) return;
 
-  axios.get('http://127.0.0.1:8000/pharmacy/data/', {
+  axios.get(`${Cosmetologybaseurl}pharmacy/data/`, {
     params: { branch_code: branchCode }
   })
     .then(response => {
@@ -360,7 +360,7 @@ const shouldHideDosage = (selectedPrescription) => {
   useEffect(() => {
     if (!patientUID || !branchCode) return;
 
-    axios.get(`http://127.0.0.1:8000/vitalform/`, {
+    axios.get(`${Cosmetologybaseurl}vitalform/`, {
       params: { 
         patientUID: patientUID,
         branch_code: branchCode
@@ -458,7 +458,7 @@ const shouldHideDosage = (selectedPrescription) => {
     formData.append('branch_code', branchCode);
     images.forEach(image => formData.append('images', image));
     try {
-      const response = await axios.post('http://127.0.0.1:8000/upload_file/', formData, {
+      const response = await axios.post(`${Cosmetologybaseurl}upload_file/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'X-Branch-Code': branchCode
@@ -476,7 +476,7 @@ const shouldHideDosage = (selectedPrescription) => {
 
     const fetchSummaryData = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:8000/summary_get/", {
+        const response = await axios.get(`${Cosmetologybaseurl}summary_get/`, {
           params: { 
             patientUID, 
             appointmentDate,
@@ -625,7 +625,7 @@ const handleSubmit = async () => {
         .join('\n'),
     };
 
-    const getResponse = await axios.get('http://127.0.0.1:8000/summary_get/', {
+    const getResponse = await axios.get(`${Cosmetologybaseurl}summary_get/`, {
       params: { 
         patientUID, 
         appointmentDate,
@@ -637,14 +637,14 @@ const handleSubmit = async () => {
     });
 
     if (getResponse.data && getResponse.data.length > 0) {
-      const patchResponse = await axios.patch('http://127.0.0.1:8000/summary/post/', summaryData, {
+      const patchResponse = await axios.patch(`${Cosmetologybaseurl}summary/post/`, summaryData, {
         headers: {
           'X-Branch-Code': branchCode
         }
       });
       toast.success(`Updated Successfully`);
     } else {
-      const postResponse = await axios.post('http://127.0.0.1:8000/summary/post/', summaryData, {
+      const postResponse = await axios.post(`${Cosmetologybaseurl}summary/post/`, summaryData, {
         headers: {
           'X-Branch-Code': branchCode
         }
@@ -687,7 +687,7 @@ const handleSubmit = async () => {
     pdfFiles.forEach(pdf => formData.append('pdf_files', pdf));
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/upload_pdf/', formData, {
+      const response = await axios.post(`${Cosmetologybaseurl}upload_pdf/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'X-Branch-Code': branchCode

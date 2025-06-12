@@ -33,7 +33,7 @@ const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis}) => {
   const [newDiagnosis, setNewDiagnosis] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showAddInput, setShowAddInput] = useState(false);
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     // Ensure preSelectedDiagnosis is a valid string (or array, depending on your expected type)
     if (preSelectedDiagnosis) {
@@ -46,7 +46,7 @@ const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis}) => {
 
   useEffect(() => {
     // Fetching diagnosis data
-    axios.get('http://127.0.0.1:8000/diagnoses/')
+    axios.get(`${Cosmetologybaseurl}diagnoses/`)
       .then(response => {
         setDiagnosisList(response.data);
       })
@@ -56,7 +56,7 @@ const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis}) => {
   }, []);
 
   const handleAddNewDiagnosis = () => {
-    axios.post('http://127.0.0.1:8000/diagnoses/', { diagnosis: newDiagnosis })
+    axios.post(`${Cosmetologybaseurl}diagnoses/`, { diagnosis: newDiagnosis })
       .then(response => {
         setDiagnosisList([...diagnosisList, response.data]);
         setShowAddInput(false);

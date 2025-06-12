@@ -18,7 +18,7 @@ const SummaryReport = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [branchCode, setBranchCode] = useState('');
   const navigate = useNavigate();
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     // Get branch_code from cookies when component mounts
     const code = Cookies.get('branch_code');
@@ -54,7 +54,7 @@ const SummaryReport = () => {
     
     try {
       const response = await axios.get(
-        `http://127.0.0.1:8000/summary/${interval}/?appointmentDate=${dateParam}&branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}summary/${interval}/?appointmentDate=${dateParam}&branch_code=${branchCode}`,
         {
           headers: {
             'X-Branch-Code': branchCode

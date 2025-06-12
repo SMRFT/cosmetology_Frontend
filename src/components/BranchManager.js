@@ -9,14 +9,14 @@ const BranchManager = ({ userId, onClose }) => {
   const [userBranches, setUserBranches] = useState([])
   const [loading, setLoading] = useState(true)
   const [userName, setUserName] = useState("")
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     fetchUserBranches()
   }, [userId])
 
   const fetchUserBranches = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/user-branches/${userId}/`)
+      const response = await fetch(`${Cosmetologybaseurl}user-branches/${userId}/`)
       if (response.ok) {
         const data = await response.json()
         setUserBranches(data.branches || [])
@@ -34,7 +34,7 @@ const BranchManager = ({ userId, onClose }) => {
 
   const toggleBranchStatus = async (branchCode, currentStatus) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/toggle-branch-status/`, {
+      const response = await fetch(`${Cosmetologybaseurl}toggle-branch-status/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

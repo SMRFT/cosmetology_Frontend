@@ -317,7 +317,7 @@ const ProcedureComponent = () => {
   const [consumerSection, setConsumerSection] = useState("Consumer")
   const [procedureSection, setProcedureSection] = useState("Procedure")
   const [branchCode, setBranchCode] = useState("")
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   // New states for procedure management
   const [proceduresList, setProceduresList] = useState([])
   const [additionalProcedures, setAdditionalProcedures] = useState([])
@@ -331,7 +331,7 @@ const ProcedureComponent = () => {
   // Fetch procedures list
   useEffect(() => {
     axios
-      .get(`http://127.0.0.1:8000/Procedure/`)
+      .get(`${Cosmetologybaseurl}Procedure/`)
       .then((response) => {
         const formattedProceduresList = response.data.map((procedure, index) => ({
           id: procedure.id || `proc_${index}`,
@@ -368,7 +368,7 @@ const ProcedureComponent = () => {
     try {
       const formattedDate = format(date, "yyyy-MM-dd")
       const response = await axios.get(
-        `http://127.0.0.1:8000/get_procedures_bill/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}get_procedures_bill/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
       )
       if (Array.isArray(response.data.detailedRecords)) {
         setPatients(response.data.detailedRecords)
@@ -710,7 +710,7 @@ const ProcedureComponent = () => {
       }
 
       try {
-        const response = await axios.post(`http://127.0.0.1:8000/Post_Procedure_Bill/`, payload, {
+        const response = await axios.post(`${Cosmetologybaseurl}Post_Procedure_Bill/`, payload, {
           headers: {
             "Content-Type": "application/json",
             "X-Branch-Code": branchCode,

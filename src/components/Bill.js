@@ -326,13 +326,13 @@ const Bill = () => {
   const [medicineOptions, setMedicineOptions] = useState([])
   const [additionalRows, setAdditionalRows] = useState([])
   const [consultationFee, setConsultationFee] = useState(0)
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   // Fetch medicine options for dropdown
   useEffect(() => {
     if (!branchCode) return
 
     axios
-      .get(`http://127.0.0.1:8000/pharmacy/data/`, {
+      .get(`${Cosmetologybaseurl}pharmacy/data/`, {
         params: { branch_code: branchCode },
       })
       .then((response) => {
@@ -389,7 +389,7 @@ const Bill = () => {
   const fetchPatientData = async (date) => {
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/summary/post/patient_details/?appointmentDate=${format(date, "yyyy-MM-dd")}&branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}summary/post/patient_details/?appointmentDate=${format(date, "yyyy-MM-dd")}&branch_code=${branchCode}`,
       )
       if (!response.ok) {
         throw new Error("Network response was not ok")
@@ -405,7 +405,7 @@ const Bill = () => {
   const fetchBillingData = async (date) => {
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/summary/post/?appointmentDate=${format(date, "yyyy-MM-dd")}&branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}summary/post/?appointmentDate=${format(date, "yyyy-MM-dd")}&branch_code=${branchCode}`,
       )
       if (!response.ok) {
         throw new Error("Network response was not ok")
@@ -421,7 +421,7 @@ const Bill = () => {
   const fetchMedicineDetails = async (medicine_name) => {
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/medicine_name/data/?medicine_name=${encodeURIComponent(medicine_name)}&branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}medicine_name/data/?medicine_name=${encodeURIComponent(medicine_name)}&branch_code=${branchCode}`,
       )
       if (!response.ok) {
         throw new Error("Network response was not ok")
@@ -871,7 +871,7 @@ const Bill = () => {
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/save/billing/data/`, {
+      const response = await fetch(`${Cosmetologybaseurl}save/billing/data/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -932,7 +932,7 @@ const Bill = () => {
 
     for (const stockUpdate of allStockUpdates) {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/update_stock/`, {
+        const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",

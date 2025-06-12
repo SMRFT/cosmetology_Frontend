@@ -14,7 +14,7 @@ const Notification = () => {
   const [branchCode, setBranchCode] = useState(''); // Added state for branchCode
   const userRole = localStorage.getItem('userRole');
   const loggedInAs = localStorage.getItem('loggedInAs');
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     // Get branch_code from cookies when component mounts
     const code = Cookies.get('branch_code');
@@ -28,7 +28,7 @@ const Notification = () => {
     if (userRole === 'Doctor' || userRole === 'Pharmacist') {
       const fetchMedicineStatus = async () => {
         try {
-          const response = await axios.get(`http://127.0.0.1:8000/check_medicine_status/?branch_code=${branchCode}`, {
+          const response = await axios.get(`${Cosmetologybaseurl}check_medicine_status/?branch_code=${branchCode}`, {
             headers: {
               'X-Branch-Code': branchCode
             },
@@ -46,7 +46,7 @@ const Notification = () => {
     if (userRole === 'Doctor' || (userRole === 'Receptionist')) {
       const fetchUpcomingVisits = async () => {
         try {
-          const response = await axios.get(`http://127.0.0.1:8000/check_upcoming_visits/?branch_code=${branchCode}`, {
+          const response = await axios.get(`${Cosmetologybaseurl}check_upcoming_visits/?branch_code=${branchCode}`, {
             headers: {
               'X-Branch-Code': branchCode
             },

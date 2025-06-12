@@ -27,9 +27,10 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
   const [newComplaint, setNewComplaint] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
   // Fetch complaints from the API
+   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     axios
-      .get("http://127.0.0.1:8000/complaints/")
+      .get(`${Cosmetologybaseurl}complaints/`)
       .then((response) => {
         setComplaintsList(response.data);
       })
@@ -101,7 +102,7 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
       return;
     }
     axios
-      .post("http://127.0.0.1:8000/complaints/", {
+      .post(`${Cosmetologybaseurl}complaints/`, {
         complaints: newComplaint,
       })
       .then((response) => {

@@ -13,7 +13,7 @@ import Cookies from "js-cookie"
 const Header = ({ userRole }) => {
   const [branchName, setBranchName] = useState("")
   const [expandedGroups, setExpandedGroups] = useState({})
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     // Only get branch info for Admin and Doctor roles
     if (userRole === "Admin" || userRole === "Doctor" || userRole === "Receptionist" || userRole === "Manager") {
@@ -39,7 +39,7 @@ const Header = ({ userRole }) => {
 
   const fetchBranchName = async (branchCode) => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/branches/")
+      const response = await fetch(`${Cosmetologybaseurl}branches/`)
       if (!response.ok) {
         throw new Error("Failed to fetch branches")
       }
@@ -357,33 +357,6 @@ const DropdownButton = styled.button`
   min-width: 180px;
   box-shadow: ${(props) => (props.isExpanded ? "0 4px 12px rgba(122, 28, 172, 0.15)" : "0 2px 4px rgba(0, 0, 0, 0.1)")};
 
-  &:hover {
-    background: linear-gradient(135deg, ${(props) => {
-      switch (props.userRole) {
-        case "Admin":
-        case "Doctor":
-          return "#F8F5FA 0%, #F0E6F7 100%"
-        case "Receptionist":
-          return "#FAF8FB 0%, #F2EDF4 100%"
-        default:
-          return "#F8F5FA 0%, #F0E6F7 100%"
-      }
-    }});
-    border-color: ${(props) => {
-      switch (props.userRole) {
-        case "Admin":
-        case "Doctor":
-          return "#B39DDB"
-        case "Receptionist":
-          return "#C4B5C9"
-        default:
-          return "#B39DDB"
-      }
-    }};
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(122, 28, 172, 0.15);
-  }
-
   @media (max-width: 768px) {
     min-width: 160px;
     padding: 10px 14px;
@@ -442,10 +415,6 @@ const DropdownContent = styled.div`
 
 const DropdownItem = styled.div`
   padding: 0;
-  
-  &:hover {
-    background-color: #F8F5FA;
-  }
 `
 
 const StyledNavLink = styled(NavLink)`
@@ -506,45 +475,7 @@ const StyledNavLink = styled(NavLink)`
     }};
     font-weight: 600;
   }
-
-  &:hover {
-    background: linear-gradient(90deg, 
-      ${(props) => {
-        switch (props.userRole) {
-          case "Admin":
-          case "Doctor":
-            return "#F8F5FA"
-          case "Receptionist":
-            return "#FAF8FB"
-          default:
-            return "#F8F5FA"
-        }
-      }} 0%, 
-      white 100%
-    );
-    color: ${(props) => {
-      switch (props.userRole) {
-        case "Admin":
-        case "Doctor":
-          return "#7A1CAC"
-        case "Receptionist":
-          return "#9a85aa"
-        default:
-          return "#7A1CAC"
-      }
-    }};
-    border-left-color: ${(props) => {
-      switch (props.userRole) {
-        case "Admin":
-        case "Doctor":
-          return "#B39DDB"
-        case "Receptionist":
-          return "#C4B5C9"
-        default:
-          return "#B39DDB"
-      }
-    }};
-  }
+ 
 `
 
 const HeaderRight = styled.div`

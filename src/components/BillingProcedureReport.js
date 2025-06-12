@@ -27,7 +27,9 @@ const BillingProcedureReport = () => {
   const [activeTab, setActiveTab] = useState("procedure")
   const [branchCode, setBranchCode] = useState("")
   const [userRole, setUserRole] = useState("")
-
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   const getReportHeading = (interval) => {
     switch (interval) {
       case "day":
@@ -44,12 +46,13 @@ const BillingProcedureReport = () => {
   useEffect(() => {
     const code = Cookies.get("branch_code")
     const role = Cookies.get("userRole") || localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
-    
+
     if (code) {
       setBranchCode(code)
       console.log("Branch code retrieved from cookies:", code)
     } else {
       console.warn("Branch code not found in cookies")
+      setError("Branch code not found. Please login again.")
     }
 
     if (role) {
@@ -62,10 +65,23 @@ const BillingProcedureReport = () => {
     if (selectedInterval === "week" && !selectedWeek) {
       setSelectedWeek(startOfWeek(selectedDate, { weekStartsOn: 1 }))
     }
-    fetchData(selectedInterval)
-  }, [selectedInterval, selectedDate, selectedWeek])
+  }, [])
+
+  useEffect(() => {
+    if (branchCode) {
+      fetchData(selectedInterval)
+    }
+  }, [selectedInterval, selectedDate, selectedWeek, branchCode])
 
   const fetchData = async (interval) => {
+    if (!branchCode) {
+      console.warn("Branch code not available, skipping API call")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
     let dateParam = ""
     if (interval === "day") {
       dateParam = format(selectedDate, "yyyy-MM-dd")
@@ -77,18 +93,31 @@ const BillingProcedureReport = () => {
     }
 
     try {
-      const response = await axios.get(
-        `http://127.0.0.1:8000/procedurebilling/${interval}/?appointmentDate=${dateParam}`,
-        {
-          headers: {
-            "X-Branch-Code": branchCode,
-          },
-          withCredentials: true,
+      console.log("Making procedure billing API call with params:", {
+        interval,
+        appointmentDate: dateParam,
+        branch_code: branchCode,
+      })
+
+      const response = await axios.get(`${Cosmetologybaseurl}procedurebilling/${interval}/`, {
+        params: {
+          appointmentDate: dateParam,
+          branch_code: branchCode,
         },
-      )
+        headers: {
+          "X-Branch-Code": branchCode,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      })
+
+      console.log("Procedure billing API response:", response.data)
       setBillingData(response.data)
     } catch (error) {
-      console.error("Error fetching data:", error)
+      console.error("Error fetching procedure billing data:", error)
+      setError("Failed to fetch procedure billing data. Please try again.")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -118,7 +147,10 @@ const BillingProcedureReport = () => {
   }
 
   const downloadProcedureCSV = () => {
-    if (!billingData) return
+    if (!billingData || billingData.length === 0) {
+      toast.warning("No procedure data available to download")
+      return
+    }
 
     const headers = [
       "Patient Name",
@@ -156,7 +188,7 @@ const BillingProcedureReport = () => {
       })
     })
 
-    rows.push(["", "", "", "", "", "", "", "", "Grand Total", totalSum.toFixed(2), ""])
+    rows.push(["", "", "", "", "", "", "", "", "Grand Total", totalSum.toFixed(2), "", ""])
 
     const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
 
@@ -164,14 +196,20 @@ const BillingProcedureReport = () => {
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.setAttribute("download", `Procedure_${getReportHeading(selectedInterval)}_${branchCode}.csv`)
+    link.setAttribute(
+      "download",
+      `Procedure_${getReportHeading(selectedInterval)}_${branchCode}_${format(selectedDate, "yyyy-MM-dd")}.csv`,
+    )
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
   }
 
   const downloadConsumerCSV = () => {
-    if (!billingData) return
+    if (!billingData || billingData.length === 0) {
+      toast.warning("No consumer data available to download")
+      return
+    }
 
     const headers = ["Patient Name", "Patient UID", "Appointment Date", "Item", "Quantity", "Total", "Branch Code"]
     let totalSum = 0
@@ -191,7 +229,10 @@ const BillingProcedureReport = () => {
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.setAttribute("download", `Consumer_${getReportHeading(selectedInterval)}_${branchCode}.csv`)
+    link.setAttribute(
+      "download",
+      `Consumer_${getReportHeading(selectedInterval)}_${branchCode}_${format(selectedDate, "yyyy-MM-dd")}.csv`,
+    )
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -248,6 +289,7 @@ const BillingProcedureReport = () => {
       doc.setFontSize(11)
       doc.text(`Patient UID: ${patientData.patientUID}`, 16, startY + 8)
       doc.text(`Bill Number: ${patientData.procedureBillNumber}`, 16, startY + 16)
+      doc.text(`Branch: ${branchCode}`, 140, startY + 8)
 
       startY += 30
 
@@ -369,8 +411,13 @@ const BillingProcedureReport = () => {
   }
 
   const deleteRecord = async (patientUID, billType, billNumber) => {
+    if (!branchCode) {
+      toast.error("Branch code not available")
+      return
+    }
+
     try {
-      const response = await axios.delete("http://127.0.0.1:8000/delete_procedure_data/", {
+      const response = await axios.delete(`${Cosmetologybaseurl}delete_procedure_data/`, {
         data: {
           patientUID: patientUID,
           consumerBillNumber: billType === "consumer" ? billNumber : undefined,
@@ -379,6 +426,7 @@ const BillingProcedureReport = () => {
         },
         headers: {
           "X-Branch-Code": branchCode,
+          "Content-Type": "application/json",
         },
         withCredentials: true,
       })
@@ -398,7 +446,14 @@ const BillingProcedureReport = () => {
         toast.error("Failed to delete the record.")
       }
     } catch (error) {
+      console.error("Error deleting record:", error)
       toast.error("Error deleting record.")
+    }
+  }
+
+  const refreshData = () => {
+    if (branchCode) {
+      fetchData(selectedInterval)
     }
   }
 
@@ -435,8 +490,16 @@ const BillingProcedureReport = () => {
     <Container>
       <ToastContainer position="top-right" autoClose={5000} />
       <Header>
-        <h3 className="text-center mb-2">Procedure Billing Report</h3>
+        <div>
+          <h3 className="text-center mb-2">Procedure Billing Report</h3>
+        </div>
+        <RefreshButton onClick={refreshData} disabled={loading}>
+          🔄 Refresh
+        </RefreshButton>
       </Header>
+
+      {error && <ErrorMessage>{error}</ErrorMessage>}
+
       <IntervalSelector>
         <ButtonGroup>
           <IntervalButton
@@ -444,6 +507,7 @@ const BillingProcedureReport = () => {
             onClick={() => handleIntervalChange("day")}
             className={selectedInterval === "day" ? "active" : ""}
             active={selectedInterval === "day"}
+            disabled={loading}
           >
             <FontAwesomeIcon icon={faCalendarDay} />
           </IntervalButton>
@@ -452,6 +516,7 @@ const BillingProcedureReport = () => {
             onClick={() => handleIntervalChange("week")}
             className={selectedInterval === "week" ? "active" : ""}
             active={selectedInterval === "week"}
+            disabled={loading}
           >
             <FontAwesomeIcon icon={faCalendarWeek} />
           </IntervalButton>
@@ -460,6 +525,7 @@ const BillingProcedureReport = () => {
             onClick={() => handleIntervalChange("month")}
             className={selectedInterval === "month" ? "active" : ""}
             active={selectedInterval === "month"}
+            disabled={loading}
           >
             <FontAwesomeIcon icon={faCalendarAlt} />
           </IntervalButton>
@@ -472,6 +538,7 @@ const BillingProcedureReport = () => {
               dateFormat="yyyy-MM-dd"
               showPopperArrow={false}
               customInput={<CustomDateInput />}
+              disabled={loading}
             />
           )}
           {selectedInterval === "week" && (
@@ -482,6 +549,7 @@ const BillingProcedureReport = () => {
               showMonthYearPicker
               showPopperArrow={false}
               customInput={<CustomDateInput />}
+              disabled={loading}
             />
           )}
           {selectedInterval === "month" && (
@@ -492,6 +560,7 @@ const BillingProcedureReport = () => {
               showMonthYearPicker
               showPopperArrow={false}
               customInput={<CustomDateInput />}
+              disabled={loading}
             />
           )}
         </DatePickerWrapper>
@@ -506,6 +575,7 @@ const BillingProcedureReport = () => {
               className={
                 selectedWeek && format(selectedWeek, "yyyy-MM-dd") === format(weekStart, "yyyy-MM-dd") ? "active" : ""
               }
+              disabled={loading}
             >
               {`${index + 1} Week`}
             </WeekButton>
@@ -522,16 +592,20 @@ const BillingProcedureReport = () => {
             Consumable Bill
           </TabButton>
         </TabButtons>
-        {billingData && billingData.length > 0 ? (
+
+        {loading && <LoadingMessage>Loading procedure billing data...</LoadingMessage>}
+
+        {!loading && billingData && billingData.length > 0 ? (
           <BillingContainer>
             {activeTab === "procedure" && (
               <Billing>
                 <Header>
                   <h5 className="text-center">Procedure Bill - {getReportHeading(selectedInterval)}</h5>
-                  <button title="Download Procedure CSV" onClick={downloadProcedureCSV}>
+                  <button title="Download Procedure CSV" onClick={downloadProcedureCSV} disabled={loading}>
                     <FaDownload />
                   </button>
                 </Header>
+                <DataCount>Total Records: {billingData.length}</DataCount>
                 <table align="middle" className="mt-2">
                   <MDBTableHead align="middle">
                     <tr>
@@ -609,10 +683,11 @@ const BillingProcedureReport = () => {
               <Billing>
                 <Header>
                   <h5 className="text-center">Consumable Bill - {getReportHeading(selectedInterval)}</h5>
-                  <button title="Download Consumer CSV" onClick={downloadConsumerCSV}>
+                  <button title="Download Consumer CSV" onClick={downloadConsumerCSV} disabled={loading}>
                     <FaDownload />
                   </button>
                 </Header>
+                <DataCount>Total Records: {billingData.length}</DataCount>
                 <table align="middle" className="mt-2">
                   <MDBTableHead align="middle">
                     <tr>
@@ -676,7 +751,11 @@ const BillingProcedureReport = () => {
             )}
           </BillingContainer>
         ) : (
-          <Message>No data available</Message>
+          !loading && (
+            <Message>
+              {branchCode ? "No data available" : "Please ensure you are logged in with a valid branch code."}
+            </Message>
+          )
         )}
       </Content>
     </Container>
@@ -697,6 +776,56 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   position: relative;
+`
+
+const RefreshButton = styled.button`
+  padding: 8px 12px;
+  border: 1px solid #C85C8E;
+  background-color: white;
+  color: #C85C8E;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  
+  &:hover:not(:disabled) {
+    background-color: #C85C8E;
+    color: white;
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`
+
+const BranchInfo = styled.div`
+  font-size: 0.9rem;
+  color: #666;
+  text-align: center;
+  margin-top: 5px;
+`
+
+const ErrorMessage = styled.div`
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  text-align: center;
+`
+
+const LoadingMessage = styled.div`
+  text-align: center;
+  font-size: 1.2rem;
+  color: #666;
+  padding: 20px;
+`
+
+const DataCount = styled.div`
+  text-align: center;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 10px;
 `
 
 const Content = styled.div`
@@ -726,6 +855,11 @@ const IntervalButton = styled.button`
   color: ${({ active }) => (active ? "white" : "#C85C8E")};
   font-size: 1.5rem;
   cursor: pointer;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `
 
 const DatePickerWrapper = styled.div`
@@ -743,6 +877,11 @@ const WeekButton = styled.button`
   &.active {
     background-color: #C85C8E;
     color: white;
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `
 

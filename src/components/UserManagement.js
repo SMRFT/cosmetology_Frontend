@@ -11,7 +11,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
   const [showBranchManager, setShowBranchManager] = useState(false)
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     fetchUsers()
   }, [])
@@ -19,7 +19,7 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       // This endpoint would need to be created in your Django backend
-      const response = await fetch(`http://127.0.0.1:8000/registration/`)
+      const response = await fetch(`${Cosmetologybaseurl}registration/`)
       if (response.ok) {
         const data = await response.json()
         setUsers(data)
