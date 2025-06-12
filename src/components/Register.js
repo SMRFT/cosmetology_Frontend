@@ -16,7 +16,7 @@ const Register = () => {
   const [touchedFields, setTouchedFields] = useState({})
   const [branches, setBranches] = useState([])
   const role = ["Admin", "Manager","Doctor", "Receptionist"]
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   const [formData, setFormData] = useState({
     id: "",
     name: "",
@@ -31,7 +31,7 @@ const Register = () => {
   useEffect(() => {
     const fetchBranches = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/branches/")
+        const response = await fetch(`${Cosmetologybaseurl}branches/`)
         if (response.ok) {
           const data = await response.json()
           setBranches(data)
@@ -108,7 +108,7 @@ const Register = () => {
           ...formData,
         }
 
-        const response = await fetch("http://127.0.0.1:8000/registration/", {
+        const response = await fetch(`${Cosmetologybaseurl}registration/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -16,7 +16,7 @@ function VitalForm({ patientUID, patientName, mobileNumber }) {
         mobileNumber: mobileNumber,
         branch_code: '' // Added branch_code field
     });
-    
+     const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
     // Add useEffect to get branch_code from cookies when component mounts
     useEffect(() => {
         const code = Cookies.get('branch_code');
@@ -44,8 +44,8 @@ function VitalForm({ patientUID, patientName, mobileNumber }) {
         try {
             // Include branch code in the URL as a query parameter
             const url = formData.branch_code 
-                ? `http://127.0.0.1:8000/vitalform/?branch_code=${formData.branch_code}`
-                : 'http://127.0.0.1:8000/vitalform/';
+                ? `${Cosmetologybaseurl}vitalform/?branch_code=${formData.branch_code}`
+                : `${Cosmetologybaseurl}vitalform/`;
                 
             const vitalResponse = await axios.post(url, formData, {
                 withCredentials: true // Enable sending cookies with the request

@@ -26,7 +26,7 @@ const PatientDetails = () => {
   const [patientToDelete, setPatientToDelete] = useState(null)
   const [branchCode, setBranchCode] = useState("")
   const [showEditPatientModal, setShowEditPatientModal] = useState(false)
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   // New states for billing modal
   const [showBillingModal, setShowBillingModal] = useState(false)
   const [selectedPatientForBilling, setSelectedPatientForBilling] = useState(null)
@@ -58,8 +58,8 @@ const PatientDetails = () => {
 
     // If branch code exists, add it as a query parameter
     const url = branchCode
-      ? `http://127.0.0.1:8000/patients/?branch_code=${branchCode}`
-      : "http://127.0.0.1:8000/patients/"
+      ? `${Cosmetologybaseurl}patients/?branch_code=${branchCode}`
+      : `${Cosmetologybaseurl}patients/`
 
     axios
       .get(url, {
@@ -135,8 +135,8 @@ const PatientDetails = () => {
 
     // Include branch code in the delete request URL if available
     const url = branchCode
-      ? `http://127.0.0.1:8000/Patients_data/${patientToDelete.patientUID}/?branch_code=${branchCode}`
-      : `http://127.0.0.1:8000/Patients_data/${patientToDelete.patientUID}/`
+      ? `${Cosmetologybaseurl}Patients_data/${patientToDelete.patientUID}/?branch_code=${branchCode}`
+      : `${Cosmetologybaseurl}Patients_data/${patientToDelete.patientUID}/`
 
     axios
       .delete(url, {

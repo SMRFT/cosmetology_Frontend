@@ -36,7 +36,7 @@ const BillingReport = () => {
   const [branchCode, setBranchCode] = useState("")
   const [userRole, setUserRole] = useState("")
   const navigate = useNavigate()
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   const getReportHeading = (interval) => {
     switch (interval) {
       case "day":
@@ -87,7 +87,7 @@ const BillingReport = () => {
 
     try {
       const response = await axios.get(
-        `http://127.0.0.1:8000/billing/${interval}/?appointmentDate=${dateParam}&branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}billing/${interval}/?appointmentDate=${dateParam}&branch_code=${branchCode}`,
         {
           headers: {
             "X-Branch-Code": branchCode,
@@ -277,7 +277,7 @@ const BillingReport = () => {
 
   const handleDelete = async (patientUID, billNumber) => {
     try {
-      await axios.delete("http://127.0.0.1:8000/delete/billing/data/", {
+      await axios.delete(`${Cosmetologybaseurl}delete/billing/data/`, {
         data: { patientUID, billNumber, branch_code: branchCode },
         headers: {
           "X-Branch-Code": branchCode,
@@ -319,7 +319,7 @@ const BillingReport = () => {
 
   const fetchMedicineData = async () => {
     try {
-      const response = await axios.get(`http://127.0.0.1:8000/pharmacy/data/?branch_code=${branchCode}`, {
+      const response = await axios.get(`${Cosmetologybaseurl}pharmacy/data/?branch_code=${branchCode}`, {
         headers: {
           "X-Branch-Code": branchCode,
         },
@@ -338,7 +338,7 @@ const BillingReport = () => {
   const fetchMedicinePrice = async (medicine_name) => {
     try {
       const response = await axios.get(
-        `http://127.0.0.1:8000/pharmacy/medicine/${medicine_name}/price/?branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}pharmacy/medicine/${medicine_name}/price/?branch_code=${branchCode}`,
         {
           headers: {
             "X-Branch-Code": branchCode,
@@ -365,7 +365,7 @@ const BillingReport = () => {
   const saveChanges = async (patientUID, appointmentDate) => {
     try {
       await axios.put(
-        "http://127.0.0.1:8000/update/billing/data/",
+        `${Cosmetologybaseurl}update/billing/data/`,
         {
           patientUID: patientUID,
           appointmentDate: appointmentDate,

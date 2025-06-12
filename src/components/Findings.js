@@ -33,7 +33,7 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
   const [selectedFindings, setSelectedFindings] = useState([]);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newFinding, setNewFinding] = useState('');
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
     useEffect(() => {
       // Ensure preSelectedFindings is a valid string (or array, depending on your expected type)
       if (preSelectedFindings) {
@@ -45,7 +45,7 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
     }, [preSelectedFindings]);
 
   useEffect(() => {
-    axios.get('http://127.0.0.1:8000/Findings/')
+    axios.get(`${Cosmetologybaseurl}Findings/`)
       .then(response => {
         setFindingsList(response.data);
       })
@@ -64,7 +64,7 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
   };
 
   const handleAddNewFinding = () => {
-    axios.post('http://127.0.0.1:8000/Findings/', { findings: newFinding })
+    axios.post(`${Cosmetologybaseurl}Findings/`, { findings: newFinding })
       .then(response => {
         setFindingsList([...findingsList, response.data]);
         setShowAddInput(false);

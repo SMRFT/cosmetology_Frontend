@@ -20,7 +20,7 @@ function BookedAppointments() {
   const [doctors, setDoctors] = useState([])
   const [selectedDoctor, setSelectedDoctor] = useState("")
   const navigate = useNavigate()
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   const cardsPerPage = 8
 
   useEffect(() => {
@@ -43,8 +43,8 @@ function BookedAppointments() {
   const fetchDoctors = () => {
     const branchCode = Cookies.get("branch_code")
     const url = branchCode
-      ? `http://127.0.0.1:8000/get_doctors/?branch_code=${branchCode}`
-      : "http://127.0.0.1:8000/get_doctors/"
+      ? `${Cosmetologybaseurl}get_doctors/?branch_code=${branchCode}`
+      : `${Cosmetologybaseurl}get_doctors/`
 
     axios
       .get(url, {
@@ -62,7 +62,7 @@ function BookedAppointments() {
 
   const fetchAppointments = () => {
     const branchCode = Cookies.get("branch_code")
-    let url = "http://127.0.0.1:8000/AppointmentView/"
+    let url = `${Cosmetologybaseurl}AppointmentView/`
     const params = []
 
     if (branchCode) {

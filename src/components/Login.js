@@ -20,9 +20,8 @@ const UnifiedLogin = ({ setUserRole }) => {
   const navigate = useNavigate()
 
   // Get API URL from environment variables
-  const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/"
   const USE_HTTPS = process.env.REACT_APP_USE_HTTPS === "true" || false
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   // Cookie configuration
   const cookieOptions = {
     expires: 7,
@@ -56,7 +55,7 @@ const UnifiedLogin = ({ setUserRole }) => {
   // Fetch all branches from API
   const fetchAllBranches = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/branches/`)
+      const response = await fetch(`${Cosmetologybaseurl}branches/`)
       if (!response.ok) {
         throw new Error("Failed to fetch branches")
       }
@@ -95,7 +94,7 @@ const UnifiedLogin = ({ setUserRole }) => {
       console.log("Attempting login with:", { username })
 
       // First, try to authenticate without specifying endpoint
-      const response = await fetch(`${API_URL}/login/`, {
+      const response = await fetch(`${Cosmetologybaseurl}login/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -185,7 +184,7 @@ const UnifiedLogin = ({ setUserRole }) => {
       console.log("Attempting branch-specific login with:", { username, selectedBranch })
 
       // Make a second API call with the selected branch
-      const response = await fetch(`${API_URL}/login/`, {
+      const response = await fetch(`${Cosmetologybaseurl}login/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

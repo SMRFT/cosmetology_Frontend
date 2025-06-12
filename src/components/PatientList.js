@@ -14,7 +14,7 @@ const PatientList = ({ onSelectPatient }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [branchCode, setBranchCode] = useState(''); // Add branch code state
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
     useEffect(() => {
         // Get branch_code from cookies when component mounts
         const code = Cookies.get('branch_code');
@@ -34,8 +34,8 @@ const PatientList = ({ onSelectPatient }) => {
         
         // If branch code exists, add it as a query parameter
         const url = branchCode 
-            ? `http://127.0.0.1:8000/patients/?branch_code=${branchCode}`
-            : 'http://127.0.0.1:8000/patients/';
+            ? `${Cosmetologybaseurl}patients/?branch_code=${branchCode}`
+            : `${Cosmetologybaseurl}patients/`;
         
         axios.get(url, {
             withCredentials: true // Enable sending cookies with the request

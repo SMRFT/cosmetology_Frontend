@@ -312,7 +312,7 @@ const MedicalHistory = (patientUID) => {
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [imageSrcs, setImageSrcs] = useState({});
     const [branchCode, setBranchCode] = useState(''); // Added state for branchCode
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
     const parseTests = (testsString) => {
         if (!testsString) return [];
         const regex = /([^,(]+(?:\([^)]*\))?)/g; // Matches items while respecting parentheses
@@ -343,7 +343,7 @@ const MedicalHistory = (patientUID) => {
         if (id) {
             const handleFetchDetails = async () => {
                 try {
-                    const response = await axios.post('http://127.0.0.1:8000/get_patient_details/', { 
+                    const response = await axios.post(`${Cosmetologybaseurl}get_patient_details/`, { 
                         id,
                         branch_code: branchCode 
                     }, {
@@ -362,7 +362,7 @@ const MedicalHistory = (patientUID) => {
                         for (let i = 0; i <= 5; i++) {
                             const imageFilename = `${detail.patientName}_${detail.patientUID}_${dateStr}_${i}.jpg`;
                             try {
-                                const imageResponse = await axios.get(`http://127.0.0.1:8000/get_file/?filename=${imageFilename}&branch_code=${branchCode}`, {
+                                const imageResponse = await axios.get(`${Cosmetologybaseurl}get_file/?filename=${imageFilename}&branch_code=${branchCode}`, {
                                     responseType: 'blob',
                                     headers: {
                                         'X-Branch-Code': branchCode
@@ -383,7 +383,7 @@ const MedicalHistory = (patientUID) => {
                         for (let j = 0; j <= 2; j++) {  // Adjust index range as needed
                             const pdfFilename = `${detail.patientName}_${detail.patientUID}_${dateStr}_${j}.pdf`;
                             try {
-                                const pdfResponse = await axios.get(`http://127.0.0.1:8000/get_pdf_file/?filename=${pdfFilename}&branch_code=${branchCode}`, {
+                                const pdfResponse = await axios.get(`${Cosmetologybaseurl}get_pdf_file/?filename=${pdfFilename}&branch_code=${branchCode}`, {
                                     responseType: 'blob',
                                     headers: {
                                         'X-Branch-Code': branchCode

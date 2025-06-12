@@ -34,7 +34,7 @@ const Tests = ({ preSelectedTests, onSelectTests }) => {
   const [testsInputs, setTestsInputs] = useState([{ selectedTests: [] }]);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newTest, setNewTest] = useState('');
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   const parseTests = (testsString) => {
     if (!testsString) return [];
     const regex = /([^,(]+(?:\([^)]*\))?)/g; // Matches items while respecting parentheses
@@ -55,7 +55,7 @@ const Tests = ({ preSelectedTests, onSelectTests }) => {
 
   useEffect(() => {
     axios
-      .get('http://127.0.0.1:8000/Tests/')
+      .get(`${Cosmetologybaseurl}Tests/`)
       .then((response) => {
         // Ensure each object in the array has the "test" key with string values
         const formattedTestsList = response.data.map((test) => ({
@@ -70,7 +70,7 @@ const Tests = ({ preSelectedTests, onSelectTests }) => {
 
   const handleAddNewTest = () => {
     axios
-      .post('http://127.0.0.1:8000/Tests/', { test: newTest })
+      .post(`${Cosmetologybaseurl}Tests/`, { test: newTest })
       .then((response) => {
         setTestsList([...testsList, response.data]);
         setShowAddInput(false);

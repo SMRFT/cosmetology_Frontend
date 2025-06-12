@@ -29,7 +29,7 @@ const PatientForm = ({ patientData, onClose }) => {
   const [showModal, setShowModal] = useState(false);
   const [patientUID, setPatientUID] = useState("");
   const [branchCode, setBranchCode] = useState(''); // Added state for branch code
-
+ const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
     // Get branch_code from cookies when component mounts
     const code = Cookies.get('branch_code');
@@ -104,8 +104,8 @@ const PatientForm = ({ patientData, onClose }) => {
     if (patientData) {
       // If editing existing patient, include branch code in the URL
       const url = branchCode 
-        ? `http://127.0.0.1:8000/Patients_data/${formData.patientUID}/?branch_code=${branchCode}`
-        : `http://127.0.0.1:8000/Patients_data/${formData.patientUID}/`;
+        ? `${Cosmetologybaseurl}Patients_data/${formData.patientUID}/?branch_code=${branchCode}`
+        : `${Cosmetologybaseurl}Patients_data/${formData.patientUID}/`;
 
       axios
         .patch(url, { ...requestData, purposeOfVisit: finalPurposeOfVisit })
@@ -119,8 +119,8 @@ const PatientForm = ({ patientData, onClose }) => {
     } else {
       // If adding new patient, include branch code in the URL
       const url = branchCode 
-        ? `http://127.0.0.1:8000/Patients_data/?branch_code=${branchCode}`
-        : 'http://127.0.0.1:8000/Patients_data/';
+        ? `${Cosmetologybaseurl}Patients_data/?branch_code=${branchCode}`
+        : `${Cosmetologybaseurl}Patients_data/`;
 
       axios.post(url, { ...requestData, purposeOfVisit: finalPurposeOfVisit })
         .then(() => {
