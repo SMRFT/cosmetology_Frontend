@@ -6,14 +6,13 @@ import styled from "styled-components"
 import { MDBTableHead, MDBTableBody } from "mdb-react-ui-kit"
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
-import { startOfWeek, startOfMonth, addWeeks, format } from "date-fns"
+import { startOfWeek, startOfMonth, addWeeks, format, getDay } from "date-fns" // Added getDay for weekStartsOn
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faCalendarDay, faCalendarWeek, faCalendarAlt } from "@fortawesome/free-solid-svg-icons"
 import { FaDownload, FaFilePdf } from "react-icons/fa"
 import { faTrashAlt } from "@fortawesome/free-solid-svg-icons"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import Cookies from "js-cookie"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
@@ -29,7 +28,8 @@ const BillingProcedureReport = () => {
   const [userRole, setUserRole] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
   const getReportHeading = (interval) => {
     switch (interval) {
       case "day":
@@ -43,16 +43,17 @@ const BillingProcedureReport = () => {
     }
   }
 
+  // Effect to get branch_code and userRole from localStorage/sessionStorage
   useEffect(() => {
-    const code = Cookies.get("branch_code")
-    const role = Cookies.get("userRole") || localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
+    const code = localStorage.getItem("selectedBranch") // Get from localStorage as requested
+    const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
 
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
+      console.log("Branch code retrieved from localStorage:", code)
     } else {
-      console.warn("Branch code not found in cookies")
-      setError("Branch code not found. Please login again.")
+      console.warn("Branch code not found in localStorage")
+      setError("Branch code not found. Please ensure you are logged in.")
     }
 
     if (role) {
@@ -62,34 +63,48 @@ const BillingProcedureReport = () => {
       console.warn("User role not found")
     }
 
+    // Initialize selectedWeek if interval is 'week' on first load
+    // This runs once when component mounts
     if (selectedInterval === "week" && !selectedWeek) {
-      setSelectedWeek(startOfWeek(selectedDate, { weekStartsOn: 1 }))
+      setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 })) // Start week on Monday
     }
-  }, [])
+  }, []) // Empty dependency array means this runs only once on component mount
 
+  // Effect to fetch data whenever relevant dependencies change
   useEffect(() => {
-    if (branchCode) {
+    if (branchCode) { // Ensure branchCode is available before fetching
       fetchData(selectedInterval)
     }
-  }, [selectedInterval, selectedDate, selectedWeek, branchCode])
+  }, [selectedInterval, selectedDate, selectedWeek, branchCode]) // Dependencies for re-fetching
 
   const fetchData = async (interval) => {
     if (!branchCode) {
-      console.warn("Branch code not available, skipping API call")
-      return
+      console.warn("Branch code not available, skipping API call.")
+      setBillingData(null); // Clear data if branch code is missing
+      setLoading(false);
+      return;
     }
 
     setLoading(true)
     setError(null)
 
     let dateParam = ""
-    if (interval === "day") {
-      dateParam = format(selectedDate, "yyyy-MM-dd")
+    let currentSelectedDateForParam = selectedDate; // Use selectedDate for day and month
+
+    // For week interval, if selectedWeek is null (e.g., on initial load or interval change),
+    // calculate it from selectedDate, defaulting to Monday of that week.
+    if (interval === "week" && !selectedWeek) {
+      currentSelectedDateForParam = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Ensure Monday
     } else if (interval === "week" && selectedWeek) {
-      dateParam = format(selectedWeek, "yyyy-MM-dd")
+      currentSelectedDateForParam = selectedWeek; // Use the explicitly selected week's start
+    }
+
+    if (interval === "day") {
+      dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd")
+    } else if (interval === "week") {
+      dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd")
     } else if (interval === "month") {
-      const startOfMonthDate = startOfMonth(selectedDate)
-      dateParam = format(startOfMonthDate, "yyyy-MM-dd")
+      dateParam = format(startOfMonth(currentSelectedDateForParam), "yyyy-MM-dd")
     }
 
     try {
@@ -102,20 +117,20 @@ const BillingProcedureReport = () => {
       const response = await axios.get(`${Cosmetologybaseurl}procedurebilling/${interval}/`, {
         params: {
           appointmentDate: dateParam,
-          branch_code: branchCode,
-        },
-        headers: {
-          "X-Branch-Code": branchCode,
-          "Content-Type": "application/json",
+          branch_code: branchCode, // Sending branch_code in params as requested
         },
         withCredentials: true,
       })
 
       console.log("Procedure billing API response:", response.data)
       setBillingData(response.data)
+      if (response.data.length === 0) {
+        toast.info("No data found for the selected criteria.");
+      }
     } catch (error) {
       console.error("Error fetching procedure billing data:", error)
       setError("Failed to fetch procedure billing data. Please try again.")
+      toast.error("Failed to fetch data.");
     } finally {
       setLoading(false)
     }
@@ -123,27 +138,48 @@ const BillingProcedureReport = () => {
 
   const handleIntervalChange = (interval) => {
     setSelectedInterval(interval)
-    setSelectedWeek(null)
+    // Reset selectedDate to today's date for 'day' and 'month' intervals
+    // Reset selectedWeek to the start of the current week for 'week' interval
+    if (interval === "week") {
+      setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 })) // Start week on Monday
+    } else {
+      setSelectedDate(new Date()) // Reset to today for day/month
+      setSelectedWeek(null) // Clear selectedWeek when not in week mode
+    }
   }
 
   const handleDateChange = (date) => {
     setSelectedDate(date)
+    if (selectedInterval === "week") {
+      setSelectedWeek(startOfWeek(date, { weekStartsOn: 1 })) // Update week start when month/year changes in weekly mode
+    }
   }
 
   const handleWeekChange = (weekStart) => {
     setSelectedWeek(weekStart)
+    setSelectedDate(weekStart); // Also update selectedDate to reflect the chosen week's start
   }
 
   const getWeeksInMonth = (date) => {
     const startOfMonthDate = startOfMonth(date)
     const weeks = []
-    for (let i = 0; i < 5; i++) {
-      const weekStart = addWeeks(startOfMonthDate, i)
-      if (weekStart.getMonth() === date.getMonth()) {
+    // Loop up to 6 times to cover all possible weeks in a month
+    for (let i = 0; i < 6; i++) {
+      const weekStart = startOfWeek(addWeeks(startOfMonthDate, i), { weekStartsOn: 1 }); // Start week on Monday
+      // Only add the week if it falls within the same month or if it's the start of the next month
+      // that includes days from the current month
+      if (weekStart.getMonth() === date.getMonth() || (i > 0 && startOfWeek(addWeeks(startOfMonthDate, i -1), { weekStartsOn: 1 }).getMonth() === date.getMonth() && weekStart.getMonth() !== date.getMonth())) {
         weeks.push(weekStart)
+      } else if (weeks.length > 0) {
+          // If we've already added weeks and current week is entirely in next month, stop
+          break;
       }
     }
-    return weeks
+    // Filter out duplicate week starts if any
+    const uniqueWeeks = weeks.filter((week, index, self) =>
+        index === self.findIndex((t) => format(t, 'yyyy-MM-dd') === format(week, 'yyyy-MM-dd'))
+    );
+    return uniqueWeeks;
   }
 
   const downloadProcedureCSV = () => {
@@ -155,7 +191,7 @@ const BillingProcedureReport = () => {
     const headers = [
       "Patient Name",
       "Patient UID",
-      "Consumer Billnumber",
+      "Procedure Billnumber",
       "Appointment Date",
       "Doctor Name",
       "Procedure",
@@ -174,7 +210,7 @@ const BillingProcedureReport = () => {
         return [
           item.patientName,
           item.patientUID,
-          item.consumerBillNumber,
+          item.procedureBillNumber,
           item.appointmentDate,
           item.patient_handledby,
           proc.procedure,
@@ -211,13 +247,13 @@ const BillingProcedureReport = () => {
       return
     }
 
-    const headers = ["Patient Name", "Patient UID", "Appointment Date", "Item", "Quantity", "Total", "Branch Code"]
+    const headers = ["Patient Name", "Patient UID", "Consumer Billnumber", "Appointment Date", "Item", "Quantity", "Total", "Branch Code"]
     let totalSum = 0
     const rows = billingData.flatMap((item) => {
       const consumer = typeof item.consumer === "string" ? JSON.parse(item.consumer) : item.consumer
       return consumer.map((con) => {
         totalSum += Number.parseFloat(con.total || 0)
-        return [item.patientName, item.patientUID, item.appointmentDate, con.item, con.qty, con.total, branchCode]
+        return [item.patientName, item.patientUID, item.consumerBillNumber, item.appointmentDate, con.item, con.qty, con.total, branchCode]
       })
     })
 
@@ -424,10 +460,7 @@ const BillingProcedureReport = () => {
           procedureBillNumber: billType === "procedure" ? billNumber : undefined,
           branch_code: branchCode,
         },
-        headers: {
-          "X-Branch-Code": branchCode,
-          "Content-Type": "application/json",
-        },
+        // Removed headers to send branch_code, as requested
         withCredentials: true,
       })
 
@@ -492,6 +525,7 @@ const BillingProcedureReport = () => {
       <Header>
         <div>
           <h3 className="text-center mb-2">Procedure Billing Report</h3>
+          {branchCode && <BranchInfo>Branch Code: {branchCode}</BranchInfo>}
         </div>
         <RefreshButton onClick={refreshData} disabled={loading}>
           🔄 Refresh
@@ -543,8 +577,8 @@ const BillingProcedureReport = () => {
           )}
           {selectedInterval === "week" && (
             <DatePicker
-              selected={selectedDate}
-              onChange={handleDateChange}
+              selected={selectedDate} // Display selectedDate for week, but logic uses selectedWeek
+              onChange={handleDateChange} // Still allows changing month/year for week selection
               dateFormat="yyyy-MM"
               showMonthYearPicker
               showPopperArrow={false}
@@ -570,14 +604,14 @@ const BillingProcedureReport = () => {
         <WeekButtons>
           {getWeeksInMonth(selectedDate).map((weekStart, index) => (
             <WeekButton
-              key={index}
+              key={format(weekStart, "yyyy-MM-dd")} // Use formatted date as key for stability
               onClick={() => handleWeekChange(weekStart)}
               className={
                 selectedWeek && format(selectedWeek, "yyyy-MM-dd") === format(weekStart, "yyyy-MM-dd") ? "active" : ""
               }
               disabled={loading}
             >
-              {`${index + 1} Week`}
+              {`Week ${index + 1} (${format(weekStart, "MMM dd")})`} {/* Show week number and start date */}
             </WeekButton>
           ))}
         </WeekButtons>
@@ -593,7 +627,7 @@ const BillingProcedureReport = () => {
           </TabButton>
         </TabButtons>
 
-        {loading && <LoadingMessage>Loading procedure billing data...</LoadingMessage>}
+        {loading && <LoadingMessage>Loading billing data...</LoadingMessage>}
 
         {!loading && billingData && billingData.length > 0 ? (
           <BillingContainer>
@@ -625,31 +659,44 @@ const BillingProcedureReport = () => {
                   </MDBTableHead>
                   <MDBTableBody>
                     {billingData.map((item) => (
-                      <React.Fragment key={item.patientUID}>
-                        {item.procedures.map((proc, index) => (
-                          <tr key={index}>
-                            {index === 0 && (
-                              <>
-                                <td rowSpan={item.procedures.length}>{item.patientName}</td>
-                                <td rowSpan={item.procedures.length}>{item.patientUID}</td>
-                                <td rowSpan={item.procedures.length}>{item.procedureBillNumber}</td>
-                                <td rowSpan={item.procedures.length}>{item.appointmentDate}</td>
-                                <td rowSpan={item.procedures.length}>{item.patient_handledby}</td>
-                              </>
-                            )}
-                            <td>{proc.procedure}</td>
-                            <td>{proc.procedureDate}</td>
-                            <td>{proc.price}</td>
-                            <td>{proc.gst}</td>
-                            <td>{proc.gstRate}</td>
-                            <td>{proc.total}</td>
-                            {index === 0 && (
-                              <td rowSpan={item.procedures.length}>
-                                {renderActionButtons(item.patientUID, "procedure", item.procedureBillNumber)}
-                              </td>
-                            )}
+                      <React.Fragment key={`${item.patientUID}-${item.procedureBillNumber}`}> {/* Improved key */}
+                        {item.procedures && item.procedures.length > 0 ? ( // Check if procedures exist
+                          item.procedures.map((proc, index) => (
+                            <tr key={`${item.patientUID}-${item.procedureBillNumber}-${index}`}> {/* Unique key for each row */}
+                              {index === 0 && (
+                                <>
+                                  <td rowSpan={item.procedures.length}>{item.patientName}</td>
+                                  <td rowSpan={item.procedures.length}>{item.patientUID}</td>
+                                  <td rowSpan={item.procedures.length}>{item.procedureBillNumber}</td>
+                                  <td rowSpan={item.procedures.length}>{item.appointmentDate}</td>
+                                  <td rowSpan={item.procedures.length}>{item.patient_handledby}</td>
+                                </>
+                              )}
+                              <td>{proc.procedure}</td>
+                              <td>{proc.procedureDate}</td>
+                              <td>{proc.price}</td>
+                              <td>{proc.gst}</td>
+                              <td>{proc.gstRate}</td>
+                              <td>{proc.total}</td>
+                              {index === 0 && (
+                                <td rowSpan={item.procedures.length}>
+                                  {renderActionButtons(item.patientUID, "procedure", item.procedureBillNumber)}
+                                </td>
+                              )}
+                            </tr>
+                          ))
+                        ) : (
+                          // Render a row for items with no procedures but still show patient/bill info
+                          <tr>
+                            <td>{item.patientName}</td>
+                            <td>{item.patientUID}</td>
+                            <td>{item.procedureBillNumber}</td>
+                            <td>{item.appointmentDate}</td>
+                            <td>{item.patient_handledby}</td>
+                            <td colSpan="6">No procedures recorded</td> {/* Spanning columns for empty procedures */}
+                            <td>{renderActionButtons(item.patientUID, "procedure", item.procedureBillNumber)}</td>
                           </tr>
-                        ))}
+                        )}
                       </React.Fragment>
                     ))}
                   </MDBTableBody>
@@ -662,9 +709,11 @@ const BillingProcedureReport = () => {
                         <strong>
                           {billingData
                             .reduce((sum, item) => {
+                              // Ensure procedures is an array before reducing
+                              const procedures = Array.isArray(item.procedures) ? item.procedures : [];
                               return (
                                 sum +
-                                item.procedures.reduce(
+                                procedures.reduce(
                                   (procSum, proc) => procSum + Number.parseFloat(proc.total || 0),
                                   0,
                                 )
@@ -703,27 +752,39 @@ const BillingProcedureReport = () => {
                   </MDBTableHead>
                   <MDBTableBody>
                     {billingData.map((item) => (
-                      <React.Fragment key={item.patientUID}>
-                        {item.consumer.map((con, index) => (
-                          <tr key={index}>
-                            {index === 0 && (
-                              <>
-                                <td rowSpan={item.consumer.length}>{item.patientName}</td>
-                                <td rowSpan={item.consumer.length}>{item.patientUID}</td>
-                                <td rowSpan={item.consumer.length}>{item.consumerBillNumber}</td>
-                                <td rowSpan={item.consumer.length}>{item.appointmentDate}</td>
-                              </>
-                            )}
-                            <td>{con.item}</td>
-                            <td>{con.qty}</td>
-                            <td>{con.total}</td>
-                            {index === 0 && (
-                              <td rowSpan={item.consumer.length}>
-                                {renderActionButtons(item.patientUID, "consumer", item.consumerBillNumber)}
-                              </td>
-                            )}
+                      <React.Fragment key={`${item.patientUID}-${item.consumerBillNumber}`}> {/* Improved key */}
+                        {item.consumer && item.consumer.length > 0 ? ( // Check if consumer items exist
+                          item.consumer.map((con, index) => (
+                            <tr key={`${item.patientUID}-${item.consumerBillNumber}-${index}`}> {/* Unique key for each row */}
+                              {index === 0 && (
+                                <>
+                                  <td rowSpan={item.consumer.length}>{item.patientName}</td>
+                                  <td rowSpan={item.consumer.length}>{item.patientUID}</td>
+                                  <td rowSpan={item.consumer.length}>{item.consumerBillNumber}</td>
+                                  <td rowSpan={item.consumer.length}>{item.appointmentDate}</td>
+                                </>
+                              )}
+                              <td>{con.item}</td>
+                              <td>{con.qty}</td>
+                              <td>{con.total}</td>
+                              {index === 0 && (
+                                <td rowSpan={item.consumer.length}>
+                                  {renderActionButtons(item.patientUID, "consumer", item.consumerBillNumber)}
+                                </td>
+                              )}
+                            </tr>
+                          ))
+                        ) : (
+                          // Render a row for items with no consumer items
+                          <tr>
+                            <td>{item.patientName}</td>
+                            <td>{item.patientUID}</td>
+                            <td>{item.consumerBillNumber}</td>
+                            <td>{item.appointmentDate}</td>
+                            <td colSpan="3">No consumable items recorded</td> {/* Spanning columns for empty consumables */}
+                            <td>{renderActionButtons(item.patientUID, "consumer", item.consumerBillNumber)}</td>
                           </tr>
-                        ))}
+                        )}
                       </React.Fragment>
                     ))}
                   </MDBTableBody>
@@ -736,9 +797,11 @@ const BillingProcedureReport = () => {
                         <strong>
                           {billingData
                             .reduce((sum, item) => {
+                              // Ensure consumer is an array before reducing
+                              const consumer = Array.isArray(item.consumer) ? item.consumer : [];
                               return (
                                 sum +
-                                item.consumer.reduce((conSum, con) => conSum + Number.parseFloat(con.total || 0), 0)
+                                consumer.reduce((conSum, con) => conSum + Number.parseFloat(con.total || 0), 0)
                               )
                             }, 0)
                             .toFixed(2)}
@@ -753,7 +816,7 @@ const BillingProcedureReport = () => {
         ) : (
           !loading && (
             <Message>
-              {branchCode ? "No data available" : "Please ensure you are logged in with a valid branch code."}
+              {branchCode ? "No data available for the selected interval and date." : "Please ensure you are logged in with a valid branch code."}
             </Message>
           )
         )}
@@ -786,12 +849,12 @@ const RefreshButton = styled.button`
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
-  
+
   &:hover:not(:disabled) {
     background-color: #C85C8E;
     color: white;
   }
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -855,7 +918,7 @@ const IntervalButton = styled.button`
   color: ${({ active }) => (active ? "white" : "#C85C8E")};
   font-size: 1.5rem;
   cursor: pointer;
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -870,15 +933,24 @@ const WeekButtons = styled.div`
   display: flex;
   justify-content: center;
   gap: 10px;
+  flex-wrap: wrap; /* Added for better responsiveness */
 `
 
 const WeekButton = styled.button`
   margin: 5px;
+  padding: 8px 12px;
+  border: 1px solid #C85C8E;
+  background-color: white;
+  color: #C85C8E;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+
   &.active {
     background-color: #C85C8E;
     color: white;
   }
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -892,7 +964,7 @@ const Billing = styled.div`
 
 const BillingContainer = styled.div`
     display: flex;
-    justify-content: space-between;
+    flex-direction: column; /* Changed to column for better table stacking */
     gap: 20px;
 `
 
@@ -930,7 +1002,7 @@ const TabButton = styled.button`
   margin: 0 5px;
   border-radius: 5px;
   transition: background-color 0.3s, color 0.3s;
-  
+
   &:hover {
     background-color: #C85C8E;
     color: white;

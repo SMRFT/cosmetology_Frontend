@@ -9,7 +9,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCalendarDay, faCalendarWeek, faCalendarAlt, faCalendar } from '@fortawesome/free-solid-svg-icons';
 import { FaDownload, FaTrash } from "react-icons/fa";
-import Cookies from 'js-cookie'; // Add cookie import
 import './DatePicker.css';
 
 const SummaryReport = () => {
@@ -18,19 +17,25 @@ const SummaryReport = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [branchCode, setBranchCode] = useState('');
   const navigate = useNavigate();
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
+
+  // This useEffect will run once on component mount to get the branch code
   useEffect(() => {
-    // Get branch_code from cookies when component mounts
-    const code = Cookies.get('branch_code');
+    const code = localStorage.getItem('selectedBranch');
     if (code) {
       setBranchCode(code);
-      console.log('Branch code retrieved from cookies:', code);
+      console.log('Branch code retrieved from localStorage:', code);
     } else {
-      console.warn('Branch code not found in cookies');
+      console.warn('Branch code not found in localStorage');
     }
-    
-    fetchData(selectedInterval);
-  }, [selectedInterval, selectedDate, branchCode]);
+  }, []); // Empty dependency array means it runs only once
+
+  // This useEffect will trigger data fetching whenever selectedInterval, selectedDate, or branchCode changes
+  useEffect(() => {
+    if (branchCode) { // Ensure branchCode is available before fetching data
+      fetchData(selectedInterval, selectedDate, branchCode);
+    }
+  }, [selectedInterval, selectedDate, branchCode]); // Dependencies ensure re-fetch when these change
 
   const getReportHeading = (interval) => {
     switch (interval) {
@@ -43,37 +48,52 @@ const SummaryReport = () => {
     }
   };
 
-  const fetchData = async (interval) => {
+  const fetchData = async (interval, date, branchCode) => {
+    if (!branchCode) { // Explicit check to prevent API call if branchCode is missing
+      console.warn("Branch code is not available, skipping data fetch.");
+      return;
+    }
+
     let dateParam = '';
     if (interval === 'day') {
-      dateParam = format(selectedDate, 'yyyy-MM-dd');
+      dateParam = format(date, 'yyyy-MM-dd');
     } else if (interval === 'month') {
-      const startOfMonthDate = startOfMonth(selectedDate);
+      // For month, we always want the first day of the selected month
+      const startOfMonthDate = startOfMonth(date);
       dateParam = format(startOfMonthDate, 'yyyy-MM-dd');
     }
-    
+
+    console.log(`Fetching data for interval: ${interval}, date: ${dateParam}, branch: ${branchCode}`); // Added console log for debugging
+
     try {
       const response = await axios.get(
-        `${Cosmetologybaseurl}summary/${interval}/?appointmentDate=${dateParam}&branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}summary/${interval}/`,
         {
-          headers: {
-            'X-Branch-Code': branchCode
+          params: {
+            appointmentDate: dateParam,
+            branch_code: branchCode,
           },
-          withCredentials: true // Enable sending cookies with the request
+          withCredentials: true,
         }
       );
       setSummaryData(response.data);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setSummaryData(null); // Clear data on error
     }
   };
 
   const handleIntervalChange = (interval) => {
     setSelectedInterval(interval);
+    // Crucial: Reset selectedDate to a new Date object when interval changes.
+    // This forces the useEffect to re-run with a fresh date value,
+    // which then triggers fetchData with the correct date interpretation for the new interval.
+    setSelectedDate(new Date());
   };
 
   const handleDateChange = (date) => {
     setSelectedDate(date);
+    // fetchData will be called by the useEffect when selectedDate updates
   };
 
   const downloadCSV = () => {
@@ -113,7 +133,6 @@ const SummaryReport = () => {
 
   const renderComplaints = (complaintsStr) => {
     try {
-      // If the complaintsStr is not an object, try parsing
       const complaints = typeof complaintsStr === 'string' ? JSON.parse(complaintsStr) : complaintsStr;
       if (Array.isArray(complaints)) {
         return complaints.map((complaint, index) => (
@@ -180,7 +199,7 @@ const SummaryReport = () => {
           )}
         </DatePickerWrapper>
       </IntervalSelector>
-      <br/>
+      <br />
       <Content>
         {summaryData && summaryData.length > 0 ? (
           <Summary>
@@ -203,7 +222,7 @@ const SummaryReport = () => {
                 {summaryData.map((item) => (
                   <StyledRow key={item.id}>
                     <td>{item.patientName}</td>
-                    <td style={{whiteSpace:"nowrap"}}>{item.appointmentDate}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{item.appointmentDate}</td>
                     <td>{item.diagnosis}</td>
                     <td>{renderComplaints(item.complaints)}</td>
                     <td>{item.findings}</td>
@@ -223,7 +242,9 @@ const SummaryReport = () => {
     </Container>
   );
 };
+
 export default SummaryReport;
+
 const Container = styled.div`
   display: flex;
   flex-direction: column;
@@ -235,7 +256,7 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: relative; /* Ensure the icon is within its container */
+  position: relative;
 `;
 const Content = styled.div`
   flex: 1;
@@ -246,7 +267,7 @@ const IntervalSelector = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;  /* Center horizontally */
+  justify-content: center;
   margin-top: -30px;
 `;
 const ButtonGroup = styled.div`

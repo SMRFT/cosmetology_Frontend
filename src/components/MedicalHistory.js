@@ -6,11 +6,10 @@ import { PiTestTubeThin } from "react-icons/pi";
 import Image2 from './images/diagnosis.png';
 import Image3 from './images/Findings.png';
 import Image1 from './images/Complaints.png';
-import Cookies from 'js-cookie'; // Add this import
 
 const Container = styled.div`
     display: flex;
-    height: 75vh;  /* Adjust this height as needed */
+    height: 75vh;   /* Adjust this height as needed */
     overflow: hidden;
 `;
 
@@ -173,7 +172,7 @@ const SectionContent = styled.p`
 const VitalsContainer = styled.div`
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 2x;
+    gap: 2px;
 `;
 
 const VitalItem = styled.div`
@@ -219,14 +218,14 @@ const ComplaintsContainer = styled.div`
 `;
 
 const FindingsContainer = styled.div`
-     margin-bottom: 20px;
+      margin-bottom: 20px;
     padding: 10px;
     border: none;
     border-radius: 5px;
     background-color:#F8DEFF;
     flex: 1;
     overflow-y: auto;
-   height:200px;
+    height:200px;
     scrollbar-width: none;
     width:fit-content;
 `;
@@ -304,23 +303,23 @@ const PdfButton = styled.a`
 `;
 
 
-const MedicalHistory = (patientUID) => {
-   const location = useLocation();
-   const id = patientUID?.patientUID; 
-    // const { appointment, patientUID } = location.state || {};
+const MedicalHistory = ({ patientUID }) => { // Destructure patientUID from props
+    const location = useLocation();
+    const id = patientUID; // Use patientUID directly
     const [patientDetails, setPatientDetails] = useState([]);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [imageSrcs, setImageSrcs] = useState({});
-    const [branchCode, setBranchCode] = useState(''); // Added state for branchCode
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+    const [branchCode, setBranchCode] = useState('');
+    const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
+
     const parseTests = (testsString) => {
         if (!testsString) return [];
         const regex = /([^,(]+(?:\([^)]*\))?)/g; // Matches items while respecting parentheses
         const matches = [...testsString.matchAll(regex)].map((match) => match[0].trim()).filter(Boolean);
         return matches;
-      };
+    };
 
-      const parseProcedures = (proceduresString) => {
+    const parseProcedures = (proceduresString) => {
         if (!proceduresString) return [];
         
         // Split the string by "Procedure:" to separate each procedure
@@ -328,28 +327,25 @@ const MedicalHistory = (patientUID) => {
           .split("Procedure:")
           .filter((procedure) => procedure.trim() !== "") // Remove empty entries
           .map((procedure) => `Procedure: ${procedure.trim()}`); // Add back "Procedure:" prefix
-      };
-      
-     useEffect(() => {
-        // Get branch_code from cookies when component mounts
-        const code = Cookies.get('branch_code');
+    };
+    
+    useEffect(() => {
+        // Get branch_code from localStorage when component mounts
+        const code = localStorage.getItem('selectedBranch');
         if (code) {
             setBranchCode(code);
-            console.log('Branch code retrieved from cookies:', code);
+            console.log('Branch code retrieved from localStorage:', code);
         } else {
-            console.warn('Branch code not found in cookies');
+            console.warn('Branch code not found in localStorage');
         }
 
-        if (id) {
+        if (id && code) { // Ensure branchCode is available before fetching
             const handleFetchDetails = async () => {
                 try {
                     const response = await axios.post(`${Cosmetologybaseurl}get_patient_details/`, { 
                         id,
-                        branch_code: branchCode 
+                        branch_code: code // Send branch_code in the request body for POST
                     }, {
-                        headers: {
-                            'X-Branch-Code': branchCode
-                        },
                         withCredentials: true
                     });
                     setPatientDetails(response.data);
@@ -362,10 +358,11 @@ const MedicalHistory = (patientUID) => {
                         for (let i = 0; i <= 5; i++) {
                             const imageFilename = `${detail.patientName}_${detail.patientUID}_${dateStr}_${i}.jpg`;
                             try {
-                                const imageResponse = await axios.get(`${Cosmetologybaseurl}get_file/?filename=${imageFilename}&branch_code=${branchCode}`, {
+                                const imageResponse = await axios.get(`${Cosmetologybaseurl}get_file/`, {
                                     responseType: 'blob',
-                                    headers: {
-                                        'X-Branch-Code': branchCode
+                                    params: { // Send filename and branch_code as URL parameters
+                                        filename: imageFilename,
+                                        branch_code: code 
                                     },
                                     withCredentials: true
                                 });
@@ -374,19 +371,20 @@ const MedicalHistory = (patientUID) => {
                                     filename: imageFilename
                                 });
                             } catch (error) {
-                                console.error(`Error fetching image ${i}:`, error);
+                                // console.error(`Error fetching image ${i}:`, error); // Log for debugging, but don't stop execution
                             }
                         }
     
                         // Fetch PDFs
                         const pdfArray = [];
-                        for (let j = 0; j <= 2; j++) {  // Adjust index range as needed
+                        for (let j = 0; j <= 2; j++) {   // Adjust index range as needed
                             const pdfFilename = `${detail.patientName}_${detail.patientUID}_${dateStr}_${j}.pdf`;
                             try {
-                                const pdfResponse = await axios.get(`${Cosmetologybaseurl}get_pdf_file/?filename=${pdfFilename}&branch_code=${branchCode}`, {
+                                const pdfResponse = await axios.get(`${Cosmetologybaseurl}get_pdf_file/`, {
                                     responseType: 'blob',
-                                    headers: {
-                                        'X-Branch-Code': branchCode
+                                    params: { // Send filename and branch_code as URL parameters
+                                        filename: pdfFilename,
+                                        branch_code: code 
                                     },
                                     withCredentials: true
                                 });
@@ -395,7 +393,7 @@ const MedicalHistory = (patientUID) => {
                                     filename: pdfFilename
                                 });
                             } catch (error) {
-                                console.error(`Error fetching PDF ${j}:`, error);
+                                // console.error(`Error fetching PDF ${j}:`, error); // Log for debugging, but don't stop execution
                             }
                         }
     
@@ -421,8 +419,8 @@ const MedicalHistory = (patientUID) => {
             };
             handleFetchDetails();
         }
-    }, [id, branchCode]); // Added branchCode as dependency
-    
+    }, [id, branchCode, Cosmetologybaseurl]); // Added Cosmetologybaseurl to dependencies
+
     const handleAppointmentClick = (appointment) => {
         setSelectedAppointment(appointment);
     };
@@ -435,6 +433,7 @@ const MedicalHistory = (patientUID) => {
                         <AppointmentItem
                             key={index}
                             onClick={() => handleAppointmentClick(detail)}
+                            isActive={selectedAppointment && selectedAppointment.appointmentDate === detail.appointmentDate}
                             isChronic={detail.formType === 'Chronic form'}
                         >
                             <PatientInfo>
@@ -458,11 +457,11 @@ const MedicalHistory = (patientUID) => {
                     <div>
                        <Row>
                        <DiagnosisContainer>
-                        <Section style={{ flex: 1 }}>
+                           <Section style={{ flex: 1 }}>
                             <img src={Image2} style={{height: "20%", width: "20%"}} alt="Diagnosis" />
                             <SectionTitle className='mt-2'>Diagnosis</SectionTitle>
                             <DiagnosisList>
-                                {selectedAppointment.diagnosis.split('\n').map((diagnosis, index) => (
+                                {selectedAppointment.diagnosis && selectedAppointment.diagnosis.split('\n').map((diagnosis, index) => (
                                     <DiagnosisItem key={index}>{diagnosis.trim()}</DiagnosisItem>
                                 ))}
                             </DiagnosisList>
@@ -473,14 +472,14 @@ const MedicalHistory = (patientUID) => {
                             <img src={Image3} style={{height:"20%",width:"20%"}} alt="Findings" />
                             <SectionTitle className='mt-2'>Findings</SectionTitle>
                             <FindingsList>
-                        {selectedAppointment.findings.split('\n').map((findings, index) => (
-                            <FindingsItem key={index}>{findings.trim()}</FindingsItem>
-                        ))}
-                    </FindingsList>
-                        </Section>
-                        </FindingsContainer>
+                                {selectedAppointment.findings && selectedAppointment.findings.split('\n').map((findings, index) => (
+                                    <FindingsItem key={index}>{findings.trim()}</FindingsItem>
+                                ))}
+                            </FindingsList>
+                            </Section>
+                            </FindingsContainer>
                         </Row>
-                       
+                        
                         <Section style={{ flex: 1 }}>
                             <SectionTitle className='mt-2'>Complaints</SectionTitle>
                             {Array.isArray(selectedAppointment.complaints) && selectedAppointment.complaints.length > 0 ? (
@@ -550,7 +549,7 @@ const MedicalHistory = (patientUID) => {
                         <Section>
                             <SectionTitle>Plans</SectionTitle>
                             <PlansList>
-                            {selectedAppointment.plans.split('\n').map((item, index) => (
+                            {selectedAppointment.plans && selectedAppointment.plans.split('\n').map((item, index) => (
                                 <PlansItem key={index}>{item}</PlansItem>
                             ))}
                             </PlansList>
@@ -581,14 +580,10 @@ const MedicalHistory = (patientUID) => {
                         </Section>
                         </ProceduresContainer>
                         <Section>
-                        {/* {imageSrcs[selectedAppointment.appointmentDate] && (
-                        <tr>
-                            <SectionTitle>Records & Images</SectionTitle>
-                            <ImageCell>
-                            {imageSrcs[selectedAppointment.appointmentDate]?.images?.length > 0 && (
-                        <Section>
-                        
-                        
+                        {imageSrcs[selectedAppointment.appointmentDate] && imageSrcs[selectedAppointment.appointmentDate]?.images?.length > 0 && (
+                            <Section>
+                                <SectionTitle>Records & Images</SectionTitle>
+                                <ImageCell>
                                 {imageSrcs[selectedAppointment.appointmentDate].images.map((image, imgIndex) => (
                                     <img 
                                         key={imgIndex} 
@@ -597,31 +592,26 @@ const MedicalHistory = (patientUID) => {
                                         style={{ width: '100px' }} 
                                     />
                                 ))}
-                        
-                        </Section>
-                    )}
+                                </ImageCell>
+                            </Section>
+                        )}
 
-                            </ImageCell>
-                        </tr>
-                    )}
-
-                    {imageSrcs[selectedAppointment.appointmentDate] && imageSrcs[selectedAppointment.appointmentDate].pdfs.length > 0 && (
-                        <Section>
-                            <SectionTitle>PDF Documents</SectionTitle>
-                            <div>
-                                {imageSrcs[selectedAppointment.appointmentDate].pdfs.map((pdf, pdfIndex) => (
-                                    <PdfButton 
-                                        key={pdfIndex} 
-                                        href={pdf.src} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer">
-                                        View PDF {pdfIndex + 1}
-                                    </PdfButton>
-                                ))}
-                            </div>
-                        </Section>
-                    )} */}
-
+                        {imageSrcs[selectedAppointment.appointmentDate] && imageSrcs[selectedAppointment.appointmentDate].pdfs.length > 0 && (
+                            <Section>
+                                <SectionTitle>PDF Documents</SectionTitle>
+                                <div>
+                                    {imageSrcs[selectedAppointment.appointmentDate].pdfs.map((pdf, pdfIndex) => (
+                                        <PdfButton 
+                                            key={pdfIndex} 
+                                            href={pdf.src} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer">
+                                            View PDF {pdfIndex + 1}
+                                        </PdfButton>
+                                    ))}
+                                </div>
+                            </Section>
+                        )}
 
                         </Section>
 
@@ -651,9 +641,7 @@ const MedicalHistory = (patientUID) => {
                                 })()}
                             </VitalsContainer>
                         </Section>
-                    )}
-
-
+                        )}
                     </div>
                 ) : (
                     <p>Select an appointment to view details.</p>

@@ -16,7 +16,6 @@ import CreatableSelect from "react-select/creatable"
 import { IoMdArrowRoundBack } from "react-icons/io"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import Cookies from "js-cookie"
 import { useNavigate } from "react-router-dom"
 
 const FlexRow = styled.div`
@@ -251,12 +250,14 @@ const NewProcedureComponent = () => {
   }, [])
 
   useEffect(() => {
-    const code = Cookies.get("branch_code")
+    // Get branch_code and user role from localStorage when component mounts
+    const code = localStorage.getItem("selectedBranch")
+
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
+      console.log("Branch code retrieved from localStorage:", code)
     } else {
-      console.warn("Branch code not found in cookies")
+      console.warn("Branch code not found in localStorage")
     }
 
     // Get patient data from sessionStorage or props
@@ -268,7 +269,7 @@ const NewProcedureComponent = () => {
       setSelectedPatient({
         patientName: "New Patient",
         patientUID: "NEW001",
-        patient_handledby: "Dr. Smith",
+        patient_handledby: "Dr. DoctorName",
       })
     }
   }, [])
@@ -506,7 +507,6 @@ const NewProcedureComponent = () => {
         const response = await axios.post(`${Cosmetologybaseurl}Post_Procedure_Bill/`, payload, {
           headers: {
             "Content-Type": "application/json",
-            "X-Branch-Code": branchCode,
           },
           withCredentials: true,
         })

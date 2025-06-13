@@ -5,7 +5,6 @@ import { FaPlus, FaTrash } from "react-icons/fa"
 import { format } from "date-fns"
 import { IoMdArrowRoundBack } from "react-icons/io"
 import jsPDF from "jspdf"
-import Cookies from "js-cookie"
 import "jspdf-autotable"
 import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
 import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
@@ -242,6 +241,31 @@ const NewBill = () => {
   const [branchCode, setBranchCode] = useState("")
   const navigate = useNavigate()
  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+   useEffect(() => {
+    // Get branch_code and user role from localStorage when component mounts
+    const code = localStorage.getItem("selectedBranch")
+
+    if (code) {
+      setBranchCode(code)
+      console.log("Branch code retrieved from localStorage:", code)
+    } else {
+      console.warn("Branch code not found in localStorage")
+    }
+    // Get patient data from sessionStorage or props
+    const patientData = sessionStorage.getItem('selectedPatient')
+    if (patientData) {
+      setSelectedPatient(JSON.parse(patientData))
+    } else {
+      // Default patient for demo - replace with actual patient selection logic
+      setSelectedPatient({
+        patientName: "New Patient",
+        patientUID: "NEW001",
+        patient_handledby: "Dr. DoctorName"
+      })
+    }
+  }, [])
+
+
   // Fetch medicine options for dropdown
   useEffect(() => {
     if (!branchCode) return
@@ -272,29 +296,6 @@ const NewBill = () => {
         toast.error("Failed to fetch medicine data")
       })
   }, [branchCode])
-
-  useEffect(() => {
-    const code = Cookies.get("branch_code")
-    if (code) {
-      setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
-    } else {
-      console.warn("Branch code not found in cookies")
-    }
-
-    // Get patient data from sessionStorage or props
-    const patientData = sessionStorage.getItem('selectedPatient')
-    if (patientData) {
-      setSelectedPatient(JSON.parse(patientData))
-    } else {
-      // Default patient for demo - replace with actual patient selection logic
-      setSelectedPatient({
-        patientName: "New Patient",
-        patientUID: "NEW001",
-        patient_handledby: "Dr. Smith"
-      })
-    }
-  }, [])
 
   const handlePaymentTypeChange = (e) => {
     setPaymentType(e.target.value)
@@ -485,7 +486,6 @@ const NewBill = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Branch-Code": branchCode,
         },
         body: JSON.stringify(dataToSubmit),
       })
@@ -524,7 +524,6 @@ const NewBill = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            "X-Branch-Code": branchCode,
           },
           body: JSON.stringify(stockUpdate),
         })

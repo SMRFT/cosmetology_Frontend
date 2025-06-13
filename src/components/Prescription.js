@@ -22,7 +22,6 @@ import jsPDF from 'jspdf';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'jspdf-autotable';
-import Cookies from 'js-cookie';
 import PDFMain1 from "./images/PDF_Summary_branch1.jpeg"
 import PDFMain2 from "./images/PDF_Summary_branch2.jpeg"
 
@@ -270,7 +269,8 @@ border-radius: 10px;
 text-align: center;
 `;
 
-const PrescriptionDetails = () => { 
+
+const PrescriptionDetails = () => {
   const [selectedDiagnosis, setSelectedDiagnosis] = useState([]);
   const [selectedComplaints, setSelectedComplaints] = useState([]);
   const [selectedfindings, setSelectedFindings] = useState([]);
@@ -280,7 +280,7 @@ const PrescriptionDetails = () => {
     { selectedPrescription: [], dosage: '', durationNumber: '', duration: '', m: false, a: false, e: false, n: false },
     { selectedPrescription: [], dosage: '', durationNumber: '', duration: '', m: false, a: false, e: false, n: false },
   ]);
-  
+
   const [uploadedImages, setUploadedImages] = useState([]);
   const [selectedTests, setSelectedTests] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -291,18 +291,30 @@ const PrescriptionDetails = () => {
   });
   const [branchCode, setBranchCode] = useState('');
 
+  // ADD: New state to track loaded data separately
+  const [loadedData, setLoadedData] = useState({
+    diagnosis: [],
+    complaints: [],
+    findings: [],
+    procedures: [],
+    prescriptions: [],
+    plans: { plan1: '', plan2: '', plan3: '' },
+    tests: [],
+    nextVisit: null
+  });
+
   const handleSelectDiagnosis = (diagnosis) => setSelectedDiagnosis(diagnosis);
-  const handleSelectComplaints = (complaints) => {setSelectedComplaints(complaints);};
+  const handleSelectComplaints = (complaints) => { setSelectedComplaints(complaints); };
   const handleSelectfindings = (findings) => setSelectedFindings(findings);
   const handleSelectprocedure = (procedure) => setSelectedprocedure(procedure);
   const handleSelectTests = (tests) => setSelectedTests(tests);
   const handleDateChange = (date) => setSelectedDate(date);
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   const formatDate = (date) => {
     if (!(date instanceof Date) || isNaN(date.getTime())) {
       return 'Invalid Date';
     }
-    
+
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
@@ -314,54 +326,54 @@ const PrescriptionDetails = () => {
   const [medicineOptions, setMedicineOptions] = useState([]);
   const [vital, setVital] = useState([]);
 
-useEffect(() => {
-  const code = Cookies.get('branch_code');
-  if (code) {
-    setBranchCode(code);
-    console.log('Branch code retrieved from cookies:', code);
-  } else {
-    console.warn('Branch code not found in cookies');
-  }
-}, []);
+  useEffect(() => {
+    const code = localStorage.getItem("selectedBranch")
+    if (code) {
+      setBranchCode(code)
+      console.log("Branch code retrieved from localStorage:", code)
+    } else {
+      console.warn("Branch code not found in localStorage")
+    }
+  }, [])
 
-useEffect(() => {
-  if (!branchCode) return;
+  useEffect(() => {
+    if (!branchCode) return;
 
-  axios.get(`${Cosmetologybaseurl}pharmacy/data/`, {
-    params: { branch_code: branchCode }
-  })
-    .then(response => {
-      const medicineData = response.data.map(medicine => ({
-        label: medicine.medicine_name,
-        category: medicine.medicine_category,
-        fullData: medicine
-      }));
-      setMedicineOptions(medicineData);
+    axios.get(`${Cosmetologybaseurl}pharmacy/data/`, {
+      params: { branch_code: branchCode }
     })
-    .catch(error => {
-      console.error('Error fetching medicine names:', error);
-    });
-}, [branchCode]);
+      .then(response => {
+        const medicineData = response.data.map(medicine => ({
+          label: medicine.medicine_name,
+          category: medicine.medicine_category,
+          fullData: medicine
+        }));
+        setMedicineOptions(medicineData);
+      })
+      .catch(error => {
+        console.error('Error fetching medicine names:', error);
+      });
+  }, [branchCode]);
 
-const shouldHideDosage = (selectedPrescription) => {
-  if (!selectedPrescription || selectedPrescription.length === 0) return false;
-  
-  const selectedMedicine = selectedPrescription[0];
-  if (selectedMedicine.category) {
-    return selectedMedicine.category === 'Topicals';
-  }
-  
-  const matchedMedicine = medicineOptions.find(option => 
-    option.label.toLowerCase() === selectedMedicine.label.toLowerCase()
-  );
-  return matchedMedicine && matchedMedicine.category === 'Topicals';
-};
+  const shouldHideDosage = (selectedPrescription) => {
+    if (!selectedPrescription || selectedPrescription.length === 0) return false;
+
+    const selectedMedicine = selectedPrescription[0];
+    if (selectedMedicine.category) {
+      return selectedMedicine.category === 'Topicals';
+    }
+
+    const matchedMedicine = medicineOptions.find(option =>
+      option.label.toLowerCase() === selectedMedicine.label.toLowerCase()
+    );
+    return matchedMedicine && matchedMedicine.category === 'Topicals';
+  };
 
   useEffect(() => {
     if (!patientUID || !branchCode) return;
 
     axios.get(`${Cosmetologybaseurl}vitalform/`, {
-      params: { 
+      params: {
         patientUID: patientUID,
         branch_code: branchCode
       }
@@ -427,74 +439,29 @@ const shouldHideDosage = (selectedPrescription) => {
     }));
   };
 
-  const [images, setImages] = useState([]);
-  const [message, setMessage] = useState('');
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    const uploaded = files.map((file) => ({
-      src: URL.createObjectURL(file),
-      alt: file.name,
-    }));
-    setUploadedImages(prevImages => [...prevImages, ...uploaded]);
-    setImages(prevImages => [...prevImages, ...files]);
-  };
+  const [summaryData, setSummaryData] = useState(null);
 
-  const handleRemoveImage = (indexToRemove) => {
-    setUploadedImages(prevImages =>
-      prevImages.filter((_, index) => index !== indexToRemove)
-    );
-    setImages(prevImages =>
-      prevImages.filter((_, index) => index !== indexToRemove)
-    );
-  };
-
-  const handleSubmit2 = async () => {
-    if (images.length === 0) {
-      setMessage('Please select at least one image');
-      return;
-    }
-    const formData = new FormData();
-    formData.append('patient_name', appointment.patientName+'_'+appointment.patientUID+'_'+appointmentDate);
-    formData.append('branch_code', branchCode);
-    images.forEach(image => formData.append('images', image));
-    try {
-      const response = await axios.post(`${Cosmetologybaseurl}upload_file/`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'X-Branch-Code': branchCode
-        },
-      });
-      toast.success('Images uploaded successfully');
-    } catch (error) {
-      toast.success('Failed to upload images');
-    }
-  };
-
-  const [summaryData, setSummaryData] = useState(null);  
   useEffect(() => {
     if (!patientUID || !appointmentDate || !branchCode) return;
 
     const fetchSummaryData = async () => {
       try {
         const response = await axios.get(`${Cosmetologybaseurl}summary_get/`, {
-          params: { 
-            patientUID, 
+          params: {
+            patientUID,
             appointmentDate,
-            branch_code: branchCode 
+            branch_code: branchCode
           },
-          headers: {
-            'X-Branch-Code': branchCode
-          }
         });
-  
+
         if (response.data && response.data.length > 0) {
           const data = response.data[0];
-          setSummaryData(data);  
+          setSummaryData(data);
           if (data.nextVisit) {
             const parsedDate = parseNextVisit(data.nextVisit);
             setSelectedDate(parsedDate);
           }
-  
+
           if (data.plans) {
             const plans = parsePlans(data.plans);
             setPlanDetails(plans);
@@ -506,10 +473,10 @@ const shouldHideDosage = (selectedPrescription) => {
         console.error("Error fetching summary data", error);
       }
     };
-  
+
     fetchSummaryData();
   }, [patientUID, appointmentDate, branchCode]);
-  
+
   const parseNextVisit = (nextVisit) => {
     try {
       const [day, month, year] = nextVisit.split('/');
@@ -519,44 +486,44 @@ const shouldHideDosage = (selectedPrescription) => {
       return null;
     }
   };
-  
+
   useEffect(() => {
     if (summaryData && summaryData.prescription) {
       const parsedPrescriptions = parsePrescriptions(summaryData.prescription);
       setPrescriptionInputs(parsedPrescriptions);
     }
-  }, [summaryData]);  
+  }, [summaryData]);
 
-const parsePrescriptions = (prescriptionString) => {
-  if (!prescriptionString) return [];
+  const parsePrescriptions = (prescriptionString) => {
+    if (!prescriptionString) return [];
 
-  const prescriptionLines = prescriptionString.split('\n').filter(line => line.trim() !== '');
-  
-  return prescriptionLines.map((prescriptionLine) => {
-    const parts = prescriptionLine.split(' - ');
-    
-    const prescriptionName = parts[0]?.replace('Prescription:', '').trim() || '';
-    
-    const dosage = parts[1]?.replace('Dosage:', '').trim() || '';
-    
-    const timingPart = parts[2]?.trim() || '';
-    
-    const durationPartIndex = parts.findIndex(part => part.includes('Duration:'));
-    const durationPart = durationPartIndex !== -1 ? parts[durationPartIndex].replace('Duration:', '').trim() : '';
-    const durationParts = durationPart.split(' ');
-    
-    return {
-      selectedPrescription: [{ label: prescriptionName }],
-      dosage: dosage,
-      m: timingPart.includes('M'),
-      a: timingPart.includes('A'),
-      e: timingPart.includes('E'),
-      n: timingPart.includes('N'),
-      durationNumber: durationParts[0] || '',
-      duration: durationParts[1] || '',
-    };
-  });
-};
+    const prescriptionLines = prescriptionString.split('\n').filter(line => line.trim() !== '');
+
+    return prescriptionLines.map((prescriptionLine) => {
+      const parts = prescriptionLine.split(' - ');
+
+      const prescriptionName = parts[0]?.replace('Prescription:', '').trim() || '';
+
+      const dosage = parts[1]?.replace('Dosage:', '').trim() || '';
+
+      const timingPart = parts[2]?.trim() || '';
+
+      const durationPartIndex = parts.findIndex(part => part.includes('Duration:'));
+      const durationPart = durationPartIndex !== -1 ? parts[durationPartIndex].replace('Duration:', '').trim() : '';
+      const durationParts = durationPart.split(' ');
+
+      return {
+        selectedPrescription: [{ label: prescriptionName }],
+        dosage: dosage,
+        m: timingPart.includes('M'),
+        a: timingPart.includes('A'),
+        e: timingPart.includes('E'),
+        n: timingPart.includes('N'),
+        durationNumber: durationParts[0] || '',
+        duration: durationParts[1] || '',
+      };
+    });
+  };
 
   const parsePlans = (plansString) => {
     if (!plansString) return { plan1: '', plan2: '', plan3: '' };
@@ -569,133 +536,170 @@ const parsePrescriptions = (prescriptionString) => {
     };
   };
 
-const handleSubmit = async () => {
-  try {
-    const userName = localStorage.getItem("userName") || "Unknown";
+  // UPDATED: Modified useEffect to store loaded data separately and merge with current input
+  useEffect(() => {
+    if (summaryData) {
+      const newLoadedData = {
+        diagnosis: [],
+        complaints: [],
+        findings: [],
+        procedures: [],
+        prescriptions: [],
+        plans: { plan1: '', plan2: '', plan3: '' },
+        tests: [],
+        nextVisit: null
+      };
 
-    const validPrescriptions = prescriptionInputs.filter(input => 
-      input.selectedPrescription?.length > 0 && 
-      input.selectedPrescription[0]?.label?.trim() !== ''
-    );
-
-    const validPlans = Object.entries(planDetails)
-      .filter(([key, value]) => value && value.trim() !== '')
-      .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
-      .join('\n');
-
-    const summaryData = {
-      patientName,
-      patientUID,
-      mobileNumber,
-      appointmentDate,
-      branch_code: branchCode,
-      patient_handledby: userName,
-      diagnosis: selectedDiagnosis.map(d => d.diagnosis).join(', '),
-      complaints: JSON.stringify(
-        selectedComplaints.map(input => ({
-          complaints: input.selectedComplaints.map(c => c.complaints).join(', '),
-          duration: input.duration,
-          durationUnit: input.durationUnit,
-        }))
-      ),
-      findings: selectedfindings.map(f => f.findings).join(', '),
-      prescription: validPrescriptions.map(input => {
-        const times = ['M', 'A', 'E', 'N']
-          .map(time => (input[time.toLowerCase()] ? time : ''))
-          .filter(Boolean)
-          .join(' ');
-        const totalDosage = calculateTotalDosage(input);
-        return `Prescription: ${input.selectedPrescription?.map(p => p.label).join(', ')} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration} - Total Dosage: ${totalDosage}`;
-      }).join('\n'),
-      plans: validPlans,
-      tests: selectedTests && selectedTests.length > 0 ? selectedTests.map(test => test.test).join(', ') : '',
-      uploadedImages: uploadedImages.map(img => ({ src: img.src, alt: img.alt })),
-      nextVisit: selectedDate ? formatDate(selectedDate) : null,
-      vital: JSON.stringify({
-        height: vital?.height,
-        weight: vital?.weight,
-        pulseRate: vital?.pulseRate,
-        bloodPressure: vital?.bloodPressure,
-      }),
-      proceduresList: selectedprocedure.map(proc => ({
-        procedure: proc.selectedProcedures.map(p => p.procedure).join(', '),
-        date: proc.selectedDate ? formatDate(proc.selectedDate) : '',
-      }))
-        .map(proc => `Procedure: ${proc.procedure} - Date: ${proc.date}`)
-        .join('\n'),
-    };
-
-    const getResponse = await axios.get(`${Cosmetologybaseurl}summary_get/`, {
-      params: { 
-        patientUID, 
-        appointmentDate,
-        branch_code: branchCode 
-      },
-      headers: {
-        'X-Branch-Code': branchCode
+      // Store loaded diagnosis
+      if (summaryData.diagnosis) {
+        newLoadedData.diagnosis = summaryData.diagnosis.split(', ').map(d => ({ diagnosis: d.trim() }));
       }
-    });
 
-    if (getResponse.data && getResponse.data.length > 0) {
-      const patchResponse = await axios.patch(`${Cosmetologybaseurl}summary/post/`, summaryData, {
-        headers: {
-          'X-Branch-Code': branchCode
+      // Store loaded complaints
+      if (summaryData.complaints && summaryData.complaints !== '[]') {
+        try {
+          const parsedComplaints = JSON.parse(summaryData.complaints);
+          newLoadedData.complaints = parsedComplaints;
+        } catch (error) {
+          console.error("Error parsing complaints:", error);
         }
-      });
-      toast.success(`Updated Successfully`);
-    } else {
-      const postResponse = await axios.post(`${Cosmetologybaseurl}summary/post/`, summaryData, {
-        headers: {
-          'X-Branch-Code': branchCode
-        }
-      });
-      toast.success(`Saved Successfully`);
+      }
+
+      // Store loaded findings
+      if (summaryData.findings) {
+        newLoadedData.findings = summaryData.findings.split(', ').map(f => ({ findings: f.trim() }));
+      }
+
+      // Store loaded procedures
+      if (summaryData.proceduresList) {
+        newLoadedData.procedures = summaryData.proceduresList.split('\n').map(line => {
+          const procedureMatch = line.match(/Procedure: (.*?) - Date:/);
+          const dateMatch = line.match(/Date: (.*)/);
+          return {
+            selectedProcedures: procedureMatch ? [{ procedure: procedureMatch[1].trim() }] : [],
+            selectedDate: dateMatch ? new Date(dateMatch[1].split('/').reverse().join('-')) : null,
+          };
+        });
+      }
+
+      // Store loaded prescriptions
+      if (summaryData.prescription) {
+        newLoadedData.prescriptions = parsePrescriptions(summaryData.prescription);
+      }
+
+      // Store loaded plans
+      if (summaryData.plans) {
+        newLoadedData.plans = parsePlans(summaryData.plans);
+      }
+
+      // Store loaded tests
+      if (summaryData.tests) {
+        newLoadedData.tests = summaryData.tests.split(', ').map(t => ({ test: t.trim() }));
+      }
+
+      // Store loaded next visit
+      if (summaryData.nextVisit) {
+        newLoadedData.nextVisit = parseNextVisit(summaryData.nextVisit);
+      }
+
+      setLoadedData(newLoadedData);
+
+      // Only populate input fields if they are currently empty
+      if (selectedDiagnosis.length === 0 && newLoadedData.diagnosis.length > 0) {
+        setSelectedDiagnosis(newLoadedData.diagnosis);
+      }
+      if (selectedComplaints.length === 0 && newLoadedData.complaints.length > 0) {
+        setSelectedComplaints(newLoadedData.complaints);
+      }
+      if (selectedfindings.length === 0 && newLoadedData.findings.length > 0) {
+        setSelectedFindings(newLoadedData.findings);
+      }
+      if (selectedprocedure.length === 0 && newLoadedData.procedures.length > 0) {
+        setSelectedprocedure(newLoadedData.procedures);
+      }
+      if (selectedTests.length === 0 && newLoadedData.tests.length > 0) {
+        setSelectedTests(newLoadedData.tests);
+      }
     }
-  } catch (error) {
-    console.error('Error submitting data', error);
-  }
-};
+  }, [summaryData]);
 
-  const [pdfFiles, setPdfFiles] = useState([]);
-  const [uploadedPdfs, setUploadedPdfs] = useState([]);
-  const handleFileChange2 = (e) => {
-    const files = Array.from(e.target.files);
-    const uploaded = files.map((file) => ({
-      name: file.name,
-    }));
-    setUploadedPdfs(prevPdfs => [...prevPdfs, ...uploaded]);
-    setPdfFiles(prevPdfs => [...prevPdfs, ...files]);
-  };
-
-  const handleRemoveFile = (indexToRemove) => {
-    setUploadedPdfs(prevPdfs =>
-      prevPdfs.filter((_, index) => index !== indexToRemove)
-    );
-    setPdfFiles(prevPdfs =>
-      prevPdfs.filter((_, index) => index !== indexToRemove)
-    );
-  };
-
-  const handleSubmit3 = async () => {
-    if (pdfFiles.length === 0) {
-      setMessage('Please select at least one PDF file');
-      return;
-    }
-    const formData = new FormData();
-    formData.append('patient_name', `${appointment.patientName}_${appointment.patientUID}_${appointmentDate}`);
-    formData.append('branch_code', branchCode);
-    pdfFiles.forEach(pdf => formData.append('pdf_files', pdf));
-
+  const handleSubmit = async () => {
     try {
-      const response = await axios.post(`${Cosmetologybaseurl}upload_pdf/`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'X-Branch-Code': branchCode
+      const userName = localStorage.getItem("userName") || "Unknown";
+
+      const validPrescriptions = prescriptionInputs.filter(input =>
+        input.selectedPrescription?.length > 0 &&
+        input.selectedPrescription[0]?.label?.trim() !== ''
+      );
+
+      const validPlans = Object.entries(planDetails)
+        .filter(([key, value]) => value && value.trim() !== '')
+        .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
+        .join('\n');
+
+      const summaryDataToSend = {
+        patientName,
+        patientUID,
+        mobileNumber,
+        appointmentDate,
+        branch_code: branchCode,
+        patient_handledby: userName,
+        diagnosis: selectedDiagnosis.map(d => d.diagnosis).join(', '),
+        complaints: JSON.stringify(
+          selectedComplaints.map(input => ({
+            complaints: input.selectedComplaints.map(c => c.complaints).join(', '),
+            duration: input.duration,
+            durationUnit: input.durationUnit,
+          }))
+        ),
+        findings: selectedfindings.map(f => f.findings).join(', '),
+        prescription: validPrescriptions.map(input => {
+          const times = ['M', 'A', 'E', 'N']
+            .map(time => (input[time.toLowerCase()] ? time : ''))
+            .filter(Boolean)
+            .join(' ');
+          const totalDosage = calculateTotalDosage(input);
+          return `Prescription: ${input.selectedPrescription?.map(p => p.label).join(', ')} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration} - Total Dosage: ${totalDosage}`;
+        }).join('\n'),
+        plans: validPlans,
+        tests: selectedTests && selectedTests.length > 0 ? selectedTests.map(test => test.test).join(', ') : '',
+        uploadedImages: uploadedImages.map(img => ({ src: img.src, alt: img.alt })),
+        nextVisit: selectedDate ? formatDate(selectedDate) : null,
+        vital: JSON.stringify({
+          height: vital?.height,
+          weight: vital?.weight,
+          pulseRate: vital?.pulseRate,
+          bloodPressure: vital?.bloodPressure,
+        }),
+        proceduresList: selectedprocedure.map(proc => ({
+          procedure: proc.selectedProcedures.map(p => p.procedure).join(', '),
+          date: proc.selectedDate ? formatDate(proc.selectedDate) : '',
+        }))
+          .map(proc => `Procedure: ${proc.procedure} - Date: ${proc.date}`)
+          .join('\n'),
+      };
+
+      const getResponse = await axios.get(`${Cosmetologybaseurl}summary_get/`, {
+        params: {
+          patientUID,
+          appointmentDate,
+          branch_code: branchCode
         },
       });
-      toast.success('PDFs uploaded successfully!');
+
+      if (getResponse.data && getResponse.data.length > 0) {
+        const patchResponse = await axios.patch(`${Cosmetologybaseurl}summary/post/`, summaryDataToSend, {
+        });
+        toast.success(`Updated Successfully`);
+      } else {
+        const postResponse = await axios.post(`${Cosmetologybaseurl}summary/post/`, summaryDataToSend, {
+
+        });
+        toast.success(`Saved Successfully`);
+      }
     } catch (error) {
-      toast.error('Failed to upload PDFs');
+      console.error('Error submitting data', error);
+      toast.error('Error submitting data');
     }
   };
 
@@ -703,7 +707,6 @@ const handleSubmit = async () => {
     e.preventDefault();
     try {
       await handleSubmit();
-      await handleSubmit2();
     } catch (error) {
       toast.error('Error Submitting Data');
     }
@@ -711,135 +714,174 @@ const handleSubmit = async () => {
 
   const summaryRef = useRef(null);
 
-const getSummaryDetails = () => {
-  const validPrescriptions = prescriptionInputs.filter(input => 
-    input.selectedPrescription?.length > 0 && 
-    input.selectedPrescription[0]?.label?.trim() !== ''
-  );
+  // UPDATED: Helper function to merge loaded data with current input data
+  const getMergedData = () => {
+    return {
+      diagnosis: [...loadedData.diagnosis, ...selectedDiagnosis.filter(item => 
+        !loadedData.diagnosis.some(loaded => loaded.diagnosis === item.diagnosis)
+      )],
+      complaints: [...loadedData.complaints, ...selectedComplaints.filter(item => 
+        !loadedData.complaints.some(loaded => 
+          JSON.stringify(loaded) === JSON.stringify(item)
+        )
+      )],
+      findings: [...loadedData.findings, ...selectedfindings.filter(item => 
+        !loadedData.findings.some(loaded => loaded.findings === item.findings)
+      )],
+      procedures: [...loadedData.procedures, ...selectedprocedure.filter(item => 
+        !loadedData.procedures.some(loaded => 
+          JSON.stringify(loaded) === JSON.stringify(item)
+        )
+      )],
+      prescriptions: [...loadedData.prescriptions, ...prescriptionInputs.filter(input =>
+        input.selectedPrescription?.length > 0 &&
+        input.selectedPrescription[0]?.label?.trim() !== '' &&
+        !loadedData.prescriptions.some(loaded => 
+          loaded.selectedPrescription[0]?.label === input.selectedPrescription[0]?.label
+        )
+      )],
+      tests: [...loadedData.tests, ...selectedTests.filter(item => 
+        !loadedData.tests.some(loaded => loaded.test === item.test)
+      )],
+      plans: {
+        plan1: planDetails.plan1 || loadedData.plans.plan1,
+        plan2: planDetails.plan2 || loadedData.plans.plan2,
+        plan3: planDetails.plan3 || loadedData.plans.plan3,
+      },
+      nextVisit: selectedDate || loadedData.nextVisit
+    };
+  };
 
-  const validPlans = Object.entries(planDetails)
-    .filter(([key, value]) => value && value.trim() !== '')
-    .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`);
+  // UPDATED: Modified getSummaryDetails function to use merged data
+  const getSummaryDetails = () => {
+    const mergedData = getMergedData();
 
-  const diagnosissummary = selectedDiagnosis.map((diagnosis) => (
-    <li key={diagnosis.id}>{diagnosis.diagnosis}</li>
-  ));
-  
-  const complaintssummary = selectedComplaints.map((input) => {
-    const complaintText = input.selectedComplaints.map(complaint => complaint.complaints).join(', ') || 'No complaint provided';
-    const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || 'N/A'}` : '';
-    return <li key={input.id}>{complaintText}{duration}</li>;
-  });
-  
-  const findingssummary = selectedfindings.map((findings) => (
-    <li key={findings.id}>{findings.findings}</li>
-  ));
-  
-  const proceduresummary = selectedprocedure.map((procedure, index) => (
-    <li key={index}>
-      {procedure.selectedProcedures.map(p => p.procedure).join(', ')} - Date: {procedure.selectedDate ? formatDate(new Date(procedure.selectedDate)) : 'None'}
-    </li>
-  ));
+    const diagnosissummary = mergedData.diagnosis.map((diagnosis, index) => {
+      const cleanDiagnosis = diagnosis.diagnosis?.replace(/^[.\s\n]+/, '').trim(); // remove leading dot/newlines
+      return <li key={index}>{cleanDiagnosis}</li>;
+    });
 
-  const prescriptionSummary = validPrescriptions.map((input, index) => {
-    const times = ['M', 'A', 'E', 'N'].map(time => input[time.toLowerCase()] ? time : '').filter(Boolean).join(' ');
-    return `${index + 1}. ${input.selectedPrescription?.map(p => p.label).join(', ')} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration}`;
-  }).join('\n');
+    const complaintssummary = mergedData.complaints.map((input, index) => {
+      const complaintText = input.selectedComplaints ? 
+        input.selectedComplaints.map(complaint => complaint.complaints).join(', ') : 
+        'No complaint provided';
+      const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || 'N/A'}` : '';
+      return <li key={index}>{complaintText}{duration}</li>;
+    });
 
-  const testsSummary = selectedTests.map(test => test.test).join(', ');
-  const nextVisitSummary = selectedDate ? formatDate(selectedDate) : ' ';
+    const findingssummary = mergedData.findings.map((findings, index) => (
+      <li key={index}>{findings.findings}</li>
+    ));
 
-  const summaryContent = (
-    <SummaryDetailsContainer>
-      <SummaryTitle>Summary</SummaryTitle>
-      
-      <PatientDetailsRow>
-        <PatientDetailsColumn>
-          <div><strong>NAME:</strong> {appointment.patientName}</div>
-          <div><strong>SEX:</strong> {appointment.gender}</div>
-        </PatientDetailsColumn>
-        <PatientDetailsColumn>
-          <div><strong>MOBILE:</strong> {appointment.mobileNumber}</div>
-          <div><strong>DATE:</strong> {appointmentDate}</div>
-        </PatientDetailsColumn>
-      </PatientDetailsRow>
-      <Divider />
+    const proceduresummary = mergedData.procedures.map((procedure, index) => (
+      <li key={index}>
+        {procedure.selectedProcedures.map(p => p.procedure).join(', ')} - Date: {procedure.selectedDate ? formatDate(new Date(procedure.selectedDate)) : 'None'}
+      </li>
+    ));
 
-      {selectedDiagnosis.length > 0 && (
-        <>
-          <SummaryItemTitle>Diagnosis</SummaryItemTitle>
-          <ul>{diagnosissummary}</ul>
-          <Divider />
-        </>
-      )}
+    const prescriptionSummary = mergedData.prescriptions.map((input, index) => {
+      const times = ['M', 'A', 'E', 'N'].map(time => input[time.toLowerCase()] ? time : '').filter(Boolean).join(' ');
+      return `${index + 1}. ${input.selectedPrescription?.map(p => p.label).join(', ')} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration}`;
+    }).join('\n');
 
-      {selectedComplaints.length > 0 && (
-        <>
-          <SummaryItemTitle>Complaints</SummaryItemTitle>
-          <ul>{complaintssummary}</ul>
-          <Divider />
-        </>
-      )}
+    const validPlans = Object.entries(mergedData.plans)
+      .filter(([key, value]) => value && value.trim() !== '')
+      .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`);
 
-      {selectedfindings.length > 0 && (
-        <>
-          <SummaryItemTitle>Findings</SummaryItemTitle>
-          <ul>{findingssummary}</ul>
-          <Divider />
-        </>
-      )}
+    const testsSummary = mergedData.tests.map(test => test.test).join(', ');
+    const nextVisitSummary = mergedData.nextVisit ? formatDate(mergedData.nextVisit) : ' ';
 
-      {selectedprocedure.length > 0 && (
-        <>
-          <SummaryItemTitle>Procedures</SummaryItemTitle>
-          <ul>{proceduresummary}</ul>
-          <Divider />
-        </>
-      )}
+    const summaryContent = (
+      <SummaryDetailsContainer>
+        <SummaryTitle>Summary</SummaryTitle>
 
-      {validPrescriptions.length > 0 && (
-        <>
-          <SummaryItemTitle>Prescription</SummaryItemTitle>
-          <ul>
-            <li>{prescriptionSummary}</li>
-          </ul>
-          <Divider />
-        </>
-      )}
+        <PatientDetailsRow>
+          <PatientDetailsColumn>
+            <div><strong>NAME:</strong> {appointment.patientName}</div>
+            <div><strong>SEX:</strong> {appointment.gender}</div>
+          </PatientDetailsColumn>
+          <PatientDetailsColumn>
+            <div><strong>MOBILE:</strong> {appointment.mobileNumber}</div>
+            <div><strong>DATE:</strong> {appointmentDate}</div>
+          </PatientDetailsColumn>
+        </PatientDetailsRow>
+        <Divider />
 
-      {validPlans.length > 0 && (
-        <>
-          <SummaryItemTitle>Plans</SummaryItemTitle>
-          <ul>
-            {validPlans.map((plan, index) => (
-              <li key={index}>{plan}</li>
-            ))}
-          </ul>
-          <Divider />
-        </>
-      )}
+        {mergedData.diagnosis.length > 0 && (
+          <>
+            <SummaryItemTitle>Diagnosis</SummaryItemTitle>
+            <ul>{diagnosissummary}</ul>
+            <Divider />
+          </>
+        )}
 
-      {selectedTests.length > 0 && (
-        <>
-          <SummaryItemTitle>Tests</SummaryItemTitle>
-          <ul>
-            <li>{testsSummary}</li>
-          </ul>
-          <Divider />
-        </>
-      )}
+        {mergedData.complaints.length > 0 && (
+          <>
+            <SummaryItemTitle>Complaints</SummaryItemTitle>
+            <ul>{complaintssummary}</ul>
+            <Divider />
+          </>
+        )}
 
-      {selectedDate && (
-        <>
-          <SummaryItemTitle>Next Visit</SummaryItemTitle>
-          <ul>
-            <li>{nextVisitSummary}</li>
-          </ul>
-          <Divider />
-        </>
-      )}
-    </SummaryDetailsContainer>
-  );
+        {mergedData.findings.length > 0 && (
+          <>
+            <SummaryItemTitle>Findings</SummaryItemTitle>
+            <ul>{findingssummary}</ul>
+            <Divider />
+          </>
+        )}
+
+        {mergedData.procedures.length > 0 && (
+          <>
+            <SummaryItemTitle>Procedures</SummaryItemTitle>
+            <ul>{proceduresummary}</ul>
+            <Divider />
+          </>
+        )}
+
+        {mergedData.prescriptions.length > 0 && (
+          <>
+            <SummaryItemTitle>Prescription</SummaryItemTitle>
+            <ul>
+              <li>{prescriptionSummary}</li>
+            </ul>
+            <Divider />
+          </>
+        )}
+
+        {validPlans.length > 0 && (
+          <>
+            <SummaryItemTitle>Plans</SummaryItemTitle>
+            <ul>
+              {validPlans.map((plan, index) => (
+                <li key={index}>{plan}</li>
+              ))}
+            </ul>
+            <Divider />
+          </>
+        )}
+
+        {mergedData.tests.length > 0 && (
+          <>
+            <SummaryItemTitle>Tests</SummaryItemTitle>
+            <ul>
+              <li>{testsSummary}</li>
+            </ul>
+            <Divider />
+          </>
+        )}
+
+        {mergedData.nextVisit && (
+          <>
+            <SummaryItemTitle>Next Visit</SummaryItemTitle>
+            <ul>
+              <li>{nextVisitSummary}</li>
+            </ul>
+            <Divider />
+          </>
+        )}
+      </SummaryDetailsContainer>
+    );
 
     const convertToBase64 = (url, callback) => {
       const img = new Image();

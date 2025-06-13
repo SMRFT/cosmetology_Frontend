@@ -13,7 +13,6 @@ import { faCalendarDay, faCalendarWeek, faCalendarAlt } from "@fortawesome/free-
 import { FaDownload, FaFilePdf } from "react-icons/fa"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import Cookies from "js-cookie"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
@@ -30,13 +29,11 @@ const BillingReport = () => {
   const [selectedInterval, setSelectedInterval] = useState("day")
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedWeek, setSelectedWeek] = useState(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editableData, setEditableData] = useState({})
-  const [medicineOptions, setMedicineOptions] = useState([])
   const [branchCode, setBranchCode] = useState("")
   const [userRole, setUserRole] = useState("")
   const navigate = useNavigate()
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
   const getReportHeading = (interval) => {
     switch (interval) {
       case "day":
@@ -51,14 +48,14 @@ const BillingReport = () => {
   }
 
   useEffect(() => {
-    const code = Cookies.get("branch_code")
-    const role = Cookies.get("userRole") || localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
+    const code = localStorage.getItem("selectedBranch")
+    const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
 
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
+      console.log("Branch code retrieved from localStorage:", code)
     } else {
-      console.warn("Branch code not found in cookies")
+      console.warn("Branch code not found in localStorage")
     }
 
     if (role) {
@@ -71,10 +68,20 @@ const BillingReport = () => {
     if (selectedInterval === "week" && !selectedWeek) {
       setSelectedWeek(startOfWeek(selectedDate, { weekStartsOn: 1 }))
     }
-    fetchData(selectedInterval)
   }, [selectedInterval, selectedDate, selectedWeek])
 
+  useEffect(() => {
+    if (branchCode) {
+      fetchData(selectedInterval)
+    }
+  }, [branchCode, selectedInterval, selectedDate, selectedWeek])
+
   const fetchData = async (interval) => {
+    if (!branchCode) {
+      console.warn("Branch code is not available, skipping data fetch.");
+      return;
+    }
+
     let dateParam = ""
     if (interval === "day") {
       dateParam = format(selectedDate, "yyyy-MM-dd")
@@ -87,28 +94,28 @@ const BillingReport = () => {
 
     try {
       const response = await axios.get(
-        `${Cosmetologybaseurl}billing/${interval}/?appointmentDate=${dateParam}&branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}billing/${interval}/`,
         {
-          headers: {
-            "X-Branch-Code": branchCode,
+          params: {
+            appointmentDate: dateParam,
+            branch_code: branchCode,
           },
           withCredentials: true,
         },
       )
       setBillingData(response.data.billing_data)
-      const initialEditableData = response.data.billing_data.reduce((acc, item) => {
-        acc[item.patientUID] = item.table_data
-        return acc
-      }, {})
-      setEditableData(initialEditableData)
     } catch (error) {
       console.error("Error fetching data:", error)
+      setBillingData(null);
     }
   }
 
   const handleIntervalChange = (interval) => {
     setSelectedInterval(interval)
     setSelectedWeek(null)
+    if (interval === "day" || interval === "month") {
+      setSelectedDate(new Date());
+    }
   }
 
   const handleDateChange = (date) => {
@@ -122,17 +129,22 @@ const BillingReport = () => {
   const getWeeksInMonth = (date) => {
     const startOfMonthDate = startOfMonth(date)
     const weeks = []
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       const weekStart = addWeeks(startOfMonthDate, i)
-      if (weekStart.getMonth() === date.getMonth()) {
+      if (weekStart.getMonth() === date.getMonth() || (i > 0 && format(weekStart, 'yyyy-MM') === format(date, 'yyyy-MM'))) {
         weeks.push(weekStart)
       }
     }
-    return weeks
+    return weeks.filter((week, index, self) =>
+      index === self.findIndex((t) => format(t, 'yyyy-MM-dd') === format(week, 'yyyy-MM-dd'))
+    );
   }
 
   const downloadCSV = () => {
-    if (!billingData) return
+    if (!billingData || billingData.length === 0) {
+      toast.warn("No data to download.");
+      return;
+    }
 
     const headers = [
       "Patient Name",
@@ -150,11 +162,11 @@ const BillingReport = () => {
     ]
     const rows = billingData.flatMap((item) =>
       item.table_data.map((data, index) => [
-        index === 0 ? item.patientName : "",
-        data.particulars,
-        item.billNumber,
-        item.appointmentDate,
-        item.patient_handledby,
+        index === 0 ? `"${item.patientName}"` : "",
+        `"${data.particulars}"`,
+        `"${item.billNumber}"`,
+        `"${item.appointmentDate}"`,
+        `"${item.patient_handledby}"`,
         data.qty,
         data.price,
         data.CGST_percentage,
@@ -165,7 +177,17 @@ const BillingReport = () => {
       ]),
     )
 
-    rows.push(["", "", "", "", "", "", "", "Grand Total", grandTotal.toFixed(2)])
+    const currentGrandTotal = (billingData || []).reduce((sum, item) => {
+      return (
+        sum +
+        (item.table_data || []).reduce((innerSum, data) => {
+          const total = Number.parseFloat(data.total || 0)
+          return innerSum + (isNaN(total) ? 0 : total)
+        }, 0)
+      )
+    }, 0)
+
+    rows.push(["", "", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2), ""])
 
     const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
 
@@ -173,10 +195,12 @@ const BillingReport = () => {
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.setAttribute("download", `${getReportHeading(selectedInterval)}_${branchCode}.csv`)
+    link.setAttribute("download", `${getReportHeading(selectedInterval).replace(/\s/g, '_')}_${branchCode}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url);
+    toast.success("CSV downloaded successfully!");
   }
 
   const convertToBase64 = (url, callback) => {
@@ -192,13 +216,16 @@ const BillingReport = () => {
       const dataURL = canvas.toDataURL("image/png")
       callback(dataURL)
     }
-    img.onerror = (error) => console.error("Error converting image to Base64:", error)
+    img.onerror = (error) => {
+      console.error("Error converting image to Base64:", error);
+      toast.error("Failed to load PDF background image.");
+    }
   }
 
   const generatePharmacyPDF = (patientUID, billNumber) => {
     const patientData = billingData.find((item) => item.patientUID === patientUID && item.billNumber === billNumber)
     if (!patientData) {
-      toast.error("Patient data not found")
+      toast.error("Patient data not found for PDF generation.")
       return
     }
 
@@ -206,7 +233,6 @@ const BillingReport = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    // Select PDF background based on branch code without directly using branch names
     const backgroundImageMap = {
       SCC001: PDFMain1,
       SCC002: PDFMain2,
@@ -217,30 +243,28 @@ const BillingReport = () => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
       let startY = 85
 
-      // Set font style for patient name - make it more prominent
       doc.setFont("helvetica", "bold")
       doc.setFontSize(14)
       doc.setTextColor(40, 40, 40)
       doc.text(`Patient: ${patientData.patientName.toUpperCase()}`, 16, startY)
 
-      // Patient details with better formatting
       doc.setFont("helvetica", "normal")
       doc.setFontSize(11)
       doc.text(`Patient UID: ${patientData.patientUID}`, 16, startY + 8)
       doc.text(`Bill Number: ${patientData.billNumber}`, 16, startY + 16)
+      doc.text(`Bill Date: ${patientData.appointmentDate}`, 16, startY + 24);
 
-      startY += 30
+      startY += 35
 
-      // Medicine Table
       const medicineTable = patientData.table_data.map((data) => [
         data.particulars,
         data.qty,
         `${data.price}`,
-        `${data.CGST_percentage}%`,
-        `${data.CGST_value}`,
-        `${data.SGST_percentage}%`,
-        `${data.SGST_value}`,
-        `${data.total}`,
+        `${data.CGST_percentage || 0}%`,
+        `${data.CGST_value || 0}`,
+        `${data.SGST_percentage || 0}%`,
+        `${data.SGST_value || 0}`,
+        `${data.total || 0}`,
       ])
 
       doc.autoTable({
@@ -259,29 +283,30 @@ const BillingReport = () => {
           textColor: [40, 40, 40],
         },
         margin: { left: 14, right: 14 },
+        didDrawPage: function(data) {
+        }
       })
 
-      // Total with better styling
       const total = patientData.table_data.reduce((sum, data) => sum + Number.parseFloat(data.total || 0), 0)
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(0, 100, 0)
       doc.text(`Total Amount: ${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
 
-      // Open in new window instead of auto-print
       const pdfBlob = doc.output("blob")
       const pdfUrl = URL.createObjectURL(pdfBlob)
       window.open(pdfUrl, "_blank")
+      toast.success("PDF generated successfully!");
     })
   }
 
   const handleDelete = async (patientUID, billNumber) => {
+    if (!window.confirm(`Are you sure you want to delete bill ${billNumber} for ${patientUID}?`)) {
+      return;
+    }
     try {
       await axios.delete(`${Cosmetologybaseurl}delete/billing/data/`, {
         data: { patientUID, billNumber, branch_code: branchCode },
-        headers: {
-          "X-Branch-Code": branchCode,
-        },
         withCredentials: true,
       })
       fetchData(selectedInterval)
@@ -289,102 +314,6 @@ const BillingReport = () => {
     } catch (error) {
       console.error("Error deleting data:", error)
       toast.error("Error deleting data.")
-    }
-  }
-
-  const toggleEditMode = () => {
-    setIsEditing(!isEditing)
-  }
-
-  const handleDataChange = async (patientUID, index, field, value) => {
-    const newEditableData = [...editableData[patientUID]]
-
-    if (field === "particulars") {
-      const price = await fetchMedicinePrice(value)
-      newEditableData[index] = {
-        ...newEditableData[index],
-        [field]: value,
-        price: price,
-        total: price * newEditableData[index].qty,
-      }
-    } else if (field === "qty") {
-      const price = newEditableData[index].price
-      newEditableData[index] = { ...newEditableData[index], [field]: value, total: value * price }
-    } else {
-      newEditableData[index] = { ...newEditableData[index], [field]: value }
-    }
-
-    setEditableData((prevData) => ({ ...prevData, [patientUID]: newEditableData }))
-  }
-
-  const fetchMedicineData = async () => {
-    try {
-      const response = await axios.get(`${Cosmetologybaseurl}pharmacy/data/?branch_code=${branchCode}`, {
-        headers: {
-          "X-Branch-Code": branchCode,
-        },
-        withCredentials: true,
-      })
-      setMedicineOptions(response.data)
-    } catch (error) {
-      console.error("Error fetching medicine data:", error)
-    }
-  }
-
-  useEffect(() => {
-    fetchMedicineData()
-  }, [branchCode])
-
-  const fetchMedicinePrice = async (medicine_name) => {
-    try {
-      const response = await axios.get(
-        `${Cosmetologybaseurl}pharmacy/medicine/${medicine_name}/price/?branch_code=${branchCode}`,
-        {
-          headers: {
-            "X-Branch-Code": branchCode,
-          },
-          withCredentials: true,
-        },
-      )
-      return response.data.price
-    } catch (error) {
-      console.error("Error fetching medicine price:", error)
-      return 0
-    }
-  }
-
-  const updateTotal = (patientUID, dataIndex, newQty, price) => {
-    const newTotal = newQty * price
-    setEditableData((prevData) => {
-      const newData = [...prevData[patientUID]]
-      newData[dataIndex] = { ...newData[dataIndex], qty: newQty, total: newTotal }
-      return { ...prevData, [patientUID]: newData }
-    })
-  }
-
-  const saveChanges = async (patientUID, appointmentDate) => {
-    try {
-      await axios.put(
-        `${Cosmetologybaseurl}update/billing/data/`,
-        {
-          patientUID: patientUID,
-          appointmentDate: appointmentDate,
-          table_data: editableData[patientUID],
-          branch_code: branchCode,
-        },
-        {
-          headers: {
-            "X-Branch-Code": branchCode,
-          },
-          withCredentials: true,
-        },
-      )
-      fetchData(selectedInterval)
-      toast.success("Data updated successfully")
-      toggleEditMode()
-    } catch (error) {
-      console.error("Error updating data:", error)
-      toast.error("Error updating data.")
     }
   }
 
@@ -398,17 +327,22 @@ const BillingReport = () => {
     )
   }, 0)
 
-  const renderActionButtons = (patientUID, billNumber) => (
+  const renderActionButtons = (item) => (
     <ActionButtonsContainer>
       <button
         title="Generate PDF"
         className="btn btn-primary me-2"
-        onClick={() => generatePharmacyPDF(patientUID, billNumber)}
+        onClick={() => generatePharmacyPDF(item.patientUID, item.billNumber)}
       >
         <FaFilePdf />
       </button>
       {userRole !== "Manager" && userRole !== "manager" && (
-        <button className="btn btn-danger" onClick={() => handleDelete(patientUID, billNumber)}>
+        // Only show delete if not Manager/manager
+        <button
+          title="Delete Bill"
+          className="btn btn-danger"
+          onClick={() => handleDelete(item.patientUID, item.billNumber)}
+        >
           Delete
         </button>
       )}
@@ -421,7 +355,7 @@ const BillingReport = () => {
       <Header>
         <h3 className="text-center mb-2">Billing Report</h3>
         <button title="Download Excel" onClick={downloadCSV}>
-          <FaDownload />
+          <FaDownload /> 
         </button>
       </Header>
       <IntervalSelector>
@@ -495,7 +429,7 @@ const BillingReport = () => {
                 selectedWeek && format(selectedWeek, "yyyy-MM-dd") === format(weekStart, "yyyy-MM-dd") ? "active" : ""
               }
             >
-              {`${index + 1} Week`}
+              {`Week ${index + 1}`}
             </WeekButton>
           ))}
         </WeekButtons>
@@ -505,8 +439,8 @@ const BillingReport = () => {
         {billingData && billingData.length > 0 ? (
           <Billing>
             <h5 className="text-center">{getReportHeading(selectedInterval)}</h5>
-            <table align="middle">
-              <MDBTableHead align="middle">
+            <table>
+              <MDBTableHead>
                 <tr>
                   <th>Patient Name</th>
                   <th>Bill Number</th>
@@ -515,63 +449,55 @@ const BillingReport = () => {
                   <th>Particulars</th>
                   <th>Quantity</th>
                   <th>Price</th>
-                  <th>CGST_percentage</th>
-                  <th>CGST_value</th>
-                  <th>SGST_percentage</th>
-                  <th>SGST_value</th>
+                  <th>CGST %</th>
+                  <th>CGST Value</th>
+                  <th>SGST %</th>
+                  <th>SGST Value</th>
                   <th>Total</th>
-                  <th>action</th>
+                  <th>Action</th>
                 </tr>
               </MDBTableHead>
               <MDBTableBody>
-                {billingData && billingData.length > 0 ? (
-                  billingData.map((item, index) => (
-                    <React.Fragment key={item.patientUID}>
-                      {item.table_data && item.table_data.length > 0 ? (
-                        item.table_data.map((data, dataIndex) => (
-                          <tr key={`${item.patientUID}-${dataIndex}`}>
-                            {dataIndex === 0 && (
-                              <td rowSpan={item.table_data.length}>{formatText(item.patientName)}</td>
-                            )}
-                            <td>{item.billNumber}</td>
-                            <td>{item.appointmentDate}</td>
-                            <td>{item.patient_handledby}</td>
-                            <td>{data.particulars}</td>
-                            <td>{data.qty}</td>
-                            <td>{data.price}</td>
-                            <td>{data.CGST_percentage}</td>
-                            <td>{data.CGST_value}</td>
-                            <td>{data.SGST_percentage}</td>
-                            <td>{data.SGST_value}</td>
-                            <td>{Number.parseFloat(data.total).toFixed(2)}</td>
-                            {dataIndex === 0 && (
-                              <td rowSpan={item.table_data.length}>
-                                {renderActionButtons(item.patientUID, item.billNumber)}
-                              </td>
-                            )}
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="12" className="text-center">
-                            No table data available
-                          </td>
+                {billingData.map((item) => (
+                  <React.Fragment key={item.patientUID}>
+                    {item.table_data && item.table_data.length > 0 ? (
+                      item.table_data.map((data, dataIndex) => (
+                        <tr key={`${item.patientUID}-${dataIndex}`}>
+                          {dataIndex === 0 && (
+                            <td rowSpan={item.table_data.length}>{formatText(item.patientName)}</td>
+                          )}
+                          <td>{item.billNumber}</td>
+                          <td>{item.appointmentDate}</td>
+                          <td>{item.patient_handledby}</td>
+                          <td>{data.particulars}</td>
+                          <td>{data.qty}</td>         
+                          <td>{data.price}</td>      
+                          <td>{data.CGST_percentage}</td> 
+                          <td>{data.CGST_value}</td>   
+                          <td>{data.SGST_percentage}</td> 
+                          <td>{data.SGST_value}</td>   
+                          <td>{Number.parseFloat(data.total || 0).toFixed(2)}</td>
+                          {dataIndex === 0 && (
+                            <td rowSpan={item.table_data.length}>
+                              {renderActionButtons(item)}
+                            </td>
+                          )}
                         </tr>
-                      )}
-                    </React.Fragment>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="12" className="text-center">
-                      No data available
-                    </td>
-                  </tr>
-                )}
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="13" className="text-center">
+                          No table data available
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
               </MDBTableBody>
 
               <tfoot>
                 <tr>
-                  <td colSpan="10" className="text-right">
+                  <td colSpan="11" className="text-right">
                     <strong>Grand Total</strong>
                   </td>
                   <td>
@@ -604,6 +530,7 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   position: relative;
+  }
 `
 
 const Content = styled.div`
@@ -619,6 +546,8 @@ const IntervalSelector = styled.div`
   justify-content: center;
   cursor: pointer;
   margin-top: -30px;
+  margin-bottom: 20px;
+  gap: 20px;
 `
 
 const ButtonGroup = styled.div`
@@ -643,6 +572,7 @@ const IntervalButton = styled.button`
   height: 50px;
   min-height: 40px;
   box-sizing: border-box;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 
   svg {
     cursor: inherit;
@@ -650,39 +580,84 @@ const IntervalButton = styled.button`
 
   &:hover {
     background-color: ${({ active }) => (active ? "#C85C8E" : "#f0f0f0")};
+    transform: translateY(-2px);
+    transition: all 0.2s ease-in-out;
   }
 `
 
 const DatePickerWrapper = styled.div`
   color: #C85C8E;
+  .react-datepicker-wrapper {
+    width: 100%;
+  }
+  .react-datepicker__input-container {
+    display: block;
+  }
 `
 
 const WeekButtons = styled.div`
   display: flex;
   justify-content: center;
   gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 `
 
 const WeekButton = styled.button`
   margin: 5px;
+  padding: 8px 15px;
+  border: 1px solid #C85C8E;
+  background-color: white;
+  color: #C85C8E;
+  border-radius: 5px;
+  cursor: pointer;
+  &:hover {
+    background-color: #f0f0f0;
+  }
   &.active {
-    background-color: #007bff;
+    background-color: #C85C8E;
     color: white;
+    border-color: #C85C8E;
   }
 `
 
 const Billing = styled.div`
   flex: 1;
   overflow-x: auto;
+
+  .text-right {
+    text-align: right;
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  input[type="number"], select.form-control {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
 `
 
 const Message = styled.div`
   text-align: center;
   font-size: 1.2rem;
   margin-bottom: 1rem;
+  color: #555;
+  padding: 20px;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 5px;
 `
 
-const CustomDateInput = styled.input`
+const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
+  <StyledCustomDateInput onClick={onClick} ref={ref} value={value} readOnly />
+));
+
+const StyledCustomDateInput = styled.input`
   border: none;
   padding: 8px;
   color: #C85C8E;
@@ -692,10 +667,49 @@ const CustomDateInput = styled.input`
   background-color: white;
   font-weight: bold;
   text-align: center;
-`
+  width: auto;
+  min-width: 120px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  &:hover {
+    border-color: #C85C8E;
+  }
+`;
 
 const ActionButtonsContainer = styled.div`
   display: flex;
   gap: 5px;
   align-items: center;
-`
+  justify-content: center;
+
+  button {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+
+    &.btn-primary {
+      background-color: #007bff;
+      color: white;
+      &:hover { background-color: #0056b3; }
+    }
+    &.btn-info { /* This button type is now removed, but keeping the style for completeness if other info buttons exist */
+      background-color: #17a2b8;
+      color: white;
+      &:hover { background-color: #117a8b; }
+    }
+    &.btn-success { /* This button type is now removed, but keeping the style for completeness if other success buttons exist */
+      background-color: #28a745;
+      color: white;
+      &:hover { background-color: #1e7e34; }
+    }
+    &.btn-danger {
+      background-color: #dc3545;
+      color: white;
+      &:hover { background-color: #bd2130; }
+    }
+  }
+`;

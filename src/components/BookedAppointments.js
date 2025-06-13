@@ -5,7 +5,6 @@ import styled from "styled-components"
 import { IoCall } from "react-icons/io5"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
-import Cookies from "js-cookie"
 import maleIcon from "./images/male-gender.png"
 import femaleIcon from "./images/femenine.png"
 import transgenderIcon from "./images/transgender.png"
@@ -24,15 +23,14 @@ function BookedAppointments() {
   const cardsPerPage = 8
 
   useEffect(() => {
-    const code = Cookies.get("branch_code")
+    const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
+      console.log("Branch code retrieved from localStorage:", code)
+      fetchAppointments(code)
     } else {
-      console.warn("Branch code not found in cookies")
+      console.warn("Branch code not found in localStorage")
     }
-
-    fetchAppointments()
     fetchDoctors()
   }, [])
 
@@ -41,7 +39,7 @@ function BookedAppointments() {
   }, [selectedDate, selectedDoctor, appointments])
 
   const fetchDoctors = () => {
-    const branchCode = Cookies.get("branch_code")
+    const branchCode = localStorage.getItem("selectedBranch")
     const url = branchCode
       ? `${Cosmetologybaseurl}get_doctors/?branch_code=${branchCode}`
       : `${Cosmetologybaseurl}get_doctors/`
@@ -61,7 +59,7 @@ function BookedAppointments() {
   }
 
   const fetchAppointments = () => {
-    const branchCode = Cookies.get("branch_code")
+    const branchCode = localStorage.getItem("selectedBranch")
     let url = `${Cosmetologybaseurl}AppointmentView/`
     const params = []
 

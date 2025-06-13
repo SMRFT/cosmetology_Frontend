@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Form, Container, Row, Col, Alert, Modal } from 'react-bootstrap';
-import axios from 'axios';
-import { LiaFileMedicalAltSolid } from "react-icons/lia";
-import './PatientForm.css';
-import styled from 'styled-components';
-import VitalForm from './VitalForm';
-import { purposeOfVisit } from './constant';
-import Cookies from 'js-cookie'; // Added import for cookies
-import maleIcon from './images/male-gender.png';
-import femaleIcon from './images/femenine.png';
-import transgenderIcon from './images/transgender.png';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+"use client"
+
+import { useState, useEffect } from "react"
+import { Form, Container, Row, Col, Modal } from "react-bootstrap"
+import axios from "axios"
+import { LiaFileMedicalAltSolid } from "react-icons/lia"
+import "./PatientForm.css"
+import styled from "styled-components"
+import VitalForm from "./VitalForm"
+import { purposeOfVisit } from "./constant"
+import maleIcon from "./images/male-gender.png"
+import femaleIcon from "./images/femenine.png"
+import transgenderIcon from "./images/transgender.png"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 
 const PatientForm = ({ patientData, onClose }) => {
   const [formData, setFormData] = useState({
@@ -25,54 +26,54 @@ const PatientForm = ({ patientData, onClose }) => {
     purposeOfVisit: "",
     customPurpose: "",
     address: "",
-  });
-  const [showModal, setShowModal] = useState(false);
-  const [patientUID, setPatientUID] = useState("");
-  const [branchCode, setBranchCode] = useState(''); // Added state for branch code
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  })
+  const [showModal, setShowModal] = useState(false)
+  const [patientUID, setPatientUID] = useState("")
+  const [branchCode, setBranchCode] = useState("") // Added state for branch code
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
-    // Get branch_code from cookies when component mounts
-    const code = Cookies.get('branch_code');
+    // Get branch_code from localStorage when component mounts
+    const code = localStorage.getItem("selectedBranch")
     if (code) {
-      setBranchCode(code);
-      console.log('Branch code retrieved from cookies:', code);
+      setBranchCode(code)
+      console.log("Branch code retrieved from localStorage:", code)
     } else {
-      console.warn('Branch code not found in cookies');
+      console.warn("Branch code not found in localStorage")
     }
-  }, []);
+  }, [])
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
+    const { name, value } = e.target
+    setFormData({ ...formData, [name]: value })
+  }
 
   const handleGenderSelect = (gender) => {
-    setFormData({ ...formData, gender });
-  };
+    setFormData({ ...formData, gender })
+  }
 
   const handlePurposeChange = (e) => {
     setFormData({
       ...formData,
       purposeOfVisit: e.target.value,
-      customPurpose: ''  // Clear custom purpose when selecting from dropdown
-    });
-  };
+      customPurpose: "", // Clear custom purpose when selecting from dropdown
+    })
+  }
 
   const handleCustomPurposeChange = (e) => {
     setFormData({
       ...formData,
       customPurpose: e.target.value,
-      purposeOfVisit: ''  // Clear dropdown selection when typing custom purpose
-    });
-  };
+      purposeOfVisit: "", // Clear dropdown selection when typing custom purpose
+    })
+  }
 
   // Store the custom purpose if typed, otherwise store the selected dropdown value
-  const finalPurposeOfVisit = formData.customPurpose || formData.purposeOfVisit;
+  const finalPurposeOfVisit = formData.customPurpose || formData.purposeOfVisit
 
   useEffect(() => {
     if (patientData) {
-      const isDropdownOption = purposeOfVisit.includes(patientData.purposeOfVisit);
-      
+      const isDropdownOption = purposeOfVisit.includes(patientData.purposeOfVisit)
+
       setFormData({
         patientUID: patientData.patientUID || "",
         patientName: patientData.patientName || "",
@@ -84,71 +85,74 @@ const PatientForm = ({ patientData, onClose }) => {
         purposeOfVisit: isDropdownOption ? patientData.purposeOfVisit : "", // Set if it's in dropdown
         customPurpose: isDropdownOption ? "" : patientData.purposeOfVisit, // Otherwise, set in custom field
         address: patientData.address || "",
-      });
+      })
     }
-  }, [patientData]);
-    
+  }, [patientData])
+
   const handleSubmit = (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!formData.patientName || !formData.mobileNumber) {
-      toast.error("Patient Name and Mobile Number are required.");
-      return;
+      toast.error("Patient Name and Mobile Number are required.")
+      return
     }
 
     // Add branch code to request data
     const requestData = {
       ...formData,
-      branch_code: branchCode // Include branch code in the request
-    };
+      branch_code: branchCode, // Include branch code in the request
+    }
 
     if (patientData) {
       // If editing existing patient, include branch code in the URL
-      const url = branchCode 
+      const url = branchCode
         ? `${Cosmetologybaseurl}Patients_data/${formData.patientUID}/?branch_code=${branchCode}`
-        : `${Cosmetologybaseurl}Patients_data/${formData.patientUID}/`;
+        : `${Cosmetologybaseurl}Patients_data/${formData.patientUID}/`
 
       axios
         .patch(url, { ...requestData, purposeOfVisit: finalPurposeOfVisit })
         .then(() => {
-          toast.success("Patient Updated Successfully");
-          onClose();
+          toast.success("Patient Updated Successfully")
+          onClose()
         })
         .catch((error) => {
-          console.error("Error updating patient details:", error);
-        });
+          console.error("Error updating patient details:", error)
+        })
     } else {
       // If adding new patient, include branch code in the URL
-      const url = branchCode 
+      const url = branchCode
         ? `${Cosmetologybaseurl}Patients_data/?branch_code=${branchCode}`
-        : `${Cosmetologybaseurl}Patients_data/`;
+        : `${Cosmetologybaseurl}Patients_data/`
 
-      axios.post(url, { ...requestData, purposeOfVisit: finalPurposeOfVisit })
+      axios
+        .post(url, { ...requestData, purposeOfVisit: finalPurposeOfVisit })
         .then(() => {
-          toast.success("Patient Added Successfully");
-          onClose();
+          toast.success("Patient Added Successfully")
+          onClose()
         })
         .catch((error) => {
-          console.error("Error adding patient:", error);
-        });
+          console.error("Error adding patient:", error)
+        })
     }
-  };
+  }
 
-  const handleModalOpen = () => setShowModal(true);
-  const handleModalClose = () => setShowModal(false);
+  const handleModalOpen = () => setShowModal(true)
+  const handleModalClose = () => setShowModal(false)
 
   return (
     <Container className="form-container">
-      <ToastContainer position="top-right" autoClose={5000}/>
-      <VitalFormIcon className='mt-2' title='Vital Form' onClick={handleModalOpen}>
+      <ToastContainer position="top-right" autoClose={5000} />
+      <VitalFormIcon className="mt-2" title="Vital Form" onClick={handleModalOpen}>
         <LiaFileMedicalAltSolid />
       </VitalFormIcon>
-      <br/>
+      <br />
       <Form onSubmit={handleSubmit}>
         {/* Existing form fields */}
         <Row>
           <Col>
             <Form.Group controlId="patientName">
-              <Form.Label>Patient Name <span className="text-danger">*</span></Form.Label>
+              <Form.Label>
+                Patient Name <span className="text-danger">*</span>
+              </Form.Label>
               <Form.Control
                 type="text"
                 name="patientName"
@@ -161,7 +165,9 @@ const PatientForm = ({ patientData, onClose }) => {
           </Col>
           <Col>
             <Form.Group controlId="mobileNumber">
-              <Form.Label>Mobile Number <span className="text-danger">*</span></Form.Label>
+              <Form.Label>
+                Mobile Number <span className="text-danger">*</span>
+              </Form.Label>
               <Form.Control
                 type="text"
                 name="mobileNumber"
@@ -193,28 +199,25 @@ const PatientForm = ({ patientData, onClose }) => {
               <Form.Label>Select Gender</Form.Label>
               <div className="gender-selection">
                 <div className="gender-icons">
-                  <div onClick={() => handleGenderSelect('Male')} className={`gender-option ${formData.gender === 'Male' ? 'selected' : ''}`}>
-                    <img
-                      src={maleIcon}
-                      alt="Male"
-                      className="gender-icon"
-                    />
+                  <div
+                    onClick={() => handleGenderSelect("Male")}
+                    className={`gender-option ${formData.gender === "Male" ? "selected" : ""}`}
+                  >
+                    <img src={maleIcon || "/placeholder.svg"} alt="Male" className="gender-icon" />
                     <div>Male</div>
                   </div>
-                  <div onClick={() => handleGenderSelect('Female')} className={`gender-option ${formData.gender === 'Female' ? 'selected' : ''}`}>
-                    <img
-                      src={femaleIcon}
-                      alt="Female"
-                      className="gender-icon"
-                    />
+                  <div
+                    onClick={() => handleGenderSelect("Female")}
+                    className={`gender-option ${formData.gender === "Female" ? "selected" : ""}`}
+                  >
+                    <img src={femaleIcon || "/placeholder.svg"} alt="Female" className="gender-icon" />
                     <div>Female</div>
                   </div>
-                  <div onClick={() => handleGenderSelect('Unspecified')} className={`gender-option ${formData.gender === 'Unspecified' ? 'selected' : ''}`}>
-                    <img
-                      src={transgenderIcon}
-                      alt="Unspecified"
-                      className="gender-icon"
-                    />
+                  <div
+                    onClick={() => handleGenderSelect("Unspecified")}
+                    className={`gender-option ${formData.gender === "Unspecified" ? "selected" : ""}`}
+                  >
+                    <img src={transgenderIcon || "/placeholder.svg"} alt="Unspecified" className="gender-icon" />
                     <div>Unspecified</div>
                   </div>
                 </div>
@@ -259,44 +262,44 @@ const PatientForm = ({ patientData, onClose }) => {
               </Form.Control>
             </Form.Group>
           </Col>
-        <Col>
-          <Form.Group controlId="purposeOfVisit">
-            <Form.Label>Purpose of Visit</Form.Label>
-            <Row className="align-items-center">
-              <Col xs={5}>
-                <Form.Control
-                  as="select"
-                  value={formData.purposeOfVisit}
-                  onChange={handlePurposeChange}
-                  className="custom-input mb-2"
-                  disabled={formData.customPurpose !== ''} // Disable dropdown if custom purpose is typed
-                >
-                  <option value="">Select Purpose of Visit</option>
-                  {purposeOfVisit.map((option, index) => (
-                    <option key={index} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </Form.Control>
-              </Col>
-              {/* Add 'or' text between the fields */}
-              <Col xs={2} className="d-flex justify-content-center">
-                <span style={{ fontSize: '1.5rem', textAlign: 'center' }}>or</span>
-              </Col>
-              <Col xs={5}>
-                <Form.Control
-                  type="text"
-                  placeholder="Enter Custom Purpose"
-                  value={formData.customPurpose}
-                  onChange={handleCustomPurposeChange}
-                  className="custom-input"
-                  disabled={formData.purposeOfVisit !== ''} // Disable text input if dropdown is selected
-                />
-              </Col>
-            </Row>
-          </Form.Group>
-        </Col>
-      </Row>
+          <Col>
+            <Form.Group controlId="purposeOfVisit">
+              <Form.Label>Purpose of Visit</Form.Label>
+              <Row className="align-items-center">
+                <Col xs={5}>
+                  <Form.Control
+                    as="select"
+                    value={formData.purposeOfVisit}
+                    onChange={handlePurposeChange}
+                    className="custom-input mb-2"
+                    disabled={formData.customPurpose !== ""} // Disable dropdown if custom purpose is typed
+                  >
+                    <option value="">Select Purpose of Visit</option>
+                    {purposeOfVisit.map((option, index) => (
+                      <option key={index} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </Form.Control>
+                </Col>
+                {/* Add 'or' text between the fields */}
+                <Col xs={2} className="d-flex justify-content-center">
+                  <span style={{ fontSize: "1.5rem", textAlign: "center" }}>or</span>
+                </Col>
+                <Col xs={5}>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter Custom Purpose"
+                    value={formData.customPurpose}
+                    onChange={handleCustomPurposeChange}
+                    className="custom-input"
+                    disabled={formData.purposeOfVisit !== ""} // Disable text input if dropdown is selected
+                  />
+                </Col>
+              </Row>
+            </Form.Group>
+          </Col>
+        </Row>
         <br />
         <Row>
           <Col>
@@ -324,12 +327,17 @@ const PatientForm = ({ patientData, onClose }) => {
           <Modal.Title>Vital Form</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <VitalForm patientUID={patientUID} patientName={formData.patientName} mobileNumber={formData.mobileNumber} onClose={handleModalClose} />
+          <VitalForm
+            patientUID={patientUID}
+            patientName={formData.patientName}
+            mobileNumber={formData.mobileNumber}
+            onClose={handleModalClose}
+          />
         </Modal.Body>
       </Modal>
     </Container>
-  );
-};
+  )
+}
 const VitalFormIcon = styled.div`
   position: absolute;
   top: 5px;
@@ -340,5 +348,5 @@ const VitalFormIcon = styled.div`
   &:hover {
     color: #7A1CAC;
   }
-`;
-export default PatientForm;
+`
+export default PatientForm

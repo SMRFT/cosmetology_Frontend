@@ -18,10 +18,14 @@ const SignOut = () => {
   }, []);
 
   const handleSignOut = () => {
+    // Store essential data in localStorage
     localStorage.removeItem('userRole');
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
     localStorage.removeItem('userContact');
+    localStorage.removeItem('loggedInAs');
+    localStorage.removeItem('selectedBranch');
+    localStorage.removeItem('selectedBranchName');
     navigate('/'); // Redirect to HomePage after logout
   };
 

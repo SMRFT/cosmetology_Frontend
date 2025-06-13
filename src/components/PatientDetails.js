@@ -12,7 +12,6 @@ import MedicalHistory from "./MedicalHistory"
 import { ToastContainer, toast } from "react-toastify"
 import { FaEdit, FaEye, FaTrash, FaNotesMedical, FaFileInvoiceDollar } from "react-icons/fa"
 import "react-toastify/dist/ReactToastify.css"
-import Cookies from "js-cookie"
 
 const PatientDetails = () => {
   const [patients, setPatients] = useState([])
@@ -26,7 +25,7 @@ const PatientDetails = () => {
   const [patientToDelete, setPatientToDelete] = useState(null)
   const [branchCode, setBranchCode] = useState("")
   const [showEditPatientModal, setShowEditPatientModal] = useState(false)
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   // New states for billing modal
   const [showBillingModal, setShowBillingModal] = useState(false)
   const [selectedPatientForBilling, setSelectedPatientForBilling] = useState(null)
@@ -35,15 +34,15 @@ const PatientDetails = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Get branch_code and user role from cookies when component mounts
-    const code = Cookies.get("branch_code")
-    const role = Cookies.get("userRole") || localStorage.getItem("userRole") || ""
+    // Get branch_code and user role from localStorage when component mounts
+    const code = localStorage.getItem("selectedBranch")
+    const role = localStorage.getItem("userRole") || ""
 
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
+      console.log("Branch code retrieved from localStorage:", code)
     } else {
-      console.warn("Branch code not found in cookies")
+      console.warn("Branch code not found in localStorage")
     }
 
     setUserRole(role)
@@ -53,8 +52,8 @@ const PatientDetails = () => {
   }, [])
 
   const fetchPatients = () => {
-    // Get branch_code from cookies
-    const branchCode = Cookies.get("branch_code")
+    // Get branch_code from localStorage
+    const branchCode = localStorage.getItem("selectedBranch")
 
     // If branch code exists, add it as a query parameter
     const url = branchCode
@@ -62,9 +61,7 @@ const PatientDetails = () => {
       : `${Cosmetologybaseurl}patients/`
 
     axios
-      .get(url, {
-        withCredentials: true, // Enable sending cookies with the request
-      })
+      .get(url)
       .then((response) => {
         setPatients(response.data)
       })
@@ -139,9 +136,7 @@ const PatientDetails = () => {
       : `${Cosmetologybaseurl}Patients_data/${patientToDelete.patientUID}/`
 
     axios
-      .delete(url, {
-        withCredentials: true, // Enable sending cookies with the request
-      })
+      .delete(url)
       .then(() => {
         toast.success("Patient deleted successfully")
         setShowDeleteConfirmModal(false)
@@ -370,7 +365,6 @@ const PatientActions = styled.div`
         font-size: 0.8rem;
     }
 `
-
 
 const BillingOptionsContainer = styled.div`
     display: flex;

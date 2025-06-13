@@ -13,11 +13,12 @@ import Cookies from "js-cookie"
 const Header = ({ userRole }) => {
   const [branchName, setBranchName] = useState("")
   const [expandedGroups, setExpandedGroups] = useState({})
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
   useEffect(() => {
     // Only get branch info for Admin and Doctor roles
     if (userRole === "Admin" || userRole === "Doctor" || userRole === "Receptionist" || userRole === "Manager") {
-      const branchCode = Cookies.get("branch_code")
+      const branchCode = localStorage.getItem("selectedBranch")
       if (branchCode) {
         fetchBranchName(branchCode)
       } else {
