@@ -304,6 +304,30 @@ const NoDataMessage = styled.div`
  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 `
 
+// Add after the ErrorMessage styled component
+const StockWarning = styled.div`
+  background-color: ${(props) => {
+    if (props.stock === 0) return "#ffebee"
+    if (props.stock < 10) return "#fff3e0"
+    return "#e8f5e8"
+  }};
+  border: 1px solid ${(props) => {
+    if (props.stock === 0) return "#f44336"
+    if (props.stock < 10) return "#ff9800"
+    return "#4caf50"
+  }};
+  color: ${(props) => {
+    if (props.stock === 0) return "#c62828"
+    if (props.stock < 10) return "#ef6c00"
+    return "#2e7d32"
+  }};
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin: 2px 0;
+  font-size: 11px;
+  font-weight: 500;
+`
+
 const Bill = () => {
   const [startDate, setStartDate] = useState(new Date())
   const [patientData, setPatientData] = useState([])
@@ -320,56 +344,90 @@ const Bill = () => {
   const [section, setSection] = useState("Pharmacy")
   const [editablePrices, setEditablePrices] = useState({})
   const [branchCode, setBranchCode] = useState("")
+  const [medicineErrors, setMedicineErrors] = useState({})
 
   // New states for pharmacy dropdown and additional rows
   const [medicineOptions, setMedicineOptions] = useState([])
   const [additionalRows, setAdditionalRows] = useState([])
   const [consultationFee, setConsultationFee] = useState(0)
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
-  // Fetch medicine options for dropdown
-  useEffect(() => {
-    if (!branchCode) return
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
-    axios
-      .get(`${Cosmetologybaseurl}pharmacy/data/`, {
-        params: { branch_code: branchCode },
-      })
-      .then((response) => {
-        const medicineData = response.data.map((medicine) => ({
-          id: medicine.id || medicine.medicine_name,
-          label: medicine.medicine_name || "Unknown Medicine",
-          category: medicine.medicine_category || "Uncategorized",
-          price: medicine.price || 0,
-          stock: medicine.stock || 0,
-          CGST_percentage: medicine.CGST_percentage || 0,
-          CGST_value: medicine.CGST_value || 0,
-          SGST_percentage: medicine.SGST_percentage || 0,
-          SGST_value: medicine.SGST_value || 0,
-          batch_number: medicine.batch_number || "",
-          fullData: medicine,
-        }))
-        setMedicineOptions(medicineData)
-        console.log("Fetched medicines:", medicineData.length)
-      })
-      .catch((error) => {
-        console.error("Error fetching medicine names:", error)
-        toast.error("Failed to fetch medicine data")
-      })
-  }, [branchCode])
-
+  // Initialize branch code and fetch current date data
   useEffect(() => {
     const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
       console.log("Branch code retrieved from localStorage:", code)
-
     } else {
       console.warn("Branch code not found in localStorage")
     }
+  }, [])
 
-    fetchPatientData(startDate,branchCode)
-    fetchBillingData(startDate,branchCode)
-  }, [startDate,branchCode])
+  // Fetch current date data when component mounts and branch code is available
+  useEffect(() => {
+    if (branchCode) {
+      const currentDate = new Date()
+      setStartDate(currentDate)
+      fetchPatientData(currentDate)
+      fetchBillingData(currentDate)
+    }
+  }, [branchCode])
+
+  // Fetch medicine options for dropdown with better data type handling
+  useEffect(() => {
+    if (!branchCode) return
+
+    axios
+      .get(`${Cosmetologybaseurl}get_medicine_price/`, {
+        params: { branch_code: branchCode },
+      })
+      .then((response) => {
+        if (response.data && Array.isArray(response.data)) {
+          const medicineData = response.data.map((medicine) => {
+            const normalizeValue = (value, defaultValue = 0) => {
+              if (value === null || value === undefined || value === "") return defaultValue
+              if (typeof value === "string") {
+                const parsed = Number.parseFloat(value)
+                return isNaN(parsed) ? defaultValue : parsed
+              }
+              return typeof value === "number" ? value : defaultValue
+            }
+
+            const normalizeString = (value, defaultValue = "Unknown") => {
+              if (value === null || value === undefined || value === "") return defaultValue
+              return String(value)
+            }
+
+            return {
+              id: medicine.medicine_name + "_" + medicine.batch_number,
+              label: normalizeString(medicine.medicine_name, "Unknown Medicine"),
+              price: normalizeValue(medicine.price, 0),
+              stock: normalizeValue(medicine.stock, 0),
+              CGST_percentage: normalizeValue(medicine.CGST_percentage, 0),
+              CGST_value: normalizeValue(medicine.CGST_value, 0),
+              SGST_percentage: normalizeValue(medicine.SGST_percentage, 0),
+              SGST_value: normalizeValue(medicine.SGST_value, 0),
+              batch_number: normalizeString(medicine.batch_number, "N/A"),
+              company_name: normalizeString(medicine.company_name, "N/A"),
+              expiry_date: normalizeString(medicine.expiry_date, "N/A"),
+              received_date: normalizeString(medicine.received_date, "N/A"),
+              fullData: medicine,
+            }
+          })
+          setMedicineOptions(medicineData)
+          console.log("Fetched medicines:", medicineData.length)
+        } else {
+          console.warn("No medicine data received or invalid format")
+          setMedicineOptions([])
+          toast.warning("No medicines available for this branch")
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching medicine names:", error)
+        setMedicineOptions([])
+        toast.error("Failed to fetch medicine data")
+      })
+  }, [branchCode])
 
   const handlePaymentTypeChange = (e) => {
     setPaymentType(e.target.value)
@@ -413,19 +471,103 @@ const Bill = () => {
     }
   }
 
-  const fetchMedicineDetails = async (medicine_name) => {
+  // UPDATED: Enhanced fetchMedicineDetails to use get_medicine_price endpoint
+  const fetchMedicineDetails = async (medicine_name, batch_number = null) => {
     try {
-      const response = await fetch(
-        `${Cosmetologybaseurl}medicine_name/data/?medicine_name=${encodeURIComponent(medicine_name)}&branch_code=${branchCode}`,
-      )
-      if (!response.ok) {
-        throw new Error("Network response was not ok")
+      let url = `${Cosmetologybaseurl}get_medicine_price/?medicine_name=${encodeURIComponent(medicine_name)}&branch_code=${branchCode}`
+
+      if (batch_number && batch_number !== "N/A") {
+        url += `&batch_number=${encodeURIComponent(batch_number)}`
       }
+
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
       const data = await response.json()
-      return data
+
+      // Handle the array response from your backend API
+      if (Array.isArray(data) && data.length > 0) {
+        const medicineData = data[0] // Take the first result
+
+        // Clear any previous errors for this medicine
+        setMedicineErrors((prev) => {
+          const newErrors = { ...prev }
+          delete newErrors[medicine_name]
+          return newErrors
+        })
+
+        // Normalize the data from your backend response
+        const normalizeValue = (value, defaultValue = 0) => {
+          if (value === null || value === undefined || value === "") return defaultValue
+          if (typeof value === "string") {
+            const parsed = Number.parseFloat(value)
+            return isNaN(parsed) ? defaultValue : parsed
+          }
+          return typeof value === "number" ? value : defaultValue
+        }
+
+        const normalizeString = (value, defaultValue = "N/A") => {
+          if (value === null || value === undefined || value === "") return defaultValue
+          return String(value)
+        }
+
+        return {
+          price: normalizeValue(medicineData.price, 0),
+          CGST_percentage: normalizeValue(medicineData.CGST_percentage, 0),
+          CGST_value: normalizeValue(medicineData.CGST_value, 0),
+          SGST_percentage: normalizeValue(medicineData.SGST_percentage, 0),
+          SGST_value: normalizeValue(medicineData.SGST_value, 0),
+          batch_number: normalizeString(medicineData.batch_number, "N/A"),
+          stock: normalizeValue(medicineData.stock, 0),
+          company_name: normalizeString(medicineData.company_name, "N/A"),
+          medicine_name: normalizeString(medicineData.medicine_name, medicine_name),
+          expiry_date: normalizeString(medicineData.expiry_date, "N/A"),
+          received_date: normalizeString(medicineData.received_date, "N/A"),
+        }
+      } else {
+        console.warn(`Medicine not found: ${medicine_name}`)
+        setMedicineErrors((prev) => ({
+          ...prev,
+          [medicine_name]: "Medicine not found or out of stock",
+        }))
+
+        return {
+          price: 0,
+          CGST_percentage: 0,
+          CGST_value: 0,
+          SGST_percentage: 0,
+          SGST_value: 0,
+          batch_number: "N/A",
+          stock: 0,
+          company_name: "N/A",
+          medicine_name: medicine_name,
+          expiry_date: "N/A",
+          received_date: "N/A",
+        }
+      }
     } catch (error) {
       console.error("Error fetching medicine details:", error)
-      return null
+      setMedicineErrors((prev) => ({
+        ...prev,
+        [medicine_name]: "Failed to fetch medicine details",
+      }))
+
+      return {
+        price: 0,
+        CGST_percentage: 0,
+        CGST_value: 0,
+        SGST_percentage: 0,
+        SGST_value: 0,
+        batch_number: "N/A",
+        stock: 0,
+        company_name: "N/A",
+        medicine_name: medicine_name,
+        expiry_date: "N/A",
+        received_date: "N/A",
+      }
     }
   }
 
@@ -477,6 +619,9 @@ const Bill = () => {
                 SGST_percentage: selectedMedicine.SGST_percentage || 0,
                 SGST_value: selectedMedicine.SGST_value || 0,
                 batch_number: selectedMedicine.batch_number || "",
+                stock: selectedMedicine.stock || 0,
+                company_name: selectedMedicine.company_name || "",
+                expiry_date: selectedMedicine.expiry_date || "",
               }
             : row,
         ),
@@ -561,19 +706,19 @@ const Bill = () => {
           ? item.prescription
           : extractPrescriptionDetails(item.prescription)
         for (const prescription of prescriptions) {
-          const { particulars } = prescription
+          const { particulars, batch_number } = prescription
           if (!details[particulars]) {
-            details[particulars] = await fetchMedicineDetails(particulars)
+            details[particulars] = await fetchMedicineDetails(particulars, batch_number)
           }
         }
       }
       setMedicineDetails(details)
     }
 
-    if (billingData.length > 0) {
+    if (billingData.length > 0 && branchCode) {
       fetchMedicineDetailsForPrescriptions()
     }
-  }, [billingData])
+  }, [billingData, branchCode])
 
   const handleQuantityChange = (itemIndex, prescriptionIndex, value) => {
     setQuantity((prevState) => ({
@@ -891,65 +1036,78 @@ const Bill = () => {
     }
   }
 
-  const updateStock = async () => {
+const updateStock = async () => {
     const stockUpdates = billingData
-      .filter((item) => item.patientUID === selectedPatient.patientUID)
-      .flatMap((item, itemIndex) => {
-        const prescriptions = extractPrescriptionDetails(item.prescription)
-        return prescriptions
-          .map((prescription, prescriptionIndex) => {
-            if (!selectedPrescriptions[`${itemIndex}-${prescriptionIndex}`]) return null
+        .filter((item) => item.patientUID === selectedPatient.patientUID)
+        .flatMap((item, itemIndex) => {
+            const prescriptions = extractPrescriptionDetails(item.prescription)
 
-            const { particulars } = prescription
-            const qty =
-              quantity[`${itemIndex}-${prescriptionIndex}`] !== undefined
-                ? quantity[`${itemIndex}-${prescriptionIndex}`]
-                : prescription.totalDosage
+            return prescriptions
+                .map((prescription, prescriptionIndex) => {
+                    if (!selectedPrescriptions[`${itemIndex}-${prescriptionIndex}`]) return null
 
-            return { medicine_name: particulars, qty, branch_code: branchCode }
-          })
-          .filter(Boolean)
-      })
+                    const { particulars } = prescription; // Only need particulars to look up in medicineDetails
+                    const qty =
+                        quantity[`${itemIndex}-${prescriptionIndex}`] !== undefined
+                            ? quantity[`${itemIndex}-${prescriptionIndex}`]
+                            : prescription.totalDosage;
 
-    // Add additional rows stock updates
+                    // Get the actual medicine details which contains the batch_number
+                    const medicineDetail = medicineDetails[particulars] || {};
+                    const actualBatchNumber = medicineDetail.batch_number || "N/A";
+
+                    return {
+                        medicine_name: particulars,
+                        qty,
+                        branch_code: branchCode,
+                        batch_number: actualBatchNumber, // Use the batch number from fetched details
+                    };
+                })
+                .filter(Boolean);
+        });
+
+    // Additional rows stock updates remain the same as they already include batch_number
     const additionalStockUpdates = additionalRows
-      .filter((row) => row.selected)
-      .map((row) => ({
-        medicine_name: row.particulars,
-        qty: row.quantity,
-        branch_code: branchCode,
-      }))
+        .filter((row) => row.selected)
+        .map((row) => ({
+            medicine_name: row.particulars,
+            qty: row.quantity,
+            branch_code: branchCode,
+            batch_number: row.batch_number,
+        }));
 
-    const allStockUpdates = [...stockUpdates, ...additionalStockUpdates]
+    const allStockUpdates = [...stockUpdates, ...additionalStockUpdates];
 
-    let allStockUpdated = true
+    let allStockUpdated = true;
 
     for (const stockUpdate of allStockUpdates) {
-      try {
-        const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(stockUpdate),
-        })
+        try {
+            const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(stockUpdate),
+            });
 
-        if (!response.ok) {
-          throw new Error("Failed to update stock")
+            if (!response.ok) {
+                // Read the error message from the response if available
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to update stock");
+            }
+
+            const data = await response.json();
+            toast.success("Stock updated successfully!");
+        } catch (error) {
+            console.error("Error updating stock:", error);
+            toast.error(`Error updating stock: ${error.message}`); // Display specific error from backend
+            allStockUpdated = false;
+            break;
         }
-
-        const data = await response.json()
-        toast.success("Stock updated successfully!")
-      } catch (error) {
-        console.error("Error updating stock:", error)
-        toast.error("Insufficient stock.")
-        allStockUpdated = false
-        break
-      }
     }
 
-    return allStockUpdated
-  }
+    return allStockUpdated;
+};
 
   const convertToBase64 = (url, callback) => {
     const img = new Image()
@@ -1286,12 +1444,45 @@ const Bill = () => {
                           onChange={(e) => handleMedicineSelect(row.id, e.target.value)}
                         >
                           <option value="">Select Medicine...</option>
-                          {medicineOptions.map((medicine) => (
-                            <option key={medicine.id} value={medicine.id}>
-                              {medicine.label}
+                          {medicineOptions.length > 0 ? (
+                            medicineOptions.map((medicine) => {
+                              const stockStatus =
+                                medicine.stock === 0
+                                  ? " - OUT OF STOCK"
+                                  : medicine.stock < 10
+                                    ? ` - LOW STOCK (${medicine.stock})`
+                                    : ` - Stock: ${medicine.stock}`
+                              return (
+                                <option key={medicine.id} value={medicine.id} disabled={medicine.stock === 0}>
+                                  {medicine.label} | {medicine.company_name} | Exp: {medicine.expiry_date}
+                                  {stockStatus}
+                                </option>
+                              )
+                            })
+                          ) : (
+                            <option value="" disabled>
+                              No medicines available
                             </option>
-                          ))}
+                          )}
                         </MedicineSelect>
+                        {/* Add stock warning below the dropdown */}
+                        {row.particulars &&
+                          (() => {
+                            const selectedMed = medicineOptions.find((med) => med.label === row.particulars)
+                            if (selectedMed) {
+                              return (
+                                <StockWarning stock={selectedMed.stock}>
+                                  {selectedMed.stock === 0
+                                    ? "⚠️ OUT OF STOCK"
+                                    : selectedMed.stock < 10
+                                      ? `⚠️ LOW STOCK: ${selectedMed.stock} remaining`
+                                      : `✅ In Stock: ${selectedMed.stock} available`}
+                                  {selectedMed.expiry_date !== "N/A" && ` | Expires: ${selectedMed.expiry_date}`}
+                                </StockWarning>
+                              )
+                            }
+                            return null
+                          })()}
                       </td>
                       <td style={{ textAlign: "center" }}>
                         <input

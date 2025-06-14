@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { IoPersonCircleSharp, IoAdd, IoSearch } from "react-icons/io5"

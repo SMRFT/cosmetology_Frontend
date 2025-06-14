@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { NavLink } from "react-router-dom"
 import styled from "styled-components"
@@ -8,7 +6,6 @@ import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons"
 import Notification from "./Notification"
 import Logo from "./images/salem-cosmetic-logo.png"
 import SignOut from "./SignOut"
-import Cookies from "js-cookie"
 
 const Header = ({ userRole }) => {
   const [branchName, setBranchName] = useState("")

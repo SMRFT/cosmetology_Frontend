@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import styled from "styled-components"
 import { IoCall } from "react-icons/io5"

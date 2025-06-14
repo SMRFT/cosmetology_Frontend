@@ -5,7 +5,6 @@ import styled from 'styled-components';
 import { PiTestTubeThin } from "react-icons/pi";
 import Image2 from './images/diagnosis.png';
 import Image3 from './images/Findings.png';
-import Image1 from './images/Complaints.png';
 
 const Container = styled.div`
     display: flex;
@@ -41,14 +40,6 @@ const AppointmentItem = styled.div`
     &:active {
         background-color: #F1FBFD;
     }
-`;
-
-const ImageCell = styled.td`
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 10px;
-    border: 1px solid #ddd;
 `;
 
 export const PdfCell = styled.td`
@@ -135,14 +126,6 @@ const DiagnosisItem = styled.li`
     margin-bottom: 5px;
 `;
 
-const ComplaintsList = styled.ul`
-    list-style-type: disc;
-    padding-left: 40px;
-`;
-
-const ComplaintsItem = styled.li`
-    margin-bottom: 5px;
-`;
 const FindingsList = styled.ul`
     list-style-type: disc;
     padding-left: 40px;
@@ -284,31 +267,12 @@ const ProceduresList = styled.ul`
 const ProceduresItem = styled.li`
     margin-bottom: 5px;
 `;
-const PdfButton = styled.a`
-    display: block;
-    width: 200px; /* Set the desired width here */
-    background-color: #4CAF50;
-    color: white;
-    text-align: center;
-    padding: 10px;
-    margin: 10px auto; /* Center the button horizontally */
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: bold;
-    transition: background-color 0.3s;
-
-    &:hover {
-        background-color: #45a049;
-    }
-`;
-
 
 const MedicalHistory = ({ patientUID }) => { // Destructure patientUID from props
     const location = useLocation();
     const id = patientUID; // Use patientUID directly
     const [patientDetails, setPatientDetails] = useState([]);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
-    const [imageSrcs, setImageSrcs] = useState({});
     const [branchCode, setBranchCode] = useState('');
     const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
 
@@ -349,70 +313,6 @@ const MedicalHistory = ({ patientUID }) => { // Destructure patientUID from prop
                         withCredentials: true
                     });
                     setPatientDetails(response.data);
-    
-                    const imagesAndPdfs = await Promise.all(response.data.map(async (detail) => {
-                        const dateStr = new Date(detail.appointmentDate).toISOString().split('T')[0];
-                        
-                        // Fetch images
-                        const imageArray = [];
-                        for (let i = 0; i <= 5; i++) {
-                            const imageFilename = `${detail.patientName}_${detail.patientUID}_${dateStr}_${i}.jpg`;
-                            try {
-                                const imageResponse = await axios.get(`${Cosmetologybaseurl}get_file/`, {
-                                    responseType: 'blob',
-                                    params: { // Send filename and branch_code as URL parameters
-                                        filename: imageFilename,
-                                        branch_code: code 
-                                    },
-                                    withCredentials: true
-                                });
-                                imageArray.push({
-                                    src: URL.createObjectURL(imageResponse.data),
-                                    filename: imageFilename
-                                });
-                            } catch (error) {
-                                // console.error(`Error fetching image ${i}:`, error); // Log for debugging, but don't stop execution
-                            }
-                        }
-    
-                        // Fetch PDFs
-                        const pdfArray = [];
-                        for (let j = 0; j <= 2; j++) {   // Adjust index range as needed
-                            const pdfFilename = `${detail.patientName}_${detail.patientUID}_${dateStr}_${j}.pdf`;
-                            try {
-                                const pdfResponse = await axios.get(`${Cosmetologybaseurl}get_pdf_file/`, {
-                                    responseType: 'blob',
-                                    params: { // Send filename and branch_code as URL parameters
-                                        filename: pdfFilename,
-                                        branch_code: code 
-                                    },
-                                    withCredentials: true
-                                });
-                                pdfArray.push({
-                                    src: URL.createObjectURL(pdfResponse.data),
-                                    filename: pdfFilename
-                                });
-                            } catch (error) {
-                                // console.error(`Error fetching PDF ${j}:`, error); // Log for debugging, but don't stop execution
-                            }
-                        }
-    
-                        return { 
-                            appointmentDate: detail.appointmentDate, 
-                            images: imageArray, 
-                            pdfs: pdfArray 
-                        };
-                    }));
-    
-                    // Group images and PDFs by appointment date
-                    const groupedFiles = imagesAndPdfs.reduce((acc, { appointmentDate, images, pdfs }) => {
-                        acc[appointmentDate] = acc[appointmentDate] || { images: [], pdfs: [] };
-                        acc[appointmentDate].images = acc[appointmentDate].images.concat(images);
-                        acc[appointmentDate].pdfs = acc[appointmentDate].pdfs.concat(pdfs);
-                        return acc;
-                    }, {});
-    
-                    setImageSrcs(groupedFiles);
                 } catch (error) {
                     console.error('Error fetching patient details:', error);
                 }
@@ -579,41 +479,6 @@ const MedicalHistory = ({ patientUID }) => { // Destructure patientUID from prop
                             </ProceduresList>
                         </Section>
                         </ProceduresContainer>
-                        <Section>
-                        {imageSrcs[selectedAppointment.appointmentDate] && imageSrcs[selectedAppointment.appointmentDate]?.images?.length > 0 && (
-                            <Section>
-                                <SectionTitle>Records & Images</SectionTitle>
-                                <ImageCell>
-                                {imageSrcs[selectedAppointment.appointmentDate].images.map((image, imgIndex) => (
-                                    <img 
-                                        key={imgIndex} 
-                                        src={image.src} 
-                                        alt={image.filename} 
-                                        style={{ width: '100px' }} 
-                                    />
-                                ))}
-                                </ImageCell>
-                            </Section>
-                        )}
-
-                        {imageSrcs[selectedAppointment.appointmentDate] && imageSrcs[selectedAppointment.appointmentDate].pdfs.length > 0 && (
-                            <Section>
-                                <SectionTitle>PDF Documents</SectionTitle>
-                                <div>
-                                    {imageSrcs[selectedAppointment.appointmentDate].pdfs.map((pdf, pdfIndex) => (
-                                        <PdfButton 
-                                            key={pdfIndex} 
-                                            href={pdf.src} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer">
-                                            View PDF {pdfIndex + 1}
-                                        </PdfButton>
-                                    ))}
-                                </div>
-                            </Section>
-                        )}
-
-                        </Section>
 
                         <Section>
                         <SectionTitle>Next Visit:</SectionTitle>

@@ -1,4 +1,3 @@
-"use client"
 import { useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import mainImage from "../components/images/main-image.png"

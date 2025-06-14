@@ -3,7 +3,6 @@ import styled from 'styled-components';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import Cookies from 'js-cookie'; // Added cookie import
 
 function VitalForm({ patientUID, patientName, mobileNumber }) {
     const [formData, setFormData] = useState({
@@ -18,18 +17,20 @@ function VitalForm({ patientUID, patientName, mobileNumber }) {
     });
      const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
     // Add useEffect to get branch_code from cookies when component mounts
-    useEffect(() => {
-        const code = Cookies.get('branch_code');
+
+      useEffect(() => {
+        const code = localStorage.getItem("selectedBranch")
         if (code) {
             setFormData(prevData => ({
                 ...prevData,
                 branch_code: code
             }));
-            console.log('Branch code retrieved from cookies:', code);
+          console.log("Branch code retrieved from localStorage:", code)
         } else {
-            console.warn('Branch code not found in cookies');
+          console.warn("Branch code not found in localStorage")
         }
-    }, []);
+
+      }, [])
 
     const handleChange = (e) => {
         const { name, value } = e.target;

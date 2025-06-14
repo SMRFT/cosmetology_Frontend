@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
-import styled from "styled-components";
-import { FaDownload, FaArrowAltCircleRight, FaSave, FaPlus, FaEdit, FaSearch, FaTimes } from "react-icons/fa";
-import { RiDeleteBin5Line } from "react-icons/ri";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { useState, useEffect, useRef } from "react"
+import styled from "styled-components"
+import { FaDownload, FaArrowAltCircleRight, FaSave, FaPlus, FaSearch, FaTimes } from "react-icons/fa"
+import { RiDeleteBin5Line } from "react-icons/ri"
+import { toast, ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 
 const PharmacyComponent = () => {
   const [formData, setFormData] = useState([
@@ -16,59 +16,58 @@ const PharmacyComponent = () => {
       CGSTValue: "",
       SGSTPercentage: "",
       SGSTValue: "",
-      newStock: "",
-      oldStock: "",
-      totalStock: "",
+      newStock: "", // Only for UI input when editing
+      stock: "", // Single stock field stored in DB
       receivedDate: "",
       expiryDate: "",
       batchNumber: "",
     },
-  ]);
+  ])
 
-  const [branchCode, setBranchCode] = useState("");
-  const [editedRows, setEditedRows] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [pendingStockUpdates, setPendingStockUpdates] = useState({});
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeView, setActiveView] = useState("all"); // "all", "low", "expired"
-  const [isCompactView, setIsCompactView] = useState(false);
-  const tableRef = useRef(null);
-  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
+  const [branchCode, setBranchCode] = useState("")
+  const [editedRows, setEditedRows] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [pendingStockUpdates, setPendingStockUpdates] = useState({})
+  const [searchTerm, setSearchTerm] = useState("")
+  const [activeView, setActiveView] = useState("all") // "all", "low", "expired"
+  const [isCompactView, setIsCompactView] = useState(false)
+  const tableRef = useRef(null)
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
     // Get branch_code from localStorage when component mounts
-    const code = localStorage.getItem("selectedBranch"); 
+    const code = localStorage.getItem("selectedBranch")
     if (code) {
-      setBranchCode(code);
-      console.log("Branch code retrieved from localStorage:", code); // Updated console log
+      setBranchCode(code)
+      console.log("Branch code retrieved from localStorage:", code)
     } else {
-      console.warn("Branch code not found in localStorage"); // Updated console warn
+      console.warn("Branch code not found in localStorage")
     }
 
     // Fetch data only if branchCode is available
     if (code) {
-      fetchPharmacyData(code);
+      fetchPharmacyData(code)
     } else {
       // If branch code is not available, you might want to show a message or redirect
-      toast.error("Branch code not found. Please select a branch.");
+      toast.error("Branch code not found. Please select a branch.")
     }
 
     // Check screen size and set compact view accordingly
     const handleResize = () => {
-      setIsCompactView(window.innerWidth < 1200);
-    };
+      setIsCompactView(window.innerWidth < 1200)
+    }
 
-    handleResize(); // Initial check
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []); // Empty dependency array means it runs only once on mount
+    handleResize() // Initial check
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, []) // Empty dependency array means it runs only once on mount
 
   const fetchPharmacyData = async (code) => {
-    setLoading(true);
+    setLoading(true)
     try {
       // Sending branch_code as a URL parameter
-      const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(code || "")}`);
-      const data = await response.json();
+      const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(code || "")}`)
+      const data = await response.json()
 
       if (data.length === 0) {
         setFormData([
@@ -82,19 +81,16 @@ const PharmacyComponent = () => {
             SGSTPercentage: "",
             SGSTValue: "",
             newStock: "",
-            oldStock: "",
-            totalStock: "",
+            stock: "",
             receivedDate: "",
             expiryDate: "",
             batchNumber: "",
           },
-        ]);
+        ])
       } else {
         setFormData(
           data.map((item) => {
-            const newStock = item.new_stock || 0;
-            const oldStock = item.old_stock || 0;
-            const totalStock = newStock + oldStock;
+            const stock = item.stock || 0
 
             return {
               _id: item._id,
@@ -106,194 +102,177 @@ const PharmacyComponent = () => {
               CGSTValue: item.CGST_value || "",
               SGSTPercentage: item.SGST_percentage || "",
               SGSTValue: item.SGST_value || "",
-              newStock: newStock > 0 ? newStock.toString() : "", // Show existing new stock from DB
-              oldStock: oldStock.toString(),
-              totalStock: totalStock.toString(),
+              newStock: "", // Always empty for editing input
+              stock: stock.toString(),
               receivedDate: formatDate(item.received_date),
               expiryDate: formatDate(item.expiry_date),
               batchNumber: item.batch_number || "",
-            };
+            }
           }),
-        );
+        )
       }
-      setEditedRows({});
-      setPendingStockUpdates({});
+      setEditedRows({})
+      setPendingStockUpdates({})
     } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error("Failed to load pharmacy data!");
+      console.error("Error fetching data:", error)
+      toast.error("Failed to load pharmacy data!")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const calculateTaxValues = (price, percentage) => {
-    const priceValue = Number.parseFloat(price) || 0;
-    const percentageValue = Number.parseFloat(percentage) || 0;
-    return ((priceValue * percentageValue) / 100).toFixed(2);
-  };
+    const priceValue = Number.parseFloat(price) || 0
+    const percentageValue = Number.parseFloat(percentage) || 0
+    return ((priceValue * percentageValue) / 100).toFixed(2)
+  }
 
   const handleChange = (originalIndex, field, value) => {
-    const newFormData = [...formData];
-    newFormData[originalIndex][field] = value;
+    const newFormData = [...formData]
+    newFormData[originalIndex][field] = value
 
     // Mark this row as edited
     setEditedRows({
       ...editedRows,
       [originalIndex]: true,
-    });
+    })
 
     // Auto-calculate tax values
     if (field === "price" || field === "CGSTPercentage") {
       newFormData[originalIndex].CGSTValue = calculateTaxValues(
         field === "price" ? value : newFormData[originalIndex].price,
         field === "CGSTPercentage" ? value : newFormData[originalIndex].CGSTPercentage,
-      );
+      )
     }
 
     if (field === "price" || field === "SGSTPercentage") {
       newFormData[originalIndex].SGSTValue = calculateTaxValues(
         field === "price" ? value : newFormData[originalIndex].price,
         field === "SGSTPercentage" ? value : newFormData[originalIndex].SGSTPercentage,
-      );
+      )
     }
 
-    // Update total stock when new stock changes
-    if (field === "newStock") {
-      const newStockValue = Number.parseInt(value, 10) || 0;
-      const oldStockValue = Number.parseInt(newFormData[originalIndex].oldStock, 10) || 0;
-      newFormData[originalIndex].totalStock = (newStockValue + oldStockValue).toString();
-    }
-
-    setFormData(newFormData);
-  };
+    setFormData(newFormData)
+  }
 
   const handleKeyPress = (originalIndex, e) => {
     if (e.key === "Enter") {
-      e.preventDefault();
-      addNewRow();
+      e.preventDefault()
+      addNewRow()
     }
-  };
+  }
 
   const handleStockUpdate = async (originalIndex) => {
-    const item = formData[originalIndex];
-    const newStockValue = Number.parseInt(item.newStock, 10) || 0;
+    const item = formData[originalIndex]
+    const newStockValue = Number.parseInt(item.newStock, 10) || 0
 
     if (newStockValue <= 0) {
-      toast.warning("Please enter a valid stock quantity");
-      return;
+      toast.warning("Please enter a valid stock quantity")
+      return
+    }
+
+    if (!item._id) {
+      toast.warning("Please save the item first before updating stock")
+      return
     }
 
     // Calculate new total stock immediately
-    const currentOldStock = Number.parseInt(item.oldStock, 10) || 0;
-    const updatedOldStock = currentOldStock + newStockValue;
-    const updatedTotalStock = updatedOldStock; // Assuming newStock is added to oldStock to form total
+    const currentStock = Number.parseInt(item.stock, 10) || 0
+    const updatedStock = currentStock + newStockValue
 
     // Immediately update UI with new stock values
-    const newFormData = [...formData];
-    newFormData[originalIndex].oldStock = updatedOldStock.toString();
-    newFormData[originalIndex].totalStock = updatedTotalStock.toString();
-    newFormData[originalIndex].newStock = ""; // Clear new stock input after adding
-    setFormData(newFormData);
+    const newFormData = [...formData]
+    newFormData[originalIndex].stock = updatedStock.toString()
+    newFormData[originalIndex].newStock = "" // Clear new stock input after adding
+    setFormData(newFormData)
 
     // Track this update as pending
-    const updateKey = `${item.medicineName}-${item.batchNumber}`;
+    const updateKey = `${item.medicineName}-${item.batchNumber}`
     setPendingStockUpdates({
       ...pendingStockUpdates,
       [updateKey]: true,
-    });
+    })
 
     // Show optimistic UI update
-    toast.info("Updating stock...", { autoClose: 2000 });
+    toast.info("Updating stock...", { autoClose: 2000 })
 
     try {
       const updateData = {
-        medicine_name: item.medicineName.toLowerCase(),
-        batch_number: item.batchNumber,
-        new_stock: newStockValue,
-        // branch_code is sent as a URL param now, no need in body if it's not a direct model field update
-        // The backend should derive branch_code from the URL parameter for PATCH if it expects it that way.
-        // If your backend still expects it in the body for PATCH, you'd keep it.
-        // For this scenario, assuming it's inferred from the URL or implicitly handled.
-      };
+        _id: item._id,
+        new_stock: newStockValue, // Backend will add this to existing stock
+      }
 
       const response = await fetch(
-        // Sending branch_code as a URL parameter for PATCH request
         `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            // "X-Branch-Code": branchCode, // Removed header as requested
           },
           withCredentials: true,
           body: JSON.stringify([updateData]),
         },
-      );
+      )
 
       if (response.ok) {
-        const result = await response.json();
+        const result = await response.json()
         if (result.length > 0) {
           // Update was successful, remove from pending updates
-          const newPendingUpdates = { ...pendingStockUpdates };
-          delete newPendingUpdates[updateKey];
-          setPendingStockUpdates(newPendingUpdates);
+          const newPendingUpdates = { ...pendingStockUpdates }
+          delete newPendingUpdates[updateKey]
+          setPendingStockUpdates(newPendingUpdates)
 
-          // Update with server response (if the server sends back the updated item)
-          const serverNewStock = result[0].new_stock || 0;
-          const serverOldStock = result[0].old_stock || 0;
-          const serverTotalStock = serverNewStock + serverOldStock;
+          // Update with server response
+          const serverStock = result[0].stock || 0
 
-          const updatedFormData = [...formData];
-          updatedFormData[originalIndex].oldStock = serverOldStock.toString();
-          updatedFormData[originalIndex].totalStock = serverTotalStock.toString();
-          setFormData(updatedFormData);
+          const updatedFormData = [...formData]
+          updatedFormData[originalIndex].stock = serverStock.toString()
+          setFormData(updatedFormData)
 
-          toast.success("Stock updated successfully!");
+          toast.success("Stock updated successfully!")
         }
       } else {
         // If update failed, revert the optimistic update
-        const revertedFormData = [...formData];
-        revertedFormData[originalIndex].oldStock = currentOldStock.toString();
-        revertedFormData[originalIndex].totalStock = currentOldStock.toString();
-        revertedFormData[originalIndex].newStock = newStockValue.toString(); // Revert newStock input as well
-        setFormData(revertedFormData);
+        const revertedFormData = [...formData]
+        revertedFormData[originalIndex].stock = currentStock.toString()
+        revertedFormData[originalIndex].newStock = newStockValue.toString() // Revert newStock input as well
+        setFormData(revertedFormData)
 
         // Remove from pending updates
-        const newPendingUpdates = { ...pendingStockUpdates };
-        delete newPendingUpdates[updateKey];
-        setPendingStockUpdates(newPendingUpdates);
+        const newPendingUpdates = { ...pendingStockUpdates }
+        delete newPendingUpdates[updateKey]
+        setPendingStockUpdates(newPendingUpdates)
 
-        toast.error("Failed to update stock");
+        toast.error("Failed to update stock")
       }
     } catch (error) {
-      console.error("Error updating stock:", error);
+      console.error("Error updating stock:", error)
 
       // If update failed, revert the optimistic update
-      const revertedFormData = [...formData];
-      revertedFormData[originalIndex].oldStock = currentOldStock.toString();
-      revertedFormData[originalIndex].totalStock = currentOldStock.toString();
-      revertedFormData[originalIndex].newStock = newStockValue.toString(); // Revert newStock input as well
-      setFormData(revertedFormData);
+      const revertedFormData = [...formData]
+      revertedFormData[originalIndex].stock = currentStock.toString()
+      revertedFormData[originalIndex].newStock = newStockValue.toString() // Revert newStock input as well
+      setFormData(revertedFormData)
 
       // Remove from pending updates
-      const newPendingUpdates = { ...pendingStockUpdates };
-      delete newPendingUpdates[updateKey];
-      setPendingStockUpdates(newPendingUpdates);
+      const newPendingUpdates = { ...pendingStockUpdates }
+      delete newPendingUpdates[updateKey]
+      setPendingStockUpdates(newPendingUpdates)
 
-      toast.error("Error updating stock");
+      toast.error("Error updating stock")
     }
-  };
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault()
+    setLoading(true)
 
     try {
-      const newEntries = [];
-      const updatedEntries = [];
+      const newEntries = []
+      const updatedEntries = []
 
       formData.forEach((item, index) => {
-        if (!item.medicineName.trim()) return;
+        if (!item.medicineName.trim()) return
 
         const formattedItem = {
           medicine_name: item.medicineName.toLowerCase(),
@@ -304,94 +283,88 @@ const PharmacyComponent = () => {
           CGST_value: Number.parseFloat(item.CGSTValue) || 0,
           SGST_percentage: Number.parseFloat(item.SGSTPercentage) || 0,
           SGST_value: Number.parseFloat(item.SGSTValue) || 0,
-          new_stock: Number.parseInt(item.newStock, 10) || 0,
-          old_stock: Number.parseInt(item.oldStock, 10) || 0,
+          stock: Number.parseInt(item.stock, 10) || 0, // Use single stock field
           received_date: item.receivedDate,
           expiry_date: item.expiryDate,
           batch_number: item.batchNumber,
-          // branch_code: branchCode, // Removed from body for POST/PATCH if it's sent as URL param
-        };
+        }
 
         if (!item._id) {
-          newEntries.push(formattedItem);
+          newEntries.push(formattedItem)
         } else if (editedRows[index]) {
-          updatedEntries.push({ ...formattedItem, _id: item._id });
+          updatedEntries.push({ ...formattedItem, _id: item._id })
         }
-      });
+      })
 
       // Handle new entries
       if (newEntries.length > 0) {
         const response = await fetch(
-          // Sending branch_code as a URL parameter for POST request
           `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              // "X-Branch-Code": branchCode, // Removed header as requested
             },
             withCredentials: true,
             body: JSON.stringify(newEntries),
           },
-        );
+        )
 
         if (response.ok) {
-          toast.success("New entries saved successfully!");
+          toast.success("New entries saved successfully!")
         } else {
-          toast.error("Error saving new entries!");
+          toast.error("Error saving new entries!")
         }
       }
 
-      // Handle updates
+      // Handle updates (excluding stock-only updates which are handled separately)
       if (updatedEntries.length > 0) {
         const response = await fetch(
-          // Sending branch_code as a URL parameter for PATCH request
           `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
           {
-            method: "PATCH",
+            method: "PUT", // Use PUT for complete updates
             headers: {
               "Content-Type": "application/json",
-              // "X-Branch-Code": branchCode, // Removed header as requested
             },
             withCredentials: true,
             body: JSON.stringify(updatedEntries),
           },
-        );
+        )
 
         if (response.ok) {
-          toast.success("Updates saved successfully!");
-          setEditedRows({});
+          toast.success("Updates saved successfully!")
+          setEditedRows({})
         } else {
-          toast.error("Error updating entries!");
+          toast.error("Error updating entries!")
         }
       }
 
       if (newEntries.length === 0 && updatedEntries.length === 0) {
-        toast.info("No changes to save.");
+        toast.info("No changes to save.")
       }
 
       // Refresh data
-      await fetchPharmacyData(branchCode);
+      await fetchPharmacyData(branchCode)
     } catch (error) {
-      console.error("Error submitting data:", error);
-      toast.error("Error submitting data!");
+      console.error("Error submitting data:", error)
+      toast.error("Error submitting data!")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const formatDate = (dateString) => {
-    if (!dateString) return "";
+    if (!dateString) return ""
     try {
       if (dateString.includes("T")) {
-        return dateString.split("T")[0];
+        return dateString.split("T")[0]
       }
-      return dateString;
+      return dateString
     } catch (e) {
-      console.error("Error formatting date:", e);
-      return dateString;
+      console.error("Error formatting date:", e)
+      return dateString
     }
-  };
+  }
 
   const addNewRow = () => {
     const newRow = {
@@ -404,70 +377,60 @@ const PharmacyComponent = () => {
       SGSTPercentage: "",
       SGSTValue: "",
       newStock: "",
-      oldStock: "",
-      totalStock: "",
+      stock: "",
       receivedDate: "",
       expiryDate: "",
       batchNumber: "",
-    };
+    }
 
-    setFormData((prevData) => [...prevData, newRow]);
+    setFormData((prevData) => [...prevData, newRow])
 
     // Scroll to the bottom of the table to show the new row
     setTimeout(() => {
       if (tableRef.current) {
-        tableRef.current.scrollTop = tableRef.current.scrollHeight;
+        tableRef.current.scrollTop = tableRef.current.scrollHeight
       }
-    }, 100);
-  };
+    }, 100)
+  }
 
   const removeRow = async (originalIndex) => {
-    const itemToRemove = formData[originalIndex];
+    const itemToRemove = formData[originalIndex]
 
     if (itemToRemove._id && itemToRemove.medicineName && itemToRemove.batchNumber) {
       try {
-        const response = await fetch(
-          // Sending branch_code as a URL parameter for DELETE request
-          `${Cosmetologybaseurl}pharmacy/data/?medicine_name=${encodeURIComponent(
-            itemToRemove.medicineName,
-          )}&batch_number=${encodeURIComponent(itemToRemove.batchNumber)}&branch_code=${encodeURIComponent(branchCode)}`,
-          {
-            method: "DELETE",
-            // headers: { // Removed headers as requested
-            //   "X-Branch-Code": branchCode,
-            // },
-            withCredentials: true,
-          },
-        );
+        const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?_id=${itemToRemove._id}`, {
+          method: "DELETE",
+          withCredentials: true,
+        })
 
         if (response.ok) {
-          toast.success("Record deleted successfully.");
-          const newFormData = [...formData];
-          newFormData.splice(originalIndex, 1);
-          setFormData(newFormData);
+          toast.success("Record deleted successfully.")
+          const newFormData = [...formData]
+          newFormData.splice(originalIndex, 1)
+          setFormData(newFormData)
 
-          const newEditedRows = { ...editedRows };
-          delete newEditedRows[originalIndex];
-          setEditedRows(newEditedRows);
+          const newEditedRows = { ...editedRows }
+          delete newEditedRows[originalIndex]
+          setEditedRows(newEditedRows)
         } else {
-          toast.error("Failed to delete record from database.");
+          toast.error("Failed to delete record from database.")
         }
       } catch (error) {
-        console.error("Error deleting record:", error);
-        toast.error("Failed to delete record from database.");
+        console.error("Error deleting record:", error)
+        toast.error("Failed to delete record from database.")
       }
     } else {
-      const newFormData = [...formData];
-      newFormData.splice(originalIndex, 1);
-      setFormData(newFormData);
+      const newFormData = [...formData]
+      newFormData.splice(originalIndex, 1)
+      setFormData(newFormData)
 
-      const newEditedRows = { ...editedRows };
-      delete newEditedRows[originalIndex];
-      setEditedRows(newEditedRows);
+      const newEditedRows = { ...editedRows }
+      delete newEditedRows[originalIndex]
+      setEditedRows(newEditedRows)
 
-      toast.info("Row removed.");
+      toast.info("Row removed.")
     }
-  };
+  }
 
   const downloadExcel = () => {
     // Format data for Excel export
@@ -482,14 +445,12 @@ const PharmacyComponent = () => {
         "CGST Value": item.CGSTValue,
         "SGST %": item.SGSTPercentage,
         "SGST Value": item.SGSTValue,
-        "New Stock": item.newStock,
-        "Old Stock": item.oldStock,
-        "Total Stock": item.totalStock,
+        Stock: item.stock, // Single stock field
         "Received Date": item.receivedDate,
         "Expiry Date": item.expiryDate,
         "Batch Number": item.batchNumber,
         "Branch Code": branchCode,
-      }));
+      }))
 
     // Simple CSV download implementation
     const csvContent = [
@@ -499,27 +460,27 @@ const PharmacyComponent = () => {
           .map((field) => `"${String(field).replace(/"/g, '""')}"`)
           .join(","),
       ),
-    ].join("\n");
+    ].join("\n")
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `PharmacyData_${branchCode}_${new Date().toISOString().split("T")[0]}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `PharmacyData_${branchCode}_${new Date().toISOString().split("T")[0]}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
 
-    toast.success("CSV file downloaded successfully!");
-  };
+    toast.success("CSV file downloaded successfully!")
+  }
 
   // Function to check if a row has a pending stock update
   const hasPendingUpdate = (item) => {
-    if (!item.medicineName || !item.batchNumber) return false;
-    const updateKey = `${item.medicineName}-${item.batchNumber}`;
-    return pendingStockUpdates[updateKey] === true;
-  };
+    if (!item.medicineName || !item.batchNumber) return false
+    const updateKey = `${item.medicineName}-${item.batchNumber}`
+    return pendingStockUpdates[updateKey] === true
+  }
 
   // Filter data based on search term and active view with original indices
   const getFilteredDataWithIndices = () => {
@@ -531,30 +492,30 @@ const PharmacyComponent = () => {
           searchTerm === "" ||
           item.medicineName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.batchNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.companyName.toLowerCase().includes(searchTerm.toLowerCase());
+          item.companyName.toLowerCase().includes(searchTerm.toLowerCase())
 
         // View filter
-        if (activeView === "all") return matchesSearch;
+        if (activeView === "all") return matchesSearch
         if (activeView === "low") {
-          const totalStock = Number.parseInt(item.totalStock) || 0;
+          const stock = Number.parseInt(item.stock) || 0
           // Consider stock as low if it's less than 10 and greater than 0
-          return matchesSearch && totalStock < 10 && totalStock > 0;
+          return matchesSearch && stock < 10 && stock > 0
         }
         if (activeView === "expired") {
-          if (!item.expiryDate) return false;
-          const expiryDate = new Date(item.expiryDate);
-          const today = new Date();
+          if (!item.expiryDate) return false
+          const expiryDate = new Date(item.expiryDate)
+          const today = new Date()
           // Set time to 00:00:00 for accurate date comparison
-          expiryDate.setHours(0, 0, 0, 0);
-          today.setHours(0, 0, 0, 0);
-          return matchesSearch && expiryDate < today;
+          expiryDate.setHours(0, 0, 0, 0)
+          today.setHours(0, 0, 0, 0)
+          return matchesSearch && expiryDate < today
         }
 
-        return matchesSearch;
-      });
-  };
+        return matchesSearch
+      })
+  }
 
-  const filteredDataWithIndices = getFilteredDataWithIndices();
+  const filteredDataWithIndices = getFilteredDataWithIndices()
 
   return (
     <StyledContainer>
@@ -579,11 +540,7 @@ const PharmacyComponent = () => {
           )}
         </SearchContainer>
         <FilterButtonsContainer>
-          <FilterButton
-            onClick={() => setActiveView("all")}
-            $isActive={activeView === "all"}
-            title="View All Stock"
-          >
+          <FilterButton onClick={() => setActiveView("all")} $isActive={activeView === "all"} title="View All Stock">
             All Stock
           </FilterButton>
           <FilterButton
@@ -608,7 +565,7 @@ const PharmacyComponent = () => {
         </ActionButtonsContainer>
       </ControlPanel>
 
-      <Form onSubmit={handleSubmit}>
+      <Form>
         <TableScrollContainer>
           <TableContainer ref={tableRef}>
             <StyledTable $isCompact={isCompactView}>
@@ -626,9 +583,8 @@ const PharmacyComponent = () => {
                       <th>SGST Value</th>
                     </>
                   )}
-                  <th>New Stock</th>
-                  <th>Old Stock</th>
-                  <th>Total Stock</th>
+                  <th>Add Stock</th>
+                  <th>Current Stock</th>
                   {!isCompactView && (
                     <>
                       <th>Received Date</th>
@@ -721,29 +677,28 @@ const PharmacyComponent = () => {
                       <StockInputContainer>
                         <StyledInput
                           type="number"
-                          placeholder="Add new stock"
-                          value={data.newStock}
-                          onChange={(e) => handleChange(originalIndex, "newStock", e.target.value)}
+                          placeholder={data._id ? "Add to stock" : "Initial stock"}
+                          value={data._id ? data.newStock : data.stock}
+                          onChange={(e) => handleChange(originalIndex, data._id ? "newStock" : "stock", e.target.value)}
                           onKeyPress={(e) => handleKeyPress(originalIndex, e)}
                         />
-                        <IconButton
-                          type="button"
-                          onClick={() => handleStockUpdate(originalIndex)}
-                          disabled={!data.newStock || Number.parseInt(data.newStock) <= 0}
-                          title="Add to old stock"
-                        >
-                          <FaArrowAltCircleRight />
-                        </IconButton>
+                        {data._id && (
+                          <IconButton
+                            type="button"
+                            onClick={() => handleStockUpdate(originalIndex)}
+                            disabled={!data.newStock || Number.parseInt(data.newStock) <= 0}
+                            title="Add to current stock"
+                          >
+                            <FaArrowAltCircleRight />
+                          </IconButton>
+                        )}
                       </StockInputContainer>
                     </td>
                     <td>
                       <StockDisplay $isPending={hasPendingUpdate(data)}>
-                        {data.oldStock || "0"}
+                        {data.stock || "0"}
                         {hasPendingUpdate(data) && <SyncIndicator title="Syncing with server...">⟳</SyncIndicator>}
                       </StockDisplay>
-                    </td>
-                    <td>
-                      <TotalStockDisplay>{data.totalStock || "0"}</TotalStockDisplay>
                     </td>
                     {!isCompactView && (
                       <>
@@ -789,12 +744,12 @@ const PharmacyComponent = () => {
         </TableScrollContainer>
 
         <ButtonContainer>
-          <ActionButton onClick={addNewRow} type="button" title="Add new row">
+          <button onClick={addNewRow} type="button" title="Add new row">
             <FaPlus /> Add Row
-          </ActionButton>
-          <SubmitButton type="submit" disabled={loading}>
+          </button>
+          <button type="submit" disabled={loading} onClick={handleSubmit}>
             <FaSave /> {loading ? "Saving..." : "Save Changes"}
-          </SubmitButton>
+          </button>
         </ButtonContainer>
       </Form>
 
@@ -804,22 +759,23 @@ const PharmacyComponent = () => {
         </LoadingOverlay>
       )}
     </StyledContainer>
-  );
-};
+  )
+}
 
-export default PharmacyComponent;
+export default PharmacyComponent
 
 // Container and Layout
 const StyledContainer = styled.div`
   padding: 10px;
   max-width: 100%;
   margin: 0 auto;
+  margin-top: 70px;
   position: relative;
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-`;
+`
 
 const Header = styled.div`
   display: flex;
@@ -827,14 +783,14 @@ const Header = styled.div`
   align-items: center;
   margin-bottom: 10px;
   flex-shrink: 0;
-`;
+`
 
 const Title = styled.h2`
   color: #6b4a8f;
   margin: 0;
   font-weight: 600;
   font-size: clamp(1.2rem, 2vw, 1.5rem);
-`;
+`
 
 const ControlPanel = styled.div`
   display: flex;
@@ -843,7 +799,7 @@ const ControlPanel = styled.div`
   margin-bottom: 15px;
   flex-wrap: wrap;
   gap: 10px;
-`;
+`
 
 const SearchContainer = styled.div`
   position: relative;
@@ -852,7 +808,7 @@ const SearchContainer = styled.div`
   flex-grow: 1;
   max-width: 300px;
   margin-right: 10px;
-`;
+`
 
 const SearchInput = styled.input`
   width: 100%;
@@ -867,14 +823,14 @@ const SearchInput = styled.input`
     box-shadow: 0 0 0 2px rgba(107, 74, 143, 0.2);
     outline: none;
   }
-`;
+`
 
 const SearchIcon = styled(FaSearch)`
   position: absolute;
   left: 10px;
   color: #6b4a8f;
   font-size: 0.9rem;
-`;
+`
 
 const ClearButton = styled.button`
   position: absolute;
@@ -887,13 +843,13 @@ const ClearButton = styled.button`
   &:hover {
     color: #333;
   }
-`;
+`
 
 const FilterButtonsContainer = styled.div`
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-`;
+`
 
 const FilterButton = styled.button`
   padding: 8px 15px;
@@ -909,12 +865,12 @@ const FilterButton = styled.button`
     background-color: ${({ $isActive }) => ($isActive ? "#5a3d7a" : "#f0f0f0")};
     color: ${({ $isActive }) => ($isActive ? "white" : "#5a3d7a")};
   }
-`;
+`
 
 const ActionButtonsContainer = styled.div`
   display: flex;
   gap: 10px;
-`;
+`
 
 const Form = styled.form`
   width: 100%;
@@ -922,7 +878,7 @@ const Form = styled.form`
   flex-direction: column;
   flex: 1;
   overflow: hidden;
-`;
+`
 
 const TableScrollContainer = styled.div`
   position: relative;
@@ -930,7 +886,7 @@ const TableScrollContainer = styled.div`
   align-items: center;
   flex: 1;
   overflow: hidden;
-`;
+`
 
 const TableContainer = styled.div`
   flex: 1;
@@ -957,12 +913,12 @@ const TableContainer = styled.div`
   &::-webkit-scrollbar-thumb:hover {
     background: #5a3d7a;
   }
-`;
+`
 
 const StyledTable = styled.table`
   width: 100%;
   border-collapse: collapse;
-  min-width: ${(props) => (props.$isCompact ? "1000px" : "1500px")};
+  min-width: ${(props) => (props.$isCompact ? "1000px" : "1400px")};
 
   th {
     background-color: #6b4a8f;
@@ -985,7 +941,7 @@ const StyledTable = styled.table`
     vertical-align: middle;
     font-size: 0.9rem;
   }
-`;
+`
 
 const TableRow = styled.tr`
   background-color: ${(props) => (props.$isEdited ? "rgba(255, 245, 157, 0.3)" : "white")};
@@ -998,7 +954,7 @@ const TableRow = styled.tr`
   &:nth-child(even) {
     background-color: ${(props) => (props.$isEdited ? "rgba(255, 245, 157, 0.3)" : "#f9f9f9")};
   }
-`;
+`
 
 // Form Elements
 const StyledInput = styled.input`
@@ -1026,7 +982,7 @@ const StyledInput = styled.input`
     color: #999;
     font-size: 0.8rem;
   }
-`;
+`
 
 const StyledSelect = styled.select`
   width: 100%;
@@ -1047,41 +1003,27 @@ const StyledSelect = styled.select`
   &:hover {
     border-color: #adb5bd;
   }
-`;
+`
 
 const StockInputContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 2px;
-`;
+`
 
 const StockDisplay = styled.div`
   padding: 4px 6px;
-  background-color: ${(props) => (props.$isPending ? "#fff8e1" : "#e9ecef")};
+  background-color: ${(props) => (props.$isPending ? "#fff8e1" : "#d4edda")};
   border-radius: 4px;
   font-weight: 700;
-  color: #495057;
+  color: ${(props) => (props.$isPending ? "#e65100" : "#155724")};
   min-height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgb(170, 170, 170);
+  border: 1px solid ${(props) => (props.$isPending ? "#ffb74d" : "#c3e6cb")};
   font-size: 0.9rem;
-`;
-
-const TotalStockDisplay = styled.div`
-  padding: 4px 6px;
-  background-color: #d4edda;
-  border-radius: 4px;
-  font-weight: 700;
-  color: #155724;
-  min-height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #c3e6cb;
-  font-size: 0.9rem;
-`;
+`
 
 // Indicators
 const SyncIndicator = styled.span`
@@ -1098,26 +1040,7 @@ const SyncIndicator = styled.span`
       transform: rotate(360deg);
     }
   }
-`;
-
-const EditIndicator = styled.div`
-  color: #ffc107;
-  display: flex;
-  align-items: center;
-  animation: pulse 2s infinite;
-
-  @keyframes pulse {
-    0% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
-`;
+`
 
 // Buttons
 const IconButton = styled.button`
@@ -1145,7 +1068,7 @@ const IconButton = styled.button`
   svg {
     font-size: 1rem;
   }
-`;
+`
 
 const RemoveButton = styled.button`
   background: none;
@@ -1167,13 +1090,13 @@ const RemoveButton = styled.button`
   svg {
     font-size: 1rem;
   }
-`;
+`
 
 const ActionButtonsCell = styled.div`
   display: flex;
   justify-content: center;
   gap: 5px;
-`;
+`
 
 const ButtonContainer = styled.div`
   display: flex;
@@ -1181,7 +1104,7 @@ const ButtonContainer = styled.div`
   gap: 15px;
   margin-top: 15px;
   flex-shrink: 0;
-`;
+`
 
 const SubmitButton = styled.button`
   background-color: #28a745;
@@ -1204,7 +1127,7 @@ const SubmitButton = styled.button`
     background-color: #94d3a2;
     cursor: not-allowed;
   }
-`;
+`
 
 const ActionButton = styled.button`
   background-color: #6c757d;
@@ -1222,7 +1145,7 @@ const ActionButton = styled.button`
   &:hover {
     background-color: #5a6268;
   }
-`;
+`
 
 // Loading Overlay
 const LoadingOverlay = styled.div`
@@ -1236,7 +1159,7 @@ const LoadingOverlay = styled.div`
   justify-content: center;
   align-items: center;
   z-index: 1000;
-`;
+`
 
 const LoadingSpinner = styled.div`
   border: 4px solid #f3f3f3;
@@ -1259,4 +1182,4 @@ const LoadingSpinner = styled.div`
       transform: rotate(360deg);
     }
   }
-`;
+`

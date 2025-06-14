@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import { Form, Row } from "react-bootstrap"
 import { useNavigate } from "react-router-dom"
