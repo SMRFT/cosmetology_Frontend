@@ -523,7 +523,6 @@ const PharmacyComponent = () => {
       <Header>
         <Title>Pharmacy Stock Management</Title>
       </Header>
-
       <ControlPanel>
         <SearchContainer>
           <SearchIcon />
