@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { Form, Container, Row, Col, Modal } from "react-bootstrap"
 import axios from "axios"

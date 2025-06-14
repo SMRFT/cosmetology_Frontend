@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect } from "react"
 import axios from "axios"
 import styled from "styled-components"
@@ -25,74 +23,97 @@ const formatText = (text) => {
 }
 
 const BillingReport = () => {
-  const [billingData, setBillingData] = useState(null)
-  const [selectedInterval, setSelectedInterval] = useState("day")
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [selectedWeek, setSelectedWeek] = useState(null)
-  const [branchCode, setBranchCode] = useState("")
-  const [userRole, setUserRole] = useState("")
-  const navigate = useNavigate()
-  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const [billingData, setBillingData] = useState(null);
+  const [selectedInterval, setSelectedInterval] = useState("day");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const [branchCode, setBranchCode] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [loading, setLoading] = useState(false); // Add loading state
+  const [error, setError] = useState(null); // Add error state
+  const navigate = useNavigate();
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
 
   const getReportHeading = (interval) => {
     switch (interval) {
       case "day":
-        return "Daily Report"
+        return "Daily Report";
       case "week":
-        return "Weekly Report"
+        return "Weekly Report";
       case "month":
-        return "Monthly Report"
+        return "Monthly Report";
       default:
-        return "Billing Report"
+        return "Billing Report";
     }
-  }
+  };
 
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
-    const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
+    const code = localStorage.getItem("selectedBranch");
+    const role =
+      localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
 
     if (code) {
-      setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
+      setBranchCode(code);
+      console.log("Branch code retrieved from localStorage:", code);
     } else {
-      console.warn("Branch code not found in localStorage")
+      console.warn("Branch code not found in localStorage");
+      setError("Branch code not found. Please ensure you are logged in."); // Set error
     }
 
     if (role) {
-      setUserRole(role)
-      console.log("User role retrieved:", role)
+      setUserRole(role);
+      console.log("User role retrieved:", role);
     } else {
-      console.warn("User role not found")
+      console.warn("User role not found");
     }
 
+    // Initialize selectedWeek if interval is 'week' on first load
     if (selectedInterval === "week" && !selectedWeek) {
-      setSelectedWeek(startOfWeek(selectedDate, { weekStartsOn: 1 }))
+      setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 })); // Start week on Monday
     }
-  }, [selectedInterval, selectedDate, selectedWeek])
+  }, []); // Empty dependency array means this runs only once on component mount
 
   useEffect(() => {
     if (branchCode) {
-      fetchData(selectedInterval)
+      fetchData(selectedInterval);
     }
-  }, [branchCode, selectedInterval, selectedDate, selectedWeek])
+  }, [branchCode, selectedInterval, selectedDate, selectedWeek]);
 
   const fetchData = async (interval) => {
     if (!branchCode) {
       console.warn("Branch code is not available, skipping data fetch.");
+      setBillingData(null); // Clear data if branch code is missing
+      setLoading(false); // Ensure loading is false
       return;
     }
 
-    let dateParam = ""
-    if (interval === "day") {
-      dateParam = format(selectedDate, "yyyy-MM-dd")
+    setLoading(true); // Set loading to true before API call
+    setError(null); // Clear previous errors
+
+    let dateParam = "";
+    let currentSelectedDateForParam = selectedDate;
+
+    if (interval === "week" && !selectedWeek) {
+      currentSelectedDateForParam = startOfWeek(selectedDate, { weekStartsOn: 1 });
     } else if (interval === "week" && selectedWeek) {
-      dateParam = format(selectedWeek, "yyyy-MM-dd")
+      currentSelectedDateForParam = selectedWeek;
+    }
+
+    if (interval === "day") {
+      dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
+    } else if (interval === "week") {
+      dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
     } else if (interval === "month") {
-      const startOfMonthDate = startOfMonth(selectedDate)
-      dateParam = format(startOfMonthDate, "yyyy-MM-dd")
+      dateParam = format(startOfMonth(currentSelectedDateForParam), "yyyy-MM-dd");
     }
 
     try {
+      console.log("Making billing API call with params:", {
+        interval,
+        appointmentDate: dateParam,
+        branch_code: branchCode,
+      });
+
       const response = await axios.get(
         `${Cosmetologybaseurl}billing/${interval}/`,
         {
@@ -101,44 +122,75 @@ const BillingReport = () => {
             branch_code: branchCode,
           },
           withCredentials: true,
-        },
-      )
-      setBillingData(response.data.billing_data)
+        }
+      );
+      console.log("Billing API response:", response.data);
+
+      setBillingData(response.data.billing_data);
+
+      // --- ADDED TOAST NOTIFICATION HERE ---
+      if (!response.data.billing_data || Object.keys(response.data.billing_data).length === 0) {
+        toast.info("No data found for the selected criteria.");
+      }
+      // --- END ADDED TOAST NOTIFICATION ---
+
     } catch (error) {
-      console.error("Error fetching data:", error)
+      console.error("Error fetching data:", error);
+      setError("Failed to fetch billing data. Please try again."); // Set error message
       setBillingData(null);
+      toast.error("Failed to fetch data."); // Show error toast
+    } finally {
+      setLoading(false); // Set loading to false after API call
     }
-  }
+  };
 
   const handleIntervalChange = (interval) => {
-    setSelectedInterval(interval)
-    setSelectedWeek(null)
-    if (interval === "day" || interval === "month") {
-      setSelectedDate(new Date());
+    setSelectedInterval(interval);
+    // Reset selectedDate to today's date for 'day' and 'month' intervals
+    // Reset selectedWeek to the start of the current week for 'week' interval
+    if (interval === "week") {
+      setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 })); // Start week on Monday
+    } else {
+      setSelectedDate(new Date()); // Reset to today for day/month
+      setSelectedWeek(null); // Clear selectedWeek when not in week mode
     }
-  }
+  };
 
   const handleDateChange = (date) => {
-    setSelectedDate(date)
-  }
+    setSelectedDate(date);
+    if (selectedInterval === "week") {
+      setSelectedWeek(startOfWeek(date, { weekStartsOn: 1 }));
+    }
+  };
 
   const handleWeekChange = (weekStart) => {
-    setSelectedWeek(weekStart)
-  }
+    setSelectedWeek(weekStart);
+    setSelectedDate(weekStart); // Also update selectedDate to reflect the chosen week's start
+  };
 
   const getWeeksInMonth = (date) => {
-    const startOfMonthDate = startOfMonth(date)
-    const weeks = []
+    const startOfMonthDate = startOfMonth(date);
+    const weeks = [];
     for (let i = 0; i < 6; i++) {
-      const weekStart = addWeeks(startOfMonthDate, i)
-      if (weekStart.getMonth() === date.getMonth() || (i > 0 && format(weekStart, 'yyyy-MM') === format(date, 'yyyy-MM'))) {
-        weeks.push(weekStart)
+      const weekStart = startOfWeek(addWeeks(startOfMonthDate, i), { weekStartsOn: 1 });
+      if (
+        weekStart.getMonth() === date.getMonth() ||
+        (i > 0 &&
+          startOfWeek(addWeeks(startOfMonthDate, i - 1), { weekStartsOn: 1 })
+            .getMonth() === date.getMonth() &&
+          weekStart.getMonth() !== date.getMonth())
+      ) {
+        weeks.push(weekStart);
+      } else if (weeks.length > 0) {
+        break;
       }
     }
-    return weeks.filter((week, index, self) =>
-      index === self.findIndex((t) => format(t, 'yyyy-MM-dd') === format(week, 'yyyy-MM-dd'))
+    const uniqueWeeks = weeks.filter(
+      (week, index, self) =>
+        index === self.findIndex((t) => format(t, "yyyy-MM-dd") === format(week, "yyyy-MM-dd"))
     );
-  }
+    return uniqueWeeks;
+  };
 
   const downloadCSV = () => {
     if (!billingData || billingData.length === 0) {
@@ -509,7 +561,7 @@ const BillingReport = () => {
             </table>
           </Billing>
         ) : (
-          <Message>No data available for the selected interval.</Message>
+           console.log("No Data available")
         )}
       </Content>
     </Container>
@@ -640,17 +692,6 @@ const Billing = styled.div`
     border-radius: 4px;
     box-sizing: border-box;
   }
-`
-
-const Message = styled.div`
-  text-align: center;
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
-  color: #555;
-  padding: 20px;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 5px;
 `
 
 const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (

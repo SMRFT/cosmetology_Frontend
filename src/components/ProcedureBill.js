@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import styled from "styled-components"
@@ -356,7 +354,6 @@ const ProcedureComponent = () => {
       }
     const initialDate = new Date()
     setSelectedDate(initialDate,branchCode)
-    fetchProcedures(initialDate,branchCode)
     }, [branchCode])
   
 

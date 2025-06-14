@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, useEffect } from "react"
 import axios from "axios"
 import styled from "styled-components"
@@ -525,7 +523,6 @@ const BillingProcedureReport = () => {
       <Header>
         <div>
           <h3 className="text-center mb-2">Procedure Billing Report</h3>
-          {branchCode && <BranchInfo>Branch Code: {branchCode}</BranchInfo>}
         </div>
         <RefreshButton onClick={refreshData} disabled={loading}>
           🔄 Refresh
@@ -815,9 +812,7 @@ const BillingProcedureReport = () => {
           </BillingContainer>
         ) : (
           !loading && (
-            <Message>
-              {branchCode ? "No data available for the selected interval and date." : "Please ensure you are logged in with a valid branch code."}
-            </Message>
+          console.log("No Data available")
           )
         )}
       </Content>
@@ -827,19 +822,6 @@ const BillingProcedureReport = () => {
 
 export default BillingProcedureReport
 
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  margin-top: 65px;
-`
-
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-`
 
 const RefreshButton = styled.button`
   padding: 8px 12px;
@@ -859,13 +841,6 @@ const RefreshButton = styled.button`
     opacity: 0.6;
     cursor: not-allowed;
   }
-`
-
-const BranchInfo = styled.div`
-  font-size: 0.9rem;
-  color: #666;
-  text-align: center;
-  margin-top: 5px;
 `
 
 const ErrorMessage = styled.div`
@@ -891,99 +866,10 @@ const DataCount = styled.div`
   margin-bottom: 10px;
 `
 
-const Content = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-`
-
-const IntervalSelector = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  margin-top: -30px;
-`
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 20px;
-  font-weight: bold;
-`
-
-const IntervalButton = styled.button`
-  padding: 5px 10px;
-  border: none;
-  background-color: ${({ active }) => (active ? "#C85C8E" : "white")};
-  color: ${({ active }) => (active ? "white" : "#C85C8E")};
-  font-size: 1.5rem;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`
-
-const DatePickerWrapper = styled.div`
-  color: #C85C8E;
-`
-
-const WeekButtons = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap; /* Added for better responsiveness */
-`
-
-const WeekButton = styled.button`
-  margin: 5px;
-  padding: 8px 12px;
-  border: 1px solid #C85C8E;
-  background-color: white;
-  color: #C85C8E;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-
-  &.active {
-    background-color: #C85C8E;
-    color: white;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`
-
-const Billing = styled.div`
-  flex: 1;
-  overflow-x: auto;
-`
-
 const BillingContainer = styled.div`
     display: flex;
     flex-direction: column; /* Changed to column for better table stacking */
     gap: 20px;
-`
-
-const Message = styled.div`
-  text-align: center;
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
-`
-
-const CustomDateInput = styled.input`
-  border: none;
-  padding: 8px;
-  color: #C85C8E;
-  font-size: 1rem;
-  cursor: pointer;
-  outline: none;
-  background-color: white;
-  font-weight: bold;
-  text-align: center;
 `
 
 const TabButtons = styled.div`
@@ -1009,8 +895,187 @@ const TabButton = styled.button`
   }
 `
 
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  margin-top: 65px;
+`
+
+const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  }
+`
+
+const Content = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+`
+
+const IntervalSelector = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-top: -30px;
+  margin-bottom: 20px;
+  gap: 20px;
+`
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 20px;
+  font-weight: bold;
+  cursor: pointer;
+`
+
+const IntervalButton = styled.button`
+  padding: 10px 20px;
+  border: none;
+  background-color: ${({ active }) => (active ? "#C85C8E" : "white")};
+  color: ${({ active }) => (active ? "white" : "#C85C8E")};
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  width: 100%;
+  height: 50px;
+  min-height: 40px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+  svg {
+    cursor: inherit;
+  }
+
+  &:hover {
+    background-color: ${({ active }) => (active ? "#C85C8E" : "#f0f0f0")};
+    transform: translateY(-2px);
+    transition: all 0.2s ease-in-out;
+  }
+`
+
+const DatePickerWrapper = styled.div`
+  color: #C85C8E;
+  .react-datepicker-wrapper {
+    width: 100%;
+  }
+  .react-datepicker__input-container {
+    display: block;
+  }
+`
+
+const WeekButtons = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+`
+
+const WeekButton = styled.button`
+  margin: 5px;
+  padding: 8px 15px;
+  border: 1px solid #C85C8E;
+  background-color: white;
+  color: #C85C8E;
+  border-radius: 5px;
+  cursor: pointer;
+  &:hover {
+    background-color: #f0f0f0;
+  }
+  &.active {
+    background-color: #C85C8E;
+    color: white;
+    border-color: #C85C8E;
+  }
+`
+
+const Billing = styled.div`
+  flex: 1;
+  overflow-x: auto;
+
+  .text-right {
+    text-align: right;
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  input[type="number"], select.form-control {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+`
+
+const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
+  <StyledCustomDateInput onClick={onClick} ref={ref} value={value} readOnly />
+));
+
+const StyledCustomDateInput = styled.input`
+  border: none;
+  padding: 8px;
+  color: #C85C8E;
+  font-size: 1rem;
+  cursor: pointer;
+  outline: none;
+  background-color: white;
+  font-weight: bold;
+  text-align: center;
+  width: auto;
+  min-width: 120px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  &:hover {
+    border-color: #C85C8E;
+  }
+`;
+
 const ActionButtonsContainer = styled.div`
   display: flex;
   gap: 5px;
   align-items: center;
-`
+  justify-content: center;
+
+  button {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+
+    &.btn-primary {
+      background-color: #007bff;
+      color: white;
+      &:hover { background-color: #0056b3; }
+    }
+    &.btn-info { /* This button type is now removed, but keeping the style for completeness if other info buttons exist */
+      background-color: #17a2b8;
+      color: white;
+      &:hover { background-color: #117a8b; }
+    }
+    &.btn-success { /* This button type is now removed, but keeping the style for completeness if other success buttons exist */
+      background-color: #28a745;
+      color: white;
+      &:hover { background-color: #1e7e34; }
+    }
+    &.btn-danger {
+      background-color: #dc3545;
+      color: white;
+      &:hover { background-color: #bd2130; }
+    }
+  }
+`;

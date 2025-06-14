@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, useRef } from "react"
 import { Button, Container, Modal } from "react-bootstrap"
 import styled, { keyframes } from "styled-components"

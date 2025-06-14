@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import styled from "styled-components"
 import { ToastContainer, toast } from "react-toastify"
@@ -98,6 +96,7 @@ const Container = styled.div`
     padding: 20px;
     max-width: 1200px;
     margin: 0 auto;
+    margin-top: 65px;
 `
 
 const Header = styled.div`

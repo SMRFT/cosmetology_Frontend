@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
@@ -130,21 +128,27 @@ const PatientDetails = () => {
   const confirmDeletePatient = () => {
     if (!patientToDelete) return
 
-    // Include branch code in the delete request URL if available
-    const url = branchCode
-      ? `${Cosmetologybaseurl}Patients_data/${patientToDelete.patientUID}/?branch_code=${branchCode}`
-      : `${Cosmetologybaseurl}Patients_data/${patientToDelete.patientUID}/`
+    const url = `${Cosmetologybaseurl}Patients_data/${patientToDelete.patientUID}/`
 
     axios
-      .delete(url)
+      .delete(url, {
+        data: {
+          branch_code: branchCode,
+        },
+      })
       .then(() => {
         toast.success("Patient deleted successfully")
         setShowDeleteConfirmModal(false)
+        setPatientToDelete(null)
         fetchPatients() // Refresh the list after deletion
       })
       .catch((error) => {
         console.error("Error deleting patient:", error)
-        toast.error("Error deleting patient.")
+        if (error.response?.data?.error) {
+          toast.error(`Error: ${error.response.data.error}`)
+        } else {
+          toast.error("Error deleting patient.")
+        }
       })
   }
 

@@ -9,63 +9,78 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCalendarDay, faCalendarWeek, faCalendarAlt, faCalendar } from '@fortawesome/free-solid-svg-icons';
 import { FaDownload, FaTrash } from "react-icons/fa";
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 import './DatePicker.css';
 
 const SummaryReport = () => {
   const [summaryData, setSummaryData] = useState(null);
-  const [selectedInterval, setSelectedInterval] = useState('day');
+  const [selectedInterval, setSelectedInterval] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [branchCode, setBranchCode] = useState('');
+  const [branchCode, setBranchCode] = useState("");
+  const [loading, setLoading] = useState(false); // Add loading state
+  const [error, setError] = useState(null); // Add error state
   const navigate = useNavigate();
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
 
-  // This useEffect will run once on component mount to get the branch code
-  useEffect(() => {
-    const code = localStorage.getItem('selectedBranch');
-    if (code) {
-      setBranchCode(code);
-      console.log('Branch code retrieved from localStorage:', code);
-    } else {
-      console.warn('Branch code not found in localStorage');
-    }
-  }, []); // Empty dependency array means it runs only once
-
-  // This useEffect will trigger data fetching whenever selectedInterval, selectedDate, or branchCode changes
-  useEffect(() => {
-    if (branchCode) { // Ensure branchCode is available before fetching data
-      fetchData(selectedInterval, selectedDate, branchCode);
-    }
-  }, [selectedInterval, selectedDate, branchCode]); // Dependencies ensure re-fetch when these change
-
   const getReportHeading = (interval) => {
     switch (interval) {
-      case 'day':
-        return 'Daily Report';
-      case 'month':
-        return 'Monthly Report';
+      case "day":
+        return "Daily Report";
+      case "month":
+        return "Monthly Report";
       default:
-        return 'Billing Report';
+        return "Summary Report";
     }
   };
 
-  const fetchData = async (interval, date, branchCode) => {
-    if (!branchCode) { // Explicit check to prevent API call if branchCode is missing
+  // Effect to get branch_code from localStorage
+  useEffect(() => {
+    const code = localStorage.getItem("selectedBranch");
+
+    if (code) {
+      setBranchCode(code);
+      console.log("Branch code retrieved from localStorage:", code);
+    } else {
+      console.warn("Branch code not found in localStorage");
+      setError("Branch code not found. Please ensure you are logged in."); // Set error if branch code is missing
+      toast.error("Branch code not found. Please log in again."); // Toast for missing branch code
+    }
+  }, []); // Run only once on component mount
+
+  // Effect to fetch data whenever relevant dependencies change
+  useEffect(() => {
+    if (branchCode) {
+      fetchData(selectedInterval);
+    }
+  }, [branchCode, selectedInterval, selectedDate]); // Dependencies for re-fetching
+
+  const fetchData = async (interval) => {
+    if (!branchCode) {
       console.warn("Branch code is not available, skipping data fetch.");
+      setSummaryData(null); // Clear data if branch code is missing
+      setLoading(false); // Ensure loading is false
       return;
     }
 
-    let dateParam = '';
-    if (interval === 'day') {
-      dateParam = format(date, 'yyyy-MM-dd');
-    } else if (interval === 'month') {
-      // For month, we always want the first day of the selected month
-      const startOfMonthDate = startOfMonth(date);
-      dateParam = format(startOfMonthDate, 'yyyy-MM-dd');
+    setLoading(true); // Set loading to true before API call
+    setError(null); // Clear previous errors
+
+    let dateParam = "";
+    if (interval === "day") {
+      dateParam = format(selectedDate, "yyyy-MM-dd");
+    } else if (interval === "month") {
+      const startOfMonthDate = startOfMonth(selectedDate);
+      dateParam = format(startOfMonthDate, "yyyy-MM-dd");
     }
 
-    console.log(`Fetching data for interval: ${interval}, date: ${dateParam}, branch: ${branchCode}`); // Added console log for debugging
-
     try {
+      console.log("Making summary API call with params:", {
+        interval,
+        appointmentDate: dateParam,
+        branch_code: branchCode,
+      });
+
       const response = await axios.get(
         `${Cosmetologybaseurl}summary/${interval}/`,
         {
@@ -76,25 +91,37 @@ const SummaryReport = () => {
           withCredentials: true,
         }
       );
-      setSummaryData(response.data);
+
+      console.log("Summary API response:", response.data);
+      setSummaryData(response.data.summary_data);
+
+      // --- ADDED TOAST NOTIFICATION FOR NO DATA ---
+      // Check if summary_data is null/undefined or an empty object
+      if (!response.data.summary_data || Object.keys(response.data.summary_data).length === 0) {
+        toast.info("No data found for the selected criteria.");
+      }
+      // --- END ADDED TOAST NOTIFICATION ---
+
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching data:', error.response ? error.response.data : error.message);
+      setError("Failed to fetch summary data. Please try again."); // Set error message
       setSummaryData(null); // Clear data on error
+      toast.error("Failed to fetch data."); // Show error toast
+    } finally {
+      setLoading(false); // Set loading to false after API call
     }
   };
 
   const handleIntervalChange = (interval) => {
-    setSelectedInterval(interval);
-    // Crucial: Reset selectedDate to a new Date object when interval changes.
-    // This forces the useEffect to re-run with a fresh date value,
-    // which then triggers fetchData with the correct date interpretation for the new interval.
-    setSelectedDate(new Date());
-  };
+    setSelectedInterval(interval)
+    if (interval === "day" || interval === "month") {
+      setSelectedDate(new Date());
+    }
+  }
 
   const handleDateChange = (date) => {
-    setSelectedDate(date);
-    // fetchData will be called by the useEffect when selectedDate updates
-  };
+    setSelectedDate(date)
+  }
 
   const downloadCSV = () => {
     if (!summaryData || summaryData.length === 0) return;
@@ -113,15 +140,16 @@ const SummaryReport = () => {
       item.patientName,
       item.appointmentDate,
       item.diagnosis,
-      item.complaints,
+      // Handle JSON fields for CSV export
+      JSON.stringify(item.complaints), // Stringify complex objects for CSV
       item.findings,
       item.prescription,
       item.plans,
       item.tests,
-      item.procedures
+      JSON.stringify(item.proceduresList) // Stringify complex objects for CSV
     ]);
     let csvContent = 'data:text/csv;charset=utf-8,'
-      + [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+      + [headers.join(','), ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))].join('\n'); // Added CSV escaping
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -152,6 +180,7 @@ const SummaryReport = () => {
 
   return (
     <Container>
+      <ToastContainer position="top-right" autoClose={5000} />
       <Header>
         <h3 className='text-center mb-2'>Summary Report</h3>
         <button title='Download Excel' onClick={downloadCSV}>
@@ -161,24 +190,26 @@ const SummaryReport = () => {
       <IntervalSelector>
         <ButtonGroup>
           <IntervalButton
-            title='Daily Report'
-            onClick={() => handleIntervalChange('day')}
-            className={selectedInterval === 'day' ? 'active' : ''}
-            active={selectedInterval === 'day'}
+            title="Daily Report"
+            onClick={() => handleIntervalChange("day")}
+            className={selectedInterval === "day" ? "active" : ""}
+            active={selectedInterval === "day"}
+            style={{ cursor: "pointer" }}
           >
             <FontAwesomeIcon icon={faCalendarDay} />
           </IntervalButton>
+
           <IntervalButton
-            title='Monthly Report'
-            onClick={() => handleIntervalChange('month')}
-            className={selectedInterval === 'month' ? 'active' : ''}
-            active={selectedInterval === 'month'}
+            title="Monthly Report"
+            onClick={() => handleIntervalChange("month")}
+            className={selectedInterval === "month" ? "active" : ""}
+            active={selectedInterval === "month"}
           >
             <FontAwesomeIcon icon={faCalendarAlt} />
           </IntervalButton>
         </ButtonGroup>
         <DatePickerWrapper>
-          {selectedInterval === 'day' && (
+          {selectedInterval === "day" && (
             <DatePicker
               selected={selectedDate}
               onChange={handleDateChange}
@@ -187,7 +218,8 @@ const SummaryReport = () => {
               customInput={<CustomDateInput />}
             />
           )}
-          {selectedInterval === 'month' && (
+
+          {selectedInterval === "month" && (
             <DatePicker
               selected={selectedDate}
               onChange={handleDateChange}
@@ -236,7 +268,7 @@ const SummaryReport = () => {
             </table>
           </Summary>
         ) : (
-          <Message>No data available for the selected interval and date.</Message>
+          console.log("No Data available")
         )}
       </Content>
     </Container>
@@ -245,47 +277,6 @@ const SummaryReport = () => {
 
 export default SummaryReport;
 
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  margin-top: 65px;
-  overflow: hidden;
-`;
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-`;
-const Content = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-`;
-const IntervalSelector = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  margin-top: -30px;
-`;
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 20px;
-  font-weight: bold;
-`;
-const IntervalButton = styled.button`
-  padding: 5px 10px;
-  border: none;
-  background-color: ${({ active }) => (active ? '#C85C8E' : 'white')};
-  color: ${({ active }) => (active ? 'white' : '#C85C8E')};
-  font-size: 1.5rem;
-  cursor: pointer;
-`;
-const DatePickerWrapper = styled.div`
-  color: #C85C8E;
-`;
 const Summary = styled.div`
   flex: 1;
   overflow-x: auto;
@@ -295,11 +286,88 @@ const StyledRow = styled.tr`
     background-color: #FFFFFF;
   }
 `;
-const Message = styled.div`
-  text-align: center;
-  font-size: 1.2rem;
-`;
-const CustomDateInput = styled.input`
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  margin-top: 65px;
+`
+
+const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  }
+`
+
+const Content = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+`
+
+const IntervalSelector = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-top: -30px;
+  margin-bottom: 20px;
+  gap: 20px;
+`
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 20px;
+  font-weight: bold;
+  cursor: pointer;
+`
+
+const IntervalButton = styled.button`
+  padding: 10px 20px;
+  border: none;
+  background-color: ${({ active }) => (active ? "#C85C8E" : "white")};
+  color: ${({ active }) => (active ? "white" : "#C85C8E")};
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  width: 100%;
+  height: 50px;
+  min-height: 40px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+  svg {
+    cursor: inherit;
+  }
+
+  &:hover {
+    background-color: ${({ active }) => (active ? "#C85C8E" : "#f0f0f0")};
+    transform: translateY(-2px);
+    transition: all 0.2s ease-in-out;
+  }
+`
+
+const DatePickerWrapper = styled.div`
+  color: #C85C8E;
+  .react-datepicker-wrapper {
+    width: 100%;
+  }
+  .react-datepicker__input-container {
+    display: block;
+  }
+`
+
+const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
+  <StyledCustomDateInput onClick={onClick} ref={ref} value={value} readOnly />
+));
+
+const StyledCustomDateInput = styled.input`
   border: none;
   padding: 8px;
   color: #C85C8E;
@@ -309,4 +377,13 @@ const CustomDateInput = styled.input`
   background-color: white;
   font-weight: bold;
   text-align: center;
+  width: auto;
+  min-width: 120px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  &:hover {
+    border-color: #C85C8E;
+  }
 `;
+
