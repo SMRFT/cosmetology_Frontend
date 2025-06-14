@@ -9,7 +9,6 @@ import { FaCalendarAlt, FaPlus, FaTrash } from "react-icons/fa"
 import { format } from "date-fns"
 import { IoMdArrowRoundBack } from "react-icons/io"
 import jsPDF from "jspdf"
-import Cookies from "js-cookie"
 import "jspdf-autotable"
 import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
 import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
@@ -359,26 +358,22 @@ const Bill = () => {
   }, [branchCode])
 
   useEffect(() => {
-    const code = Cookies.get("branch_code")
+    const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
+      console.log("Branch code retrieved from localStorage:", code)
+
     } else {
-      console.warn("Branch code not found in cookies")
+      console.warn("Branch code not found in localStorage")
     }
 
-    fetchPatientData(startDate)
-    fetchBillingData(startDate)
-  }, [startDate])
+    fetchPatientData(startDate,branchCode)
+    fetchBillingData(startDate,branchCode)
+  }, [startDate,branchCode])
 
   const handlePaymentTypeChange = (e) => {
     setPaymentType(e.target.value)
   }
-
-  useEffect(() => {
-    fetchPatientData(startDate)
-    fetchBillingData(startDate)
-  }, [startDate])
 
   useEffect(() => {
     if (selectedPatient) {
@@ -875,7 +870,6 @@ const Bill = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Branch-Code": branchCode,
         },
         body: JSON.stringify(dataToSubmit),
       })
@@ -936,7 +930,6 @@ const Bill = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            "X-Branch-Code": branchCode,
           },
           body: JSON.stringify(stockUpdate),
         })

@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import Cookies from "js-cookie"
 import mainImage from "../components/images/background-panel-image-login.png"
 
 const UnifiedLogin = ({ setUserRole }) => {
@@ -14,21 +13,14 @@ const UnifiedLogin = ({ setUserRole }) => {
   const [password, setPassword] = useState("")
   const [selectedBranch, setSelectedBranch] = useState("")
   const [availableBranches, setAvailableBranches] = useState([])
-  const [allBranches, setAllBranches] = useState([]) // Store all branches with names
+  const [allBranches, setAllBranches] = useState([])
   const [showBranchSelection, setShowBranchSelection] = useState(false)
   const [userData, setUserData] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
 
   // Get API URL from environment variables
-  const USE_HTTPS = process.env.REACT_APP_USE_HTTPS === "true" || false
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
-  // Cookie configuration
-  const cookieOptions = {
-    expires: 7,
-    path: "/",
-    sameSite: "Strict",
-    secure: USE_HTTPS,
-  }
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   // Define role-based navigation mapping
   const getNavigationPath = (userRole) => {
@@ -52,7 +44,7 @@ const UnifiedLogin = ({ setUserRole }) => {
     return endpointMap[userRole]
   }
 
-  // Fetch all branches from API
+  // API 1: Fetch all branches from API
   const fetchAllBranches = async () => {
     try {
       const response = await fetch(`${Cosmetologybaseurl}branches/`)
@@ -86,14 +78,15 @@ const UnifiedLogin = ({ setUserRole }) => {
     return allBranchesData.filter((branch) => branchCodes.includes(branch.branch_code))
   }
 
-  // Handle initial login (username/password validation)
+  // API 2: Handle initial login (username/password validation)
   const handleInitialLogin = async (e) => {
     e.preventDefault()
+    setIsLoading(true)
 
     try {
       console.log("Attempting login with:", { username })
 
-      // First, try to authenticate without specifying endpoint
+      // Single API call for authentication
       const response = await fetch(`${Cosmetologybaseurl}login/`, {
         method: "POST",
         headers: {
@@ -103,7 +96,7 @@ const UnifiedLogin = ({ setUserRole }) => {
         body: JSON.stringify({
           username,
           password,
-          endpoint: "UnifiedLogin", // Use a generic endpoint initially
+          endpoint: "UnifiedLogin",
         }),
       })
 
@@ -121,6 +114,7 @@ const UnifiedLogin = ({ setUserRole }) => {
 
         if (!navigationPath) {
           toast.error("Invalid user role")
+          setIsLoading(false)
           return
         }
 
@@ -132,10 +126,11 @@ const UnifiedLogin = ({ setUserRole }) => {
         })
 
         // Check if user has multiple branch codes
-        const branchCodes = responseData.branch_codes
+        const branchCodes = responseData.branch_codes || []
 
+        // Only show branch selection if user has multiple active branches
         if (Array.isArray(branchCodes) && branchCodes.length > 1) {
-          // Fetch all branches to get branch names
+          // Fetch all branches to get branch names (API 1)
           const allBranchesData = await fetchAllBranches()
 
           // Filter branches based on user's available branch codes
@@ -146,13 +141,29 @@ const UnifiedLogin = ({ setUserRole }) => {
             setAvailableBranches(userBranches)
             setShowBranchSelection(true)
             toast.success("Login successful! Please select a branch.")
+            setIsLoading(false)
           } else {
             toast.error("No valid branches found for your account")
+            setIsLoading(false)
           }
         } else {
-          // Single branch code - proceed with login
-          const branchCode = Array.isArray(branchCodes) ? branchCodes[0] : responseData.branch_code
-          proceedWithLogin(responseData, branchCode, endpoint, navigationPath)
+          // Single branch code - proceed with login directly
+          const branchCode =
+            Array.isArray(branchCodes) && branchCodes.length === 1 ? branchCodes[0] : responseData.branch_code || ""
+
+          if (!branchCode) {
+            toast.error("No branch code available for this user")
+            setIsLoading(false)
+            return
+          }
+
+          // For single branch, we still need branch name, so fetch branches
+          const allBranchesData = await fetchAllBranches()
+          const selectedBranchObj = allBranchesData.find((branch) => branch.branch_code === branchCode)
+          const branchName = selectedBranchObj ? selectedBranchObj.branch_name : branchCode
+
+          // Proceed directly with login for single branch users
+          proceedWithLogin(responseData, branchCode, branchName, endpoint, navigationPath)
         }
       } else {
         const errorText = await response.text()
@@ -164,60 +175,36 @@ const UnifiedLogin = ({ setUserRole }) => {
         } else {
           toast.error("Login failed: " + errorText)
         }
+        setIsLoading(false)
       }
     } catch (error) {
       console.error("Login error:", error)
       toast.error("An error occurred while logging in")
+      setIsLoading(false)
     }
   }
 
-  // Handle branch selection and final login
+  // Handle branch selection and proceed with login
   const handleBranchLogin = async (e) => {
     e.preventDefault()
+    setIsLoading(true)
 
     if (!selectedBranch) {
       toast.error("Please select a branch")
+      setIsLoading(false)
       return
     }
 
-    try {
-      console.log("Attempting branch-specific login with:", { username, selectedBranch })
+    // Find the selected branch name
+    const selectedBranchObj = availableBranches.find((branch) => branch.branch_code === selectedBranch)
+    const branchName = selectedBranchObj ? selectedBranchObj.branch_name : selectedBranch
 
-      // Make a second API call with the selected branch
-      const response = await fetch(`${Cosmetologybaseurl}login/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          username,
-          password,
-          endpoint: userData.endpoint,
-          selected_branch: selectedBranch, // Pass selected branch to backend
-        }),
-      })
-
-      if (response.ok) {
-        const responseData = await response.json()
-        proceedWithLogin(responseData, selectedBranch, userData.endpoint, userData.navigationPath)
-      } else {
-        const errorText = await response.text()
-        console.error("Branch login failed:", errorText)
-        toast.error("Branch login failed: " + errorText)
-      }
-    } catch (error) {
-      console.error("Branch login error:", error)
-      toast.error("An error occurred while logging in with selected branch")
-    }
+    // Proceed with login using stored userData
+    proceedWithLogin(userData, selectedBranch, branchName, userData.endpoint, userData.navigationPath)
   }
 
   // Common function to proceed with login after branch selection
-  const proceedWithLogin = (responseData, branchCode, endpoint, navigationPath) => {
-    // Find the selected branch name for display purposes
-    const selectedBranchObj = availableBranches.find((branch) => branch.branch_code === branchCode)
-    const branchName = selectedBranchObj ? selectedBranchObj.branch_name : branchCode
-
+  const proceedWithLogin = (responseData, branchCode, branchName, endpoint, navigationPath) => {
     // Store essential data in localStorage
     localStorage.setItem("userRole", responseData.role)
     localStorage.setItem("userId", responseData.id)
@@ -225,14 +212,12 @@ const UnifiedLogin = ({ setUserRole }) => {
     localStorage.setItem("userContact", responseData.contact)
     localStorage.setItem("loggedInAs", endpoint)
     localStorage.setItem("selectedBranch", branchCode)
-    localStorage.setItem("selectedBranchName", branchName) // Store branch name too
-
-    // Set branch_code in cookies
-    Cookies.set("branch_code", branchCode, cookieOptions)
+    localStorage.setItem("selectedBranchName", branchName)
 
     setUserRole(responseData.role)
 
     toast.success(`Login successful! Welcome to ${branchName}`)
+    setIsLoading(false)
 
     setTimeout(() => {
       navigate(navigationPath)
@@ -278,6 +263,7 @@ const UnifiedLogin = ({ setUserRole }) => {
                       autoComplete="off"
                       required
                       style={{ border: "1px solid #DAD1E1" }}
+                      disabled={isLoading}
                     />
                     <Form.Control.Feedback type="invalid">Username is required.</Form.Control.Feedback>
                   </Form.Group>
@@ -293,13 +279,14 @@ const UnifiedLogin = ({ setUserRole }) => {
                       autoComplete="new-password"
                       required
                       style={{ border: "1px solid #DAD1E1" }}
+                      disabled={isLoading}
                     />
                     <Form.Control.Feedback type="invalid">Password is required.</Form.Control.Feedback>
                   </Form.Group>
                 </Row>
                 <center>
-                  <LoginButton type="submit" className="mb-3">
-                    Login
+                  <LoginButton type="submit" className="mb-3" disabled={isLoading}>
+                    {isLoading ? "Logging in..." : "Login"}
                   </LoginButton>
                 </center>
               </Form>
@@ -324,6 +311,7 @@ const UnifiedLogin = ({ setUserRole }) => {
                       value={selectedBranch}
                       onChange={(e) => setSelectedBranch(e.target.value)}
                       required
+                      disabled={isLoading}
                     >
                       <option value="">-- Choose Branch --</option>
                       {availableBranches.map((branch) => (
@@ -336,8 +324,8 @@ const UnifiedLogin = ({ setUserRole }) => {
                   </Form.Group>
                 </Row>
                 <center>
-                  <LoginButton type="submit" className="mb-3">
-                    Continue with Selected Branch
+                  <LoginButton type="submit" className="mb-3" disabled={isLoading}>
+                    {isLoading ? "Processing..." : "Continue with Selected Branch"}
                   </LoginButton>
                 </center>
               </Form>
@@ -367,7 +355,7 @@ const LoginContainer = styled.div`
   transform: translateX(-50%);
   width: 65%;
   height: 80%;
-  background-image: url(${mainImage}) ;
+  background-image: url(${mainImage});
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
@@ -488,6 +476,13 @@ const LoginButton = styled.button`
   
   &:active {
     transform: translateY(0);
+  }
+  
+  &:disabled {
+    background: linear-gradient(135deg, #8a7a9e, #a99eb9);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 `
 

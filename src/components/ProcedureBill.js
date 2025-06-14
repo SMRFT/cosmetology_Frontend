@@ -18,7 +18,6 @@ import CreatableSelect from "react-select/creatable"
 import { IoMdArrowRoundBack } from "react-icons/io"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import Cookies from "js-cookie"
 
 const DatePickerWrapper = styled.div`
   position: relative;
@@ -346,19 +345,20 @@ const ProcedureComponent = () => {
       })
   }, [])
 
-  useEffect(() => {
-    const code = Cookies.get("branch_code")
-    if (code) {
-      setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
-    } else {
-      console.warn("Branch code not found in cookies")
-    }
-
+    useEffect(() => {
+      const code = localStorage.getItem("selectedBranch")
+      if (code) {
+        setBranchCode(code)
+        console.log("Branch code retrieved from localStorage:", code)
+  
+      } else {
+        console.warn("Branch code not found in localStorage")
+      }
     const initialDate = new Date()
-    setSelectedDate(initialDate)
-    fetchProcedures(initialDate)
-  }, [])
+    setSelectedDate(initialDate,branchCode)
+    fetchProcedures(initialDate,branchCode)
+    }, [branchCode])
+  
 
   const handlePaymentTypeChange = (e) => {
     setPaymentType(e.target.value)
@@ -713,7 +713,6 @@ const ProcedureComponent = () => {
         const response = await axios.post(`${Cosmetologybaseurl}Post_Procedure_Bill/`, payload, {
           headers: {
             "Content-Type": "application/json",
-            "X-Branch-Code": branchCode,
           },
           withCredentials: true,
         })
@@ -1169,12 +1168,12 @@ const ProcedureComponent = () => {
                 <div className="d-flex flex-column align-items-center mt-4">
                   <Row className="g-3">
                     <Col xs="auto">
-                      <button className="btn btn-success" onClick={handleSave}>
+                      <button onClick={handleSave}>
                         Save
                       </button>
                     </Col>
                     <Col xs="auto">
-                      <button className="btn btn-primary" onClick={handleDownload}>
+                      <button onClick={handleDownload}>
                         Download as PDF
                       </button>
                     </Col>

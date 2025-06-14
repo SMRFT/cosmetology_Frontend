@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Button, Container, Modal, ListGroup } from "react-bootstrap"
+import { Button, Container, Modal } from "react-bootstrap"
 import styled, { keyframes } from "styled-components"
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
@@ -19,7 +19,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons"
 import PatientList from "./PatientList"
 import axios from "axios"
-import Cookies from "js-cookie"
 
 const Appointment = () => {
   const [timeSlots, setTimeSlots] = useState([])
@@ -39,15 +38,15 @@ const Appointment = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [showErrorMessage, setShowErrorMessage] = useState(false)
   const datePickerRef = useRef(null)
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   useEffect(() => {
-    const code = Cookies.get("branch_code")
+    const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
+      console.log("Branch code retrieved from localStorage:", code)
       fetchAppointments(code)
     } else {
-      console.warn("Branch code not found in cookies")
+      console.warn("Branch code not found in localStorage")
     }
 
     const interval = 30
@@ -185,7 +184,6 @@ const Appointment = () => {
       .post(`${Cosmetologybaseurl}Appointmentpost/`, appointmentData, {
         headers: {
           "Content-Type": "application/json",
-          "X-Branch-Code": branchCode,
         },
         withCredentials: true,
       })

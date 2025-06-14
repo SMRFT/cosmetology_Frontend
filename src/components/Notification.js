@@ -4,34 +4,31 @@ import { IoMdClose } from "react-icons/io";
 import { FaRegBell } from "react-icons/fa";
 import { Alert } from 'react-bootstrap';
 import styled from 'styled-components';
-import Cookies from 'js-cookie'; // Added import for js-cookie
 
 const Notification = () => {
   const [lowQuantityMedicines, setLowQuantityMedicines] = useState([]);
   const [nearExpiryMedicines, setNearExpiryMedicines] = useState([]);
   const [upcomingVisits, setUpcomingVisits] = useState([]);
   const [panelVisible, setPanelVisible] = useState(false);
-  const [branchCode, setBranchCode] = useState(''); // Added state for branchCode
+  const [branchCode, setBranchCode] = useState('');
   const userRole = localStorage.getItem('userRole');
   const loggedInAs = localStorage.getItem('loggedInAs');
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
+
   useEffect(() => {
-    // Get branch_code from cookies when component mounts
-    const code = Cookies.get('branch_code');
+    const code = localStorage.getItem('selectedBranch');
     if (code) {
       setBranchCode(code);
-      console.log('Branch code retrieved from cookies:', code);
+      console.log('Branch code retrieved from localStorage:', code);
     } else {
-      console.warn('Branch code not found in cookies');
+      console.warn('Branch code not found in localStorage');
     }
 
-    if (userRole === 'Doctor' || userRole === 'Pharmacist') {
+    // Fetch medicine status if user is Doctor, Pharmacist, or Admin
+    if (userRole === 'Doctor' || userRole === 'Pharmacist' || userRole === 'Admin') {
       const fetchMedicineStatus = async () => {
         try {
-          const response = await axios.get(`${Cosmetologybaseurl}check_medicine_status/?branch_code=${branchCode}`, {
-            headers: {
-              'X-Branch-Code': branchCode
-            },
+          const response = await axios.get(`${Cosmetologybaseurl}check_medicine_status/?branch_code=${code}`, {
             withCredentials: true
           });
           console.log('Medicine Status:', response.data);
@@ -41,15 +38,17 @@ const Notification = () => {
           console.error('There was an error fetching the medicine status:', error);
         }
       };
-      fetchMedicineStatus();
+      // Only fetch if branchCode is available
+      if (code) {
+        fetchMedicineStatus();
+      }
     }
-    if (userRole === 'Doctor' || (userRole === 'Receptionist')) {
+
+    // Fetch upcoming visits if user is Doctor, Receptionist, or Admin
+    if (userRole === 'Doctor' || userRole === 'Receptionist' || userRole === 'Admin') {
       const fetchUpcomingVisits = async () => {
         try {
-          const response = await axios.get(`${Cosmetologybaseurl}check_upcoming_visits/?branch_code=${branchCode}`, {
-            headers: {
-              'X-Branch-Code': branchCode
-            },
+          const response = await axios.get(`${Cosmetologybaseurl}check_upcoming_visits/?branch_code=${code}`, {
             withCredentials: true
           });
           console.log('Upcoming Visits:', response.data);
@@ -58,9 +57,12 @@ const Notification = () => {
           console.error('There was an error fetching the upcoming visits:', error);
         }
       };
-      fetchUpcomingVisits();
+      // Only fetch if branchCode is available
+      if (code) {
+        fetchUpcomingVisits();
+      }
     }
-  }, [userRole, loggedInAs, branchCode]); // Added branchCode as dependency
+  }, [userRole, loggedInAs, branchCode, Cosmetologybaseurl]); // Added Cosmetologybaseurl to dependencies
 
   const togglePanel = () => {
     setPanelVisible(prevVisible => !prevVisible);
@@ -77,8 +79,8 @@ const Notification = () => {
       <NotificationPanel visible={panelVisible}>
         <CloseIcon onClick={togglePanel}><IoMdClose /></CloseIcon>
         <h4 className="mb-3">Notifications</h4>
-        {/* Pharmacist or Doctor (PharmacistLogin) - Medicine notifications */}
-        {(userRole === 'Pharmacist' || (userRole === 'Doctor' && loggedInAs === 'PharmacistLogin') || (userRole === 'Doctor' && loggedInAs === 'DoctorLogin')) && (
+        {/* Pharmacist, Doctor (PharmacistLogin), Doctor (DoctorLogin), or Admin - Medicine notifications */}
+        {(userRole === 'Pharmacist' || (userRole === 'Doctor' && loggedInAs === 'PharmacistLogin') || (userRole === 'Doctor' && loggedInAs === 'DoctorLogin') || userRole === 'Admin') && (
           <>
             {lowQuantityMedicines.length > 0 && (
               <Alert style={{ backgroundColor: "#F1F1F1", border: "#C7B7A3" }} className="mb-3">
@@ -106,8 +108,8 @@ const Notification = () => {
             )}
           </>
         )}
-        {/* Receptionist or Doctor (ReceptionistLogin) - Upcoming visit notifications */}
-        {(userRole === 'Receptionist' || (userRole === 'Doctor' && loggedInAs === 'ReceptionistLogin') || (userRole === 'Doctor' && loggedInAs === 'DoctorLogin')) && (
+        {/* Receptionist, Doctor (ReceptionistLogin), Doctor (DoctorLogin), or Admin - Upcoming visit notifications */}
+        {(userRole === 'Receptionist' || (userRole === 'Doctor' && loggedInAs === 'ReceptionistLogin') || (userRole === 'Doctor' && loggedInAs === 'DoctorLogin') || userRole === 'Admin') && (
           <>
             {upcomingVisits.length > 0 && (
               <Alert style={{ backgroundColor: "#F1F1F1", border: "#C7B7A3" }}>

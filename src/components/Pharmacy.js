@@ -1,12 +1,9 @@
-"use client"
-
-import { useState, useEffect, useRef } from "react"
-import styled from "styled-components"
-import { FaDownload, FaArrowAltCircleRight, FaSave, FaPlus, FaEdit, FaSearch, FaTimes } from "react-icons/fa"
-import { RiDeleteBin5Line } from "react-icons/ri"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
-import Cookies from "js-cookie"
+import { useState, useEffect, useRef } from "react";
+import styled from "styled-components";
+import { FaDownload, FaArrowAltCircleRight, FaSave, FaPlus, FaEdit, FaSearch, FaTimes } from "react-icons/fa";
+import { RiDeleteBin5Line } from "react-icons/ri";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const PharmacyComponent = () => {
   const [formData, setFormData] = useState([
@@ -26,43 +23,52 @@ const PharmacyComponent = () => {
       expiryDate: "",
       batchNumber: "",
     },
-  ])
+  ]);
 
-  const [branchCode, setBranchCode] = useState("")
-  const [editedRows, setEditedRows] = useState({})
-  const [loading, setLoading] = useState(false)
-  const [pendingStockUpdates, setPendingStockUpdates] = useState({})
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeView, setActiveView] = useState("all") // "all", "low", "expired"
-  const [isCompactView, setIsCompactView] = useState(false)
-  const tableRef = useRef(null)
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const [branchCode, setBranchCode] = useState("");
+  const [editedRows, setEditedRows] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [pendingStockUpdates, setPendingStockUpdates] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeView, setActiveView] = useState("all"); // "all", "low", "expired"
+  const [isCompactView, setIsCompactView] = useState(false);
+  const tableRef = useRef(null);
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
+
   useEffect(() => {
-    // Get branch_code from cookies when component mounts
-    const code = Cookies.get("branch_code")
+    // Get branch_code from localStorage when component mounts
+    const code = localStorage.getItem("selectedBranch"); 
     if (code) {
-      setBranchCode(code)
-      console.log("Branch code retrieved from cookies:", code)
+      setBranchCode(code);
+      console.log("Branch code retrieved from localStorage:", code); // Updated console log
     } else {
-      console.warn("Branch code not found in cookies")
+      console.warn("Branch code not found in localStorage"); // Updated console warn
     }
-    fetchPharmacyData(code)
+
+    // Fetch data only if branchCode is available
+    if (code) {
+      fetchPharmacyData(code);
+    } else {
+      // If branch code is not available, you might want to show a message or redirect
+      toast.error("Branch code not found. Please select a branch.");
+    }
 
     // Check screen size and set compact view accordingly
     const handleResize = () => {
-      setIsCompactView(window.innerWidth < 1200)
-    }
+      setIsCompactView(window.innerWidth < 1200);
+    };
 
-    handleResize() // Initial check
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [])
+    handleResize(); // Initial check
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []); // Empty dependency array means it runs only once on mount
 
   const fetchPharmacyData = async (code) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?branch_code=${code || ""}`)
-      const data = await response.json()
+      // Sending branch_code as a URL parameter
+      const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(code || "")}`);
+      const data = await response.json();
 
       if (data.length === 0) {
         setFormData([
@@ -82,13 +88,13 @@ const PharmacyComponent = () => {
             expiryDate: "",
             batchNumber: "",
           },
-        ])
+        ]);
       } else {
         setFormData(
           data.map((item) => {
-            const newStock = item.new_stock || 0
-            const oldStock = item.old_stock || 0
-            const totalStock = newStock + oldStock
+            const newStock = item.new_stock || 0;
+            const oldStock = item.old_stock || 0;
+            const totalStock = newStock + oldStock;
 
             return {
               _id: item._id,
@@ -106,181 +112,188 @@ const PharmacyComponent = () => {
               receivedDate: formatDate(item.received_date),
               expiryDate: formatDate(item.expiry_date),
               batchNumber: item.batch_number || "",
-            }
+            };
           }),
-        )
+        );
       }
-      setEditedRows({})
-      setPendingStockUpdates({})
+      setEditedRows({});
+      setPendingStockUpdates({});
     } catch (error) {
-      console.error("Error fetching data:", error)
-      toast.error("Failed to load pharmacy data!")
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load pharmacy data!");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const calculateTaxValues = (price, percentage) => {
-    const priceValue = Number.parseFloat(price) || 0
-    const percentageValue = Number.parseFloat(percentage) || 0
-    return ((priceValue * percentageValue) / 100).toFixed(2)
-  }
+    const priceValue = Number.parseFloat(price) || 0;
+    const percentageValue = Number.parseFloat(percentage) || 0;
+    return ((priceValue * percentageValue) / 100).toFixed(2);
+  };
 
   const handleChange = (originalIndex, field, value) => {
-    const newFormData = [...formData]
-    newFormData[originalIndex][field] = value
+    const newFormData = [...formData];
+    newFormData[originalIndex][field] = value;
 
     // Mark this row as edited
     setEditedRows({
       ...editedRows,
       [originalIndex]: true,
-    })
+    });
 
     // Auto-calculate tax values
     if (field === "price" || field === "CGSTPercentage") {
       newFormData[originalIndex].CGSTValue = calculateTaxValues(
         field === "price" ? value : newFormData[originalIndex].price,
-        field === "CGSTPercentage" ? value : newFormData[originalIndex].CGSTPercentage
-      )
+        field === "CGSTPercentage" ? value : newFormData[originalIndex].CGSTPercentage,
+      );
     }
 
     if (field === "price" || field === "SGSTPercentage") {
       newFormData[originalIndex].SGSTValue = calculateTaxValues(
         field === "price" ? value : newFormData[originalIndex].price,
-        field === "SGSTPercentage" ? value : newFormData[originalIndex].SGSTPercentage
-      )
+        field === "SGSTPercentage" ? value : newFormData[originalIndex].SGSTPercentage,
+      );
     }
 
     // Update total stock when new stock changes
     if (field === "newStock") {
-      const newStockValue = Number.parseInt(value, 10) || 0
-      const oldStockValue = Number.parseInt(newFormData[originalIndex].oldStock, 10) || 0
-      newFormData[originalIndex].totalStock = (newStockValue + oldStockValue).toString()
+      const newStockValue = Number.parseInt(value, 10) || 0;
+      const oldStockValue = Number.parseInt(newFormData[originalIndex].oldStock, 10) || 0;
+      newFormData[originalIndex].totalStock = (newStockValue + oldStockValue).toString();
     }
 
-    setFormData(newFormData)
-  }
+    setFormData(newFormData);
+  };
 
   const handleKeyPress = (originalIndex, e) => {
     if (e.key === "Enter") {
-      e.preventDefault()
-      addNewRow()
+      e.preventDefault();
+      addNewRow();
     }
-  }
+  };
 
   const handleStockUpdate = async (originalIndex) => {
-    const item = formData[originalIndex]
-    const newStockValue = Number.parseInt(item.newStock, 10) || 0
+    const item = formData[originalIndex];
+    const newStockValue = Number.parseInt(item.newStock, 10) || 0;
 
     if (newStockValue <= 0) {
-      toast.warning("Please enter a valid stock quantity")
-      return
+      toast.warning("Please enter a valid stock quantity");
+      return;
     }
 
     // Calculate new total stock immediately
-    const currentOldStock = Number.parseInt(item.oldStock, 10) || 0
-    const updatedOldStock = currentOldStock + newStockValue
-    const updatedTotalStock = updatedOldStock
+    const currentOldStock = Number.parseInt(item.oldStock, 10) || 0;
+    const updatedOldStock = currentOldStock + newStockValue;
+    const updatedTotalStock = updatedOldStock; // Assuming newStock is added to oldStock to form total
 
     // Immediately update UI with new stock values
-    const newFormData = [...formData]
-    newFormData[originalIndex].oldStock = updatedOldStock.toString()
-    newFormData[originalIndex].totalStock = updatedTotalStock.toString()
-    newFormData[originalIndex].newStock = "" // Clear new stock input after adding
-    setFormData(newFormData)
+    const newFormData = [...formData];
+    newFormData[originalIndex].oldStock = updatedOldStock.toString();
+    newFormData[originalIndex].totalStock = updatedTotalStock.toString();
+    newFormData[originalIndex].newStock = ""; // Clear new stock input after adding
+    setFormData(newFormData);
 
     // Track this update as pending
-    const updateKey = `${item.medicineName}-${item.batchNumber}`
+    const updateKey = `${item.medicineName}-${item.batchNumber}`;
     setPendingStockUpdates({
       ...pendingStockUpdates,
       [updateKey]: true,
-    })
+    });
 
     // Show optimistic UI update
-    toast.info("Updating stock...", { autoClose: 2000 })
+    toast.info("Updating stock...", { autoClose: 2000 });
 
     try {
       const updateData = {
         medicine_name: item.medicineName.toLowerCase(),
         batch_number: item.batchNumber,
         new_stock: newStockValue,
-        branch_code: branchCode,
-      }
+        // branch_code is sent as a URL param now, no need in body if it's not a direct model field update
+        // The backend should derive branch_code from the URL parameter for PATCH if it expects it that way.
+        // If your backend still expects it in the body for PATCH, you'd keep it.
+        // For this scenario, assuming it's inferred from the URL or implicitly handled.
+      };
 
-      const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Branch-Code": branchCode,
+      const response = await fetch(
+        // Sending branch_code as a URL parameter for PATCH request
+        `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            // "X-Branch-Code": branchCode, // Removed header as requested
+          },
+          withCredentials: true,
+          body: JSON.stringify([updateData]),
         },
-        withCredentials: true,
-        body: JSON.stringify([updateData]),
-      })
+      );
 
       if (response.ok) {
-        const result = await response.json()
+        const result = await response.json();
         if (result.length > 0) {
           // Update was successful, remove from pending updates
-          const newPendingUpdates = { ...pendingStockUpdates }
-          delete newPendingUpdates[updateKey]
-          setPendingStockUpdates(newPendingUpdates)
+          const newPendingUpdates = { ...pendingStockUpdates };
+          delete newPendingUpdates[updateKey];
+          setPendingStockUpdates(newPendingUpdates);
 
-          // Update with server response
-          const serverNewStock = result[0].new_stock || 0
-          const serverOldStock = result[0].old_stock || 0
-          const serverTotalStock = serverNewStock + serverOldStock
+          // Update with server response (if the server sends back the updated item)
+          const serverNewStock = result[0].new_stock || 0;
+          const serverOldStock = result[0].old_stock || 0;
+          const serverTotalStock = serverNewStock + serverOldStock;
 
-          const updatedFormData = [...formData]
-          updatedFormData[originalIndex].oldStock = serverOldStock.toString()
-          updatedFormData[originalIndex].totalStock = serverTotalStock.toString()
-          setFormData(updatedFormData)
+          const updatedFormData = [...formData];
+          updatedFormData[originalIndex].oldStock = serverOldStock.toString();
+          updatedFormData[originalIndex].totalStock = serverTotalStock.toString();
+          setFormData(updatedFormData);
 
-          toast.success("Stock updated successfully!")
+          toast.success("Stock updated successfully!");
         }
       } else {
         // If update failed, revert the optimistic update
-        const revertedFormData = [...formData]
-        revertedFormData[originalIndex].oldStock = currentOldStock.toString()
-        revertedFormData[originalIndex].totalStock = currentOldStock.toString()
-        revertedFormData[originalIndex].newStock = newStockValue.toString()
-        setFormData(revertedFormData)
+        const revertedFormData = [...formData];
+        revertedFormData[originalIndex].oldStock = currentOldStock.toString();
+        revertedFormData[originalIndex].totalStock = currentOldStock.toString();
+        revertedFormData[originalIndex].newStock = newStockValue.toString(); // Revert newStock input as well
+        setFormData(revertedFormData);
 
         // Remove from pending updates
-        const newPendingUpdates = { ...pendingStockUpdates }
-        delete newPendingUpdates[updateKey]
-        setPendingStockUpdates(newPendingUpdates)
+        const newPendingUpdates = { ...pendingStockUpdates };
+        delete newPendingUpdates[updateKey];
+        setPendingStockUpdates(newPendingUpdates);
 
-        toast.error("Failed to update stock")
+        toast.error("Failed to update stock");
       }
     } catch (error) {
-      console.error("Error updating stock:", error)
+      console.error("Error updating stock:", error);
 
       // If update failed, revert the optimistic update
-      const revertedFormData = [...formData]
-      revertedFormData[originalIndex].oldStock = currentOldStock.toString()
-      revertedFormData[originalIndex].totalStock = currentOldStock.toString()
-      revertedFormData[originalIndex].newStock = newStockValue.toString()
-      setFormData(revertedFormData)
+      const revertedFormData = [...formData];
+      revertedFormData[originalIndex].oldStock = currentOldStock.toString();
+      revertedFormData[originalIndex].totalStock = currentOldStock.toString();
+      revertedFormData[originalIndex].newStock = newStockValue.toString(); // Revert newStock input as well
+      setFormData(revertedFormData);
 
       // Remove from pending updates
-      const newPendingUpdates = { ...pendingStockUpdates }
-      delete newPendingUpdates[updateKey]
-      setPendingStockUpdates(newPendingUpdates)
+      const newPendingUpdates = { ...pendingStockUpdates };
+      delete newPendingUpdates[updateKey];
+      setPendingStockUpdates(newPendingUpdates);
 
-      toast.error("Error updating stock")
+      toast.error("Error updating stock");
     }
-  }
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     try {
-      const newEntries = []
-      const updatedEntries = []
+      const newEntries = [];
+      const updatedEntries = [];
 
       formData.forEach((item, index) => {
-        if (!item.medicineName.trim()) return
+        if (!item.medicineName.trim()) return;
 
         const formattedItem = {
           medicine_name: item.medicineName.toLowerCase(),
@@ -296,81 +309,89 @@ const PharmacyComponent = () => {
           received_date: item.receivedDate,
           expiry_date: item.expiryDate,
           batch_number: item.batchNumber,
-          branch_code: branchCode,
-        }
+          // branch_code: branchCode, // Removed from body for POST/PATCH if it's sent as URL param
+        };
 
         if (!item._id) {
-          newEntries.push(formattedItem)
+          newEntries.push(formattedItem);
         } else if (editedRows[index]) {
-          updatedEntries.push({ ...formattedItem, _id: item._id })
+          updatedEntries.push({ ...formattedItem, _id: item._id });
         }
-      })
+      });
 
       // Handle new entries
       if (newEntries.length > 0) {
-        const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Branch-Code": branchCode,
+        const response = await fetch(
+          // Sending branch_code as a URL parameter for POST request
+          `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // "X-Branch-Code": branchCode, // Removed header as requested
+            },
+            withCredentials: true,
+            body: JSON.stringify(newEntries),
           },
-          withCredentials: true,
-          body: JSON.stringify(newEntries),
-        })
+        );
 
         if (response.ok) {
-          toast.success("New entries saved successfully!")
+          toast.success("New entries saved successfully!");
         } else {
-          toast.error("Error saving new entries!")
+          toast.error("Error saving new entries!");
         }
       }
 
       // Handle updates
       if (updatedEntries.length > 0) {
-        const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Branch-Code": branchCode,
+        const response = await fetch(
+          // Sending branch_code as a URL parameter for PATCH request
+          `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              // "X-Branch-Code": branchCode, // Removed header as requested
+            },
+            withCredentials: true,
+            body: JSON.stringify(updatedEntries),
           },
-          withCredentials: true,
-          body: JSON.stringify(updatedEntries),
-        })
+        );
 
         if (response.ok) {
-          toast.success("Updates saved successfully!")
-          setEditedRows({})
+          toast.success("Updates saved successfully!");
+          setEditedRows({});
         } else {
-          toast.error("Error updating entries!")
+          toast.error("Error updating entries!");
         }
       }
 
       if (newEntries.length === 0 && updatedEntries.length === 0) {
-        toast.info("No changes to save.")
+        toast.info("No changes to save.");
       }
 
       // Refresh data
-      await fetchPharmacyData(branchCode)
+      await fetchPharmacyData(branchCode);
     } catch (error) {
-      console.error("Error submitting data:", error)
-      toast.error("Error submitting data!")
+      console.error("Error submitting data:", error);
+      toast.error("Error submitting data!");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const formatDate = (dateString) => {
-    if (!dateString) return ""
+    if (!dateString) return "";
     try {
       if (dateString.includes("T")) {
-        return dateString.split("T")[0]
+        return dateString.split("T")[0];
       }
-      return dateString
+      return dateString;
     } catch (e) {
-      console.error("Error formatting date:", e)
-      return dateString
+      console.error("Error formatting date:", e);
+      return dateString;
     }
-  }
+  };
 
   const addNewRow = () => {
     const newRow = {
@@ -388,62 +409,65 @@ const PharmacyComponent = () => {
       receivedDate: "",
       expiryDate: "",
       batchNumber: "",
-    }
+    };
 
-    setFormData((prevData) => [...prevData, newRow])
+    setFormData((prevData) => [...prevData, newRow]);
 
     // Scroll to the bottom of the table to show the new row
     setTimeout(() => {
       if (tableRef.current) {
-        tableRef.current.scrollTop = tableRef.current.scrollHeight
+        tableRef.current.scrollTop = tableRef.current.scrollHeight;
       }
-    }, 100)
-  }
+    }, 100);
+  };
 
   const removeRow = async (originalIndex) => {
-    const itemToRemove = formData[originalIndex]
+    const itemToRemove = formData[originalIndex];
 
     if (itemToRemove._id && itemToRemove.medicineName && itemToRemove.batchNumber) {
       try {
         const response = await fetch(
-          `${Cosmetologybaseurl}pharmacy/data/?medicine_name=${encodeURIComponent(itemToRemove.medicineName)}&batch_number=${encodeURIComponent(itemToRemove.batchNumber)}&branch_code=${branchCode}`,
+          // Sending branch_code as a URL parameter for DELETE request
+          `${Cosmetologybaseurl}pharmacy/data/?medicine_name=${encodeURIComponent(
+            itemToRemove.medicineName,
+          )}&batch_number=${encodeURIComponent(itemToRemove.batchNumber)}&branch_code=${encodeURIComponent(branchCode)}`,
           {
             method: "DELETE",
-            headers: {
-              "X-Branch-Code": branchCode,
-            },
+            // headers: { // Removed headers as requested
+            //   "X-Branch-Code": branchCode,
+            // },
             withCredentials: true,
           },
-        )
+        );
 
         if (response.ok) {
-          toast.success("Record deleted successfully.")
-          const newFormData = [...formData]
-          newFormData.splice(originalIndex, 1)
-          setFormData(newFormData)
+          toast.success("Record deleted successfully.");
+          const newFormData = [...formData];
+          newFormData.splice(originalIndex, 1);
+          setFormData(newFormData);
 
-          const newEditedRows = { ...editedRows }
-          delete newEditedRows[originalIndex]
-          setEditedRows(newEditedRows)
+          const newEditedRows = { ...editedRows };
+          delete newEditedRows[originalIndex];
+          setEditedRows(newEditedRows);
         } else {
-          toast.error("Failed to delete record from database.")
+          toast.error("Failed to delete record from database.");
         }
       } catch (error) {
-        console.error("Error deleting record:", error)
-        toast.error("Failed to delete record from database.")
+        console.error("Error deleting record:", error);
+        toast.error("Failed to delete record from database.");
       }
     } else {
-      const newFormData = [...formData]
-      newFormData.splice(originalIndex, 1)
-      setFormData(newFormData)
+      const newFormData = [...formData];
+      newFormData.splice(originalIndex, 1);
+      setFormData(newFormData);
 
-      const newEditedRows = { ...editedRows }
-      delete newEditedRows[originalIndex]
-      setEditedRows(newEditedRows)
+      const newEditedRows = { ...editedRows };
+      delete newEditedRows[originalIndex];
+      setEditedRows(newEditedRows);
 
-      toast.info("Row removed.")
+      toast.info("Row removed.");
     }
-  }
+  };
 
   const downloadExcel = () => {
     // Format data for Excel export
@@ -465,33 +489,37 @@ const PharmacyComponent = () => {
         "Expiry Date": item.expiryDate,
         "Batch Number": item.batchNumber,
         "Branch Code": branchCode,
-      }))
+      }));
 
     // Simple CSV download implementation
     const csvContent = [
       Object.keys(excelData[0] || {}).join(","),
-      ...excelData.map((row) => Object.values(row).join(",")),
-    ].join("\n")
+      ...excelData.map((row) =>
+        Object.values(row)
+          .map((field) => `"${String(field).replace(/"/g, '""')}"`)
+          .join(","),
+      ),
+    ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-    link.setAttribute("href", url)
-    link.setAttribute("download", `PharmacyData_${branchCode}_${new Date().toISOString().split("T")[0]}.csv`)
-    link.style.visibility = "hidden"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `PharmacyData_${branchCode}_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    toast.success("CSV file downloaded successfully!")
-  }
+    toast.success("CSV file downloaded successfully!");
+  };
 
   // Function to check if a row has a pending stock update
   const hasPendingUpdate = (item) => {
-    if (!item.medicineName || !item.batchNumber) return false
-    const updateKey = `${item.medicineName}-${item.batchNumber}`
-    return pendingStockUpdates[updateKey] === true
-  }
+    if (!item.medicineName || !item.batchNumber) return false;
+    const updateKey = `${item.medicineName}-${item.batchNumber}`;
+    return pendingStockUpdates[updateKey] === true;
+  };
 
   // Filter data based on search term and active view with original indices
   const getFilteredDataWithIndices = () => {
@@ -503,26 +531,30 @@ const PharmacyComponent = () => {
           searchTerm === "" ||
           item.medicineName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.batchNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+          item.companyName.toLowerCase().includes(searchTerm.toLowerCase());
 
         // View filter
-        if (activeView === "all") return matchesSearch
+        if (activeView === "all") return matchesSearch;
         if (activeView === "low") {
-          const totalStock = Number.parseInt(item.totalStock) || 0
-          return matchesSearch && totalStock < 10 && totalStock > 0
+          const totalStock = Number.parseInt(item.totalStock) || 0;
+          // Consider stock as low if it's less than 10 and greater than 0
+          return matchesSearch && totalStock < 10 && totalStock > 0;
         }
         if (activeView === "expired") {
-          if (!item.expiryDate) return false
-          const expiryDate = new Date(item.expiryDate)
-          const today = new Date()
-          return matchesSearch && expiryDate < today
+          if (!item.expiryDate) return false;
+          const expiryDate = new Date(item.expiryDate);
+          const today = new Date();
+          // Set time to 00:00:00 for accurate date comparison
+          expiryDate.setHours(0, 0, 0, 0);
+          today.setHours(0, 0, 0, 0);
+          return matchesSearch && expiryDate < today;
         }
 
-        return matchesSearch
-      })
-  }
+        return matchesSearch;
+      });
+  };
 
-  const filteredDataWithIndices = getFilteredDataWithIndices()
+  const filteredDataWithIndices = getFilteredDataWithIndices();
 
   return (
     <StyledContainer>
@@ -546,6 +578,29 @@ const PharmacyComponent = () => {
             </ClearButton>
           )}
         </SearchContainer>
+        <FilterButtonsContainer>
+          <FilterButton
+            onClick={() => setActiveView("all")}
+            $isActive={activeView === "all"}
+            title="View All Stock"
+          >
+            All Stock
+          </FilterButton>
+          <FilterButton
+            onClick={() => setActiveView("low")}
+            $isActive={activeView === "low"}
+            title="View Low Stock (less than 10)"
+          >
+            Low Stock
+          </FilterButton>
+          <FilterButton
+            onClick={() => setActiveView("expired")}
+            $isActive={activeView === "expired"}
+            title="View Expired Stock"
+          >
+            Expired
+          </FilterButton>
+        </FilterButtonsContainer>
         <ActionButtonsContainer>
           <ActionButton onClick={downloadExcel} title="Download CSV">
             <FaDownload />
@@ -605,6 +660,15 @@ const PharmacyComponent = () => {
                         <option value="">Select Category</option>
                         <option value="Tablets">Tablets</option>
                         <option value="Topicals">Topicals</option>
+                        <option value="Syrup">Syrup</option>
+                        <option value="Injections">Injections</option>
+                        <option value="Drops">Drops</option>
+                        <option value="Capsules">Capsules</option>
+                        <option value="Cream">Cream</option>
+                        <option value="Gel">Gel</option>
+                        <option value="Solution">Solution</option>
+                        <option value="Powder">Powder</option>
+                        <option value="Other">Other</option>
                       </StyledSelect>
                     </td>
                     <td>
@@ -740,8 +804,10 @@ const PharmacyComponent = () => {
         </LoadingOverlay>
       )}
     </StyledContainer>
-  )
-}
+  );
+};
+
+export default PharmacyComponent;
 
 // Container and Layout
 const StyledContainer = styled.div`
@@ -753,7 +819,7 @@ const StyledContainer = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-`
+`;
 
 const Header = styled.div`
   display: flex;
@@ -761,19 +827,94 @@ const Header = styled.div`
   align-items: center;
   margin-bottom: 10px;
   flex-shrink: 0;
-`
+`;
 
 const Title = styled.h2`
   color: #6b4a8f;
   margin: 0;
   font-weight: 600;
   font-size: clamp(1.2rem, 2vw, 1.5rem);
-`
+`;
+
+const ControlPanel = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+`;
+
+const SearchContainer = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  max-width: 300px;
+  margin-right: 10px;
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 8px 10px 8px 30px;
+  border: 1px solid #ced4da;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+
+  &:focus {
+    border-color: #6b4a8f;
+    box-shadow: 0 0 0 2px rgba(107, 74, 143, 0.2);
+    outline: none;
+  }
+`;
+
+const SearchIcon = styled(FaSearch)`
+  position: absolute;
+  left: 10px;
+  color: #6b4a8f;
+  font-size: 0.9rem;
+`;
+
+const ClearButton = styled.button`
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 0.9rem;
+  &:hover {
+    color: #333;
+  }
+`;
+
+const FilterButtonsContainer = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const FilterButton = styled.button`
+  padding: 8px 15px;
+  border: 1px solid ${({ $isActive }) => ($isActive ? "#6b4a8f" : "#ced4da")};
+  border-radius: 20px;
+  background-color: ${({ $isActive }) => ($isActive ? "#6b4a8f" : "white")};
+  color: ${({ $isActive }) => ($isActive ? "white" : "#6b4a8f")};
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: ${({ $isActive }) => ($isActive ? "#5a3d7a" : "#f0f0f0")};
+    color: ${({ $isActive }) => ($isActive ? "white" : "#5a3d7a")};
+  }
+`;
 
 const ActionButtonsContainer = styled.div`
   display: flex;
   gap: 10px;
-`
+`;
 
 const Form = styled.form`
   width: 100%;
@@ -781,7 +922,7 @@ const Form = styled.form`
   flex-direction: column;
   flex: 1;
   overflow: hidden;
-`
+`;
 
 const TableScrollContainer = styled.div`
   position: relative;
@@ -789,7 +930,7 @@ const TableScrollContainer = styled.div`
   align-items: center;
   flex: 1;
   overflow: hidden;
-`
+`;
 
 const TableContainer = styled.div`
   flex: 1;
@@ -816,7 +957,7 @@ const TableContainer = styled.div`
   &::-webkit-scrollbar-thumb:hover {
     background: #5a3d7a;
   }
-`
+`;
 
 const StyledTable = styled.table`
   width: 100%;
@@ -844,7 +985,7 @@ const StyledTable = styled.table`
     vertical-align: middle;
     font-size: 0.9rem;
   }
-`
+`;
 
 const TableRow = styled.tr`
   background-color: ${(props) => (props.$isEdited ? "rgba(255, 245, 157, 0.3)" : "white")};
@@ -857,7 +998,7 @@ const TableRow = styled.tr`
   &:nth-child(even) {
     background-color: ${(props) => (props.$isEdited ? "rgba(255, 245, 157, 0.3)" : "#f9f9f9")};
   }
-`
+`;
 
 // Form Elements
 const StyledInput = styled.input`
@@ -885,7 +1026,7 @@ const StyledInput = styled.input`
     color: #999;
     font-size: 0.8rem;
   }
-`
+`;
 
 const StyledSelect = styled.select`
   width: 100%;
@@ -906,13 +1047,13 @@ const StyledSelect = styled.select`
   &:hover {
     border-color: #adb5bd;
   }
-`
+`;
 
 const StockInputContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 2px;
-`
+`;
 
 const StockDisplay = styled.div`
   padding: 4px 6px;
@@ -926,7 +1067,7 @@ const StockDisplay = styled.div`
   justify-content: center;
   border: 1px solid rgb(170, 170, 170);
   font-size: 0.9rem;
-`
+`;
 
 const TotalStockDisplay = styled.div`
   padding: 4px 6px;
@@ -940,7 +1081,7 @@ const TotalStockDisplay = styled.div`
   justify-content: center;
   border: 1px solid #c3e6cb;
   font-size: 0.9rem;
-`
+`;
 
 // Indicators
 const SyncIndicator = styled.span`
@@ -950,10 +1091,14 @@ const SyncIndicator = styled.span`
   animation: spin 1.5s linear infinite;
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
-`
+`;
 
 const EditIndicator = styled.div`
   color: #ffc107;
@@ -962,11 +1107,17 @@ const EditIndicator = styled.div`
   animation: pulse 2s infinite;
 
   @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 1;
+    }
   }
-`
+`;
 
 // Buttons
 const IconButton = styled.button`
@@ -994,7 +1145,7 @@ const IconButton = styled.button`
   svg {
     font-size: 1rem;
   }
-`
+`;
 
 const RemoveButton = styled.button`
   background: none;
@@ -1016,155 +1167,96 @@ const RemoveButton = styled.button`
   svg {
     font-size: 1rem;
   }
-`
+`;
 
 const ActionButtonsCell = styled.div`
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 4px;
-`
+  gap: 5px;
+`;
 
 const ButtonContainer = styled.div`
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 15px;
+  margin-top: 15px;
   flex-shrink: 0;
-`
-
-const ActionButton = styled.button`
-  background: none;
-  border: 2px solid #6b4a8f;
-  color: #6b4a8f;
-  cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-
-  &:hover {
-    background-color: #6b4a8f;
-    color: white;
-    transform: translateY(-1px);
-  }
-
-  svg {
-    font-size: 0.9rem;
-  }
-`
+`;
 
 const SubmitButton = styled.button`
-  background-color: #6b4a8f;
+  background-color: #28a745;
   color: white;
+  padding: 10px 20px;
   border: none;
-  padding: 6px 16px;
-  border-radius: 6px;
+  border-radius: 5px;
   cursor: pointer;
+  font-size: 1rem;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
+  gap: 8px;
+  transition: background-color 0.2s ease;
 
   &:hover:not(:disabled) {
-    background-color: #5a3d7a;
-    transform: translateY(-1px);
+    background-color: #218838;
   }
 
   &:disabled {
-    background-color: #ccc;
+    background-color: #94d3a2;
     cursor: not-allowed;
-    transform: none;
   }
+`;
 
-  svg {
-    font-size: 0.9rem;
+const ActionButton = styled.button`
+  background-color: #6c757d;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #5a6268;
   }
-`
+`;
 
-// Loading
+// Loading Overlay
 const LoadingOverlay = styled.div`
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 0.7);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   z-index: 1000;
-`
+`;
 
 const LoadingSpinner = styled.div`
-  padding: 20px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  font-weight: 600;
-  color: #6b4a8f;
-`
-
-// Control Panel (Optional Additions)
-const ControlPanel = styled.div`
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #6b4a8f;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  gap: 10px;
-`
-
-const SearchContainer = styled.div`
-  position: relative;
-  flex: 1;
-  min-width: 200px;
-  max-width: 400px;
-`
-
-const SearchIcon = styled(FaSearch)`
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6c757d;
-  font-size: 0.9rem;
-`
-
-const SearchInput = styled.input`
-  width: 100%;
-  padding: 8px 30px 8px 35px;
-  border: 1px solid #ced4da;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  
-  &:focus {
-    outline: none;
-    border-color: #6b4a8f;
-    box-shadow: 0 0 0 2px rgba(107, 74, 143, 0.2);
-  }`
-
-const ClearButton = styled.button`
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #6c757d;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  
-  &:hover {
-    color: #495057;
-  }`
+  align-items: center;
+  color: #6b4a8f;
+  font-weight: bold;
 
-export default PharmacyComponent
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
