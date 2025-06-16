@@ -25,7 +25,6 @@ function VitalForm({ patientUID, patientName, mobileNumber }) {
                 ...prevData,
                 branch_code: code
             }));
-          console.log("Branch code retrieved from localStorage:", code)
         } else {
           console.warn("Branch code not found in localStorage")
         }

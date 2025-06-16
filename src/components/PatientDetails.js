@@ -38,14 +38,11 @@ const PatientDetails = () => {
 
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
     } else {
       console.warn("Branch code not found in localStorage")
     }
 
     setUserRole(role)
-    console.log("User role:", role)
-
     fetchPatients()
   }, [])
 

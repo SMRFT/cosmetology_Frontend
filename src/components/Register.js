@@ -133,8 +133,6 @@ const Register = () => {
       // Create a copy of formData and delete confirmPassword before sending
       const submitData = { ...formData };
 
-      console.log("Submitting data:", submitData); // Check what's actually sent!
-
       const response = await fetch(`${Cosmetologybaseurl}registration/`, {
         method: "POST",
         headers: {

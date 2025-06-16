@@ -40,7 +40,6 @@ const SummaryReport = () => {
 
     if (code) {
       setBranchCode(code);
-      console.log("Branch code retrieved from localStorage:", code);
     } else {
       console.warn("Branch code not found in localStorage");
       setError("Branch code not found. Please ensure you are logged in."); // Set error if branch code is missing
@@ -75,12 +74,6 @@ const SummaryReport = () => {
     }
 
     try {
-      console.log("Making summary API call with params:", {
-        interval,
-        appointmentDate: dateParam,
-        branch_code: branchCode,
-      });
-
       const response = await axios.get(
         `${Cosmetologybaseurl}summary/${interval}/`,
         {
@@ -91,8 +84,6 @@ const SummaryReport = () => {
           withCredentials: true,
         }
       );
-
-      console.log("Summary API response:", response.data);
       setSummaryData(response.data.summary_data);
 
       // --- ADDED TOAST NOTIFICATION FOR NO DATA ---

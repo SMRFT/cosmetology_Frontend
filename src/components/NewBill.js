@@ -247,7 +247,6 @@ const NewBill = () => {
 
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
     } else {
       console.warn("Branch code not found in localStorage")
     }
@@ -289,7 +288,6 @@ const NewBill = () => {
           fullData: medicine,
         }))
         setMedicineOptions(medicineData)
-        console.log("Fetched medicines:", medicineData.length)
       })
       .catch((error) => {
         console.error("Error fetching medicine names:", error)

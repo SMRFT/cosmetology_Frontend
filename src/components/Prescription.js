@@ -409,7 +409,6 @@ const PrescriptionDetails = () => {
     const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
     } else {
       console.warn("Branch code not found in localStorage")
     }
@@ -431,7 +430,6 @@ const PrescriptionDetails = () => {
           fullData: medicine,
         }))
         setMedicineOptions(medicineData)
-        console.log("Medicine data with stock:", medicineData) // ADD: Debug log
       })
       .catch((error) => {
         console.error("Error fetching medicine names:", error)
@@ -513,9 +511,6 @@ const PrescriptionDetails = () => {
 
   useEffect(() => {
     if (!patientUID || !branchCode) return
-
-    console.log("Fetching vital data with:", patientUID, branchCode)
-
     axios
       .get(`${Cosmetologybaseurl}vitalform/`, {
         params: {
@@ -524,7 +519,6 @@ const PrescriptionDetails = () => {
         },
       })
       .then((response) => {
-        console.log("Vital data response:", response.data)
         setVital(response.data.vital[0] || {}); // set the first item or empty object
       })
       .catch((error) => {

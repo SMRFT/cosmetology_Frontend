@@ -233,13 +233,11 @@ const NewProcedureComponent = () => {
     axios
       .get(`${Cosmetologybaseurl}Procedure/`)
       .then((response) => {
-        console.log("Fetched procedures:", response.data)
         const formattedProceduresList = response.data.map((procedure, index) => ({
           id: procedure.id || `proc_${index}`,
           procedure: procedure.procedure || "",
         }))
         setProceduresList(formattedProceduresList)
-        console.log("Formatted procedures list:", formattedProceduresList)
       })
       .catch((error) => {
         console.error("Error fetching procedures data:", error)
@@ -253,7 +251,6 @@ const NewProcedureComponent = () => {
 
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
     } else {
       console.warn("Branch code not found in localStorage")
     }
@@ -305,7 +302,6 @@ const NewProcedureComponent = () => {
 
   // Handle procedure selection from dropdown - FIXED VERSION
   const handleProcedureSelect = (rowId, selectedValue) => {
-    console.log("Procedure selected:", selectedValue, "for row:", rowId)
 
     if (!selectedValue) {
       // Clear selection
@@ -324,7 +320,6 @@ const NewProcedureComponent = () => {
     }
 
     const selectedProcedure = proceduresList.find((proc) => proc.id.toString() === selectedValue.toString())
-    console.log("Found procedure:", selectedProcedure)
 
     if (selectedProcedure) {
       setAdditionalProcedures((prev) =>

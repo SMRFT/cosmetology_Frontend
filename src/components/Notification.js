@@ -19,7 +19,6 @@ const Notification = () => {
     const code = localStorage.getItem('selectedBranch');
     if (code) {
       setBranchCode(code);
-      console.log('Branch code retrieved from localStorage:', code);
     } else {
       console.warn('Branch code not found in localStorage');
     }
@@ -31,7 +30,6 @@ const Notification = () => {
           const response = await axios.get(`${Cosmetologybaseurl}check_medicine_status/?branch_code=${code}`, {
             withCredentials: true
           });
-          console.log('Medicine Status:', response.data);
           setLowQuantityMedicines(response.data.low_quantity_medicines);
           setNearExpiryMedicines(response.data.near_expiry_medicines);
         } catch (error) {
@@ -51,7 +49,6 @@ const Notification = () => {
           const response = await axios.get(`${Cosmetologybaseurl}check_upcoming_visits/?branch_code=${code}`, {
             withCredentials: true
           });
-          console.log('Upcoming Visits:', response.data);
           setUpcomingVisits(response.data.upcoming_visits);
         } catch (error) {
           console.error('There was an error fetching the upcoming visits:', error);

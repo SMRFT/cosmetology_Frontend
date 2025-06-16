@@ -46,7 +46,6 @@ const Header = ({ userRole }) => {
       }
 
       const data = await response.json()
-      console.log("Fetched branches from API:", data)
 
       if (Array.isArray(data)) {
         const branch = data.find((b) => b.branch_code === branchCode)

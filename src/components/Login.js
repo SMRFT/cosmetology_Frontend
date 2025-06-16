@@ -51,7 +51,6 @@ const UnifiedLogin = ({ setUserRole }) => {
       }
 
       const data = await response.json()
-      console.log("Fetched all branches from API:", data)
 
       if (Array.isArray(data)) {
         setAllBranches(data)
@@ -82,8 +81,7 @@ const UnifiedLogin = ({ setUserRole }) => {
     setIsLoading(true)
 
     try {
-      console.log("Attempting login with:", { username })
-
+  
       // Single API call for authentication
       const response = await fetch(`${Cosmetologybaseurl}login/`, {
         method: "POST",
@@ -101,8 +99,6 @@ const UnifiedLogin = ({ setUserRole }) => {
       if (response.ok) {
         const responseData = await response.json()
         const userRole = responseData.role
-
-        console.log("Login successful:", { userRole, responseData })
 
         // Get the appropriate endpoint for this role
         const endpoint = getEndpointForRole(userRole)
