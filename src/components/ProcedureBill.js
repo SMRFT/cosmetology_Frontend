@@ -352,9 +352,16 @@ const ProcedureComponent = () => {
       } else {
         console.warn("Branch code not found in localStorage")
       }
-    const initialDate = new Date()
-    setSelectedDate(initialDate,branchCode)
-    }, [branchCode])
+    }, [])
+
+      // Fetch current date data when component mounts and branch code is available
+      useEffect(() => {
+        if (branchCode) {
+          const currentDate = new Date()
+          setSelectedDate(currentDate)
+          fetchProcedures(currentDate)
+        }
+      }, [branchCode])
   
 
   const handlePaymentTypeChange = (e) => {

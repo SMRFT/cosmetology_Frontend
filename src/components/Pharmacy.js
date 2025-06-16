@@ -615,15 +615,6 @@ const PharmacyComponent = () => {
                         <option value="">Select Category</option>
                         <option value="Tablets">Tablets</option>
                         <option value="Topicals">Topicals</option>
-                        <option value="Syrup">Syrup</option>
-                        <option value="Injections">Injections</option>
-                        <option value="Drops">Drops</option>
-                        <option value="Capsules">Capsules</option>
-                        <option value="Cream">Cream</option>
-                        <option value="Gel">Gel</option>
-                        <option value="Solution">Solution</option>
-                        <option value="Powder">Powder</option>
-                        <option value="Other">Other</option>
                       </StyledSelect>
                     </td>
                     <td>

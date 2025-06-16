@@ -326,7 +326,7 @@ const PatientForm = ({ patientData, onClose }) => {
         </Modal.Header>
         <Modal.Body>
           <VitalForm
-            patientUID={patientUID}
+            patientUID={formData.patientUID}
             patientName={formData.patientName}
             mobileNumber={formData.mobileNumber}
             onClose={handleModalClose}

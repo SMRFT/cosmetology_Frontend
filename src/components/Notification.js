@@ -24,8 +24,8 @@ const Notification = () => {
       console.warn('Branch code not found in localStorage');
     }
 
-    // Fetch medicine status if user is Doctor, Pharmacist, or Admin
-    if (userRole === 'Doctor' || userRole === 'Pharmacist' || userRole === 'Admin') {
+    // Fetch medicine status if user is Doctor, Receptionist, or Admin
+    if (userRole === 'Doctor' || userRole === 'Receptionist' || userRole === 'Admin') {
       const fetchMedicineStatus = async () => {
         try {
           const response = await axios.get(`${Cosmetologybaseurl}check_medicine_status/?branch_code=${code}`, {
@@ -79,8 +79,8 @@ const Notification = () => {
       <NotificationPanel visible={panelVisible}>
         <CloseIcon onClick={togglePanel}><IoMdClose /></CloseIcon>
         <h4 className="mb-3">Notifications</h4>
-        {/* Pharmacist, Doctor (PharmacistLogin), Doctor (DoctorLogin), or Admin - Medicine notifications */}
-        {(userRole === 'Pharmacist' || (userRole === 'Doctor' && loggedInAs === 'PharmacistLogin') || (userRole === 'Doctor' && loggedInAs === 'DoctorLogin') || userRole === 'Admin') && (
+        {/* Receptionist, Doctor (ReceptionistLogin), Doctor (DoctorLogin), or Admin - Medicine notifications */}
+        {(userRole === 'Receptionist' || (userRole === 'Doctor' && loggedInAs === 'ReceptionistLogin') || (userRole === 'Doctor' && loggedInAs === 'DoctorLogin') || userRole === 'Admin') && (
           <>
             {lowQuantityMedicines.length > 0 && (
               <Alert style={{ backgroundColor: "#F1F1F1", border: "#C7B7A3" }} className="mb-3">

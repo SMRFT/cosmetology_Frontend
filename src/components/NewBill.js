@@ -507,43 +507,47 @@ const NewBill = () => {
     }
   }
 
-  const updateStock = async () => {
+const updateStock = async () => {
+    // Additional rows stock updates now include batch_number
     const additionalStockUpdates = additionalRows
-      .filter((row) => row.selected)
-      .map((row) => ({
-        medicine_name: row.particulars,
-        qty: row.quantity,
-        branch_code: branchCode,
-      }))
+        .filter((row) => row.selected)
+        .map((row) => ({
+            medicine_name: row.particulars,
+            qty: row.quantity,
+            branch_code: branchCode,
+            batch_number: row.batch_number, // Added batch_number
+        }));
 
-    let allStockUpdated = true
+    let allStockUpdated = true;
 
     for (const stockUpdate of additionalStockUpdates) {
-      try {
-        const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(stockUpdate),
-        })
+        try {
+            const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(stockUpdate),
+            });
 
-        if (!response.ok) {
-          throw new Error("Failed to update stock")
+            if (!response.ok) {
+                // Read the error message from the response if available
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to update stock");
+            }
+
+            const data = await response.json();
+            toast.success("Stock updated successfully!");
+        } catch (error) {
+            console.error("Error updating stock:", error);
+            toast.error(`Error updating stock: ${error.message}`); // Display specific error from backend
+            allStockUpdated = false;
+            break;
         }
-
-        const data = await response.json()
-        toast.success("Stock updated successfully!")
-      } catch (error) {
-        console.error("Error updating stock:", error)
-        toast.error("Insufficient stock.")
-        allStockUpdated = false
-        break
-      }
     }
 
-    return allStockUpdated
-  }
+    return allStockUpdated;
+};
 
   const convertToBase64 = (url, callback) => {
     const img = new Image()

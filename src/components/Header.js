@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect } from "react"
 import { NavLink } from "react-router-dom"
 import styled from "styled-components"
@@ -10,6 +12,7 @@ import SignOut from "./SignOut"
 const Header = ({ userRole }) => {
   const [branchName, setBranchName] = useState("")
   const [expandedGroups, setExpandedGroups] = useState({})
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
@@ -188,9 +191,19 @@ const Header = ({ userRole }) => {
     })
   }
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+    setExpandedGroups({})
+  }
+
   // Function to close all dropdowns when a navigation item is clicked
   const handleNavItemClick = () => {
     setExpandedGroups({})
+    closeMobileMenu()
   }
 
   const navigationGroups = getNavigationGroups()
@@ -200,6 +213,7 @@ const Header = ({ userRole }) => {
 
   return (
     <>
+      <MobileOverlay isOpen={isMobileMenuOpen} onClick={closeMobileMenu} />
       <TopContainer showBranch={showBranch}>
         {showBranch && <BranchDisplay>{branchName && <span>Salem Cosmetic Clinic - {branchName}</span>}</BranchDisplay>}
         <HeaderRight>
@@ -213,7 +227,14 @@ const Header = ({ userRole }) => {
             <img src={Logo || "/placeholder.svg"} alt="Logo" />
           </LogoContainer>
           {showNavigation && (
-            <Navigation userRole={userRole}>
+            <MobileToggleButton onClick={toggleMobileMenu}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </MobileToggleButton>
+          )}
+          {showNavigation && (
+            <Navigation userRole={userRole} isMobileMenuOpen={isMobileMenuOpen}>
               {navigationGroups.map((group) => (
                 <DropdownContainer key={group.id}>
                   <DropdownButton
@@ -303,6 +324,12 @@ const HeaderLeft = styled.div`
     flex-direction: column;
     align-items: center;
   }
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 `
 
 const LogoContainer = styled.div`
@@ -331,8 +358,21 @@ const Navigation = styled.nav`
   }
 
   @media (max-width: 768px) {
+    position: fixed;
+    top: 110px;
+    left: 0;
+    width: 280px;
+    height: calc(100vh - 110px);
+    background: white;
     flex-direction: column;
     gap: 10px;
+    padding: 20px;
+    margin: 0;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    transform: ${(props) => (props.isMobileMenuOpen ? "translateX(0)" : "translateX(-100%)")};
+    transition: transform 0.3s ease-in-out;
+    z-index: 1000;
+    overflow-y: auto;
   }
 `
 
@@ -356,7 +396,8 @@ const DropdownButton = styled.button`
   box-shadow: ${(props) => (props.isExpanded ? "0 4px 12px rgba(122, 28, 172, 0.15)" : "0 2px 4px rgba(0, 0, 0, 0.1)")};
 
   @media (max-width: 768px) {
-    min-width: 160px;
+    width: 100%;
+    min-width: unset;
     padding: 10px 14px;
   }
 `
@@ -485,6 +526,47 @@ const HeaderRight = styled.div`
     width: 100%;
     justify-content: space-between;
     margin-top: 10px;
+  }
+`
+
+const MobileToggleButton = styled.button`
+  display: none;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+
+  span {
+    width: 25px;
+    height: 3px;
+    background: #6D4194;
+    border-radius: 10px;
+    transition: all 0.3s linear;
+    position: relative;
+    transform-origin: 1px;
+  }
+
+  @media (max-width: 768px) {
+    display: flex;
+  }
+`
+
+const MobileOverlay = styled.div`
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+
+  @media (max-width: 768px) {
+    display: ${(props) => (props.isOpen ? "block" : "none")};
   }
 `
 

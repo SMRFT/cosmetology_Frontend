@@ -101,23 +101,17 @@ const Procedures = ({ onSelectProcedures, preSelectedProcedures }) => {
     onSelectProcedures(newInputs); // Notify parent of the change
   };
 
-  const handleAddNewProcedure = () => {
-    if (newProcedure.trim() === '') return;
-    const newProcedureData = { procedure: newProcedure };
-
-    axios
-      .post(`${Cosmetologybaseurl}Procedure/`, newProcedureData)
-      .then((response) => {
-        setProceduresList([...proceduresList, response.data]);
-        setShowAddInput(false);
-        setNewProcedure('');
-        toast.success('New procedure added successfully!');
-      })
-      .catch((error) => {
-        console.error('Error adding new procedure:', error);
-      });
-  };
-
+      const handleAddNewProcedure = () => {
+        axios.post(`${Cosmetologybaseurl}Procedure/`, { procedure: newProcedure })
+          .then(response => {
+            setProceduresList([...proceduresList, response.data]);
+            setShowAddInput(false);
+            setNewProcedure('');
+            toast.success('New Procedure stored successfully!');
+          })
+          .catch(error => console.error('Error adding Procedure:', error));
+          
+      };
   const handleProcedureChange = (selected, index) => {
     const newInputs = [...proceduresInputs];
     newInputs[index].selectedProcedures = selected;

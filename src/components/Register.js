@@ -24,7 +24,6 @@ const Register = () => {
     branch_code: [],
     contact: "",
     password: "",
-    confirmPassword: "", // Make sure confirmPassword is part of initial state
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -133,7 +132,6 @@ const Register = () => {
     try {
       // Create a copy of formData and delete confirmPassword before sending
       const submitData = { ...formData };
-      delete submitData.confirmPassword; // This is the key line to remove it
 
       console.log("Submitting data:", submitData); // Check what's actually sent!
 
@@ -155,7 +153,6 @@ const Register = () => {
           branch_code: [],
           contact: "",
           password: "",
-          confirmPassword: "", // <-- ADDED THIS LINE to clear confirmPassword
         });
         setValidated(false);
         setFormSubmitted(false);

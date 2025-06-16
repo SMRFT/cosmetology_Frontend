@@ -150,7 +150,7 @@ const UnifiedLogin = ({ setUserRole }) => {
             Array.isArray(branchCodes) && branchCodes.length === 1 ? branchCodes[0] : responseData.branch_code || ""
 
           if (!branchCode) {
-            toast.error("No branch code available for this user")
+            toast.error("No Active Branch Found for this User")
             setIsLoading(false)
             return
           }
