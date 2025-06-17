@@ -19,19 +19,17 @@ const Notification = () => {
     const code = localStorage.getItem('selectedBranch');
     if (code) {
       setBranchCode(code);
-      console.log('Branch code retrieved from localStorage:', code);
     } else {
       console.warn('Branch code not found in localStorage');
     }
 
-    // Fetch medicine status if user is Doctor, Pharmacist, or Admin
-    if (userRole === 'Doctor' || userRole === 'Pharmacist' || userRole === 'Admin') {
+    // Fetch medicine status if user is Doctor, Receptionist, or Admin
+    if (userRole === 'Doctor' || userRole === 'Receptionist' || userRole === 'Admin') {
       const fetchMedicineStatus = async () => {
         try {
           const response = await axios.get(`${Cosmetologybaseurl}check_medicine_status/?branch_code=${code}`, {
             withCredentials: true
           });
-          console.log('Medicine Status:', response.data);
           setLowQuantityMedicines(response.data.low_quantity_medicines);
           setNearExpiryMedicines(response.data.near_expiry_medicines);
         } catch (error) {
@@ -51,7 +49,6 @@ const Notification = () => {
           const response = await axios.get(`${Cosmetologybaseurl}check_upcoming_visits/?branch_code=${code}`, {
             withCredentials: true
           });
-          console.log('Upcoming Visits:', response.data);
           setUpcomingVisits(response.data.upcoming_visits);
         } catch (error) {
           console.error('There was an error fetching the upcoming visits:', error);
@@ -79,8 +76,8 @@ const Notification = () => {
       <NotificationPanel visible={panelVisible}>
         <CloseIcon onClick={togglePanel}><IoMdClose /></CloseIcon>
         <h4 className="mb-3">Notifications</h4>
-        {/* Pharmacist, Doctor (PharmacistLogin), Doctor (DoctorLogin), or Admin - Medicine notifications */}
-        {(userRole === 'Pharmacist' || (userRole === 'Doctor' && loggedInAs === 'PharmacistLogin') || (userRole === 'Doctor' && loggedInAs === 'DoctorLogin') || userRole === 'Admin') && (
+        {/* Receptionist, Doctor (ReceptionistLogin), Doctor (DoctorLogin), or Admin - Medicine notifications */}
+        {(userRole === 'Receptionist' || (userRole === 'Doctor' && loggedInAs === 'ReceptionistLogin') || (userRole === 'Doctor' && loggedInAs === 'DoctorLogin') || userRole === 'Admin') && (
           <>
             {lowQuantityMedicines.length > 0 && (
               <Alert style={{ backgroundColor: "#F1F1F1", border: "#C7B7A3" }} className="mb-3">

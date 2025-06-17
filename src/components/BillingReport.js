@@ -54,7 +54,6 @@ const BillingReport = () => {
 
     if (code) {
       setBranchCode(code);
-      console.log("Branch code retrieved from localStorage:", code);
     } else {
       console.warn("Branch code not found in localStorage");
       setError("Branch code not found. Please ensure you are logged in."); // Set error
@@ -62,7 +61,6 @@ const BillingReport = () => {
 
     if (role) {
       setUserRole(role);
-      console.log("User role retrieved:", role);
     } else {
       console.warn("User role not found");
     }
@@ -108,12 +106,6 @@ const BillingReport = () => {
     }
 
     try {
-      console.log("Making billing API call with params:", {
-        interval,
-        appointmentDate: dateParam,
-        branch_code: branchCode,
-      });
-
       const response = await axios.get(
         `${Cosmetologybaseurl}billing/${interval}/`,
         {
@@ -124,7 +116,6 @@ const BillingReport = () => {
           withCredentials: true,
         }
       );
-      console.log("Billing API response:", response.data);
 
       setBillingData(response.data.billing_data);
 

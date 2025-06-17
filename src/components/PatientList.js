@@ -19,7 +19,6 @@ const PatientList = ({ onSelectPatient }) => {
     const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
     } else {
       console.warn("Branch code not found in localStorage")
     }

@@ -41,7 +41,6 @@ const Appointment = () => {
     const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
       fetchAppointments(code)
     } else {
       console.warn("Branch code not found in localStorage")
@@ -175,8 +174,6 @@ const Appointment = () => {
       patient_handledby: doctor.name,
     }
 
-    console.log("Sending appointment data:", appointmentData) // Debug log
-
     // Save the appointment
     axios
       .post(`${Cosmetologybaseurl}Appointmentpost/`, appointmentData, {
@@ -186,7 +183,6 @@ const Appointment = () => {
         withCredentials: true,
       })
       .then((response) => {
-        console.log("Appointment response:", response) // Debug log
 
         // Show success message
         setSuccessMessage(

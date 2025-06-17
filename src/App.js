@@ -30,7 +30,6 @@ function App() {
   const [userRole, setUserRole] = useState(localStorage.getItem("userRole"))
 
   useEffect(() => {
-    console.log("Current user role from localStorage:", localStorage.getItem("userRole"))
     setUserRole(localStorage.getItem("userRole"))
   }, [location])
 

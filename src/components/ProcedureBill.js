@@ -335,7 +335,6 @@ const ProcedureComponent = () => {
           procedure: procedure.procedure || "",
         }))
         setProceduresList(formattedProceduresList)
-        console.log("Fetched procedures:", formattedProceduresList)
       })
       .catch((error) => {
         console.error("Error fetching procedures data:", error)
@@ -347,14 +346,20 @@ const ProcedureComponent = () => {
       const code = localStorage.getItem("selectedBranch")
       if (code) {
         setBranchCode(code)
-        console.log("Branch code retrieved from localStorage:", code)
   
       } else {
         console.warn("Branch code not found in localStorage")
       }
-    const initialDate = new Date()
-    setSelectedDate(initialDate,branchCode)
-    }, [branchCode])
+    }, [])
+
+      // Fetch current date data when component mounts and branch code is available
+      useEffect(() => {
+        if (branchCode) {
+          const currentDate = new Date()
+          setSelectedDate(currentDate)
+          fetchProcedures(currentDate)
+        }
+      }, [branchCode])
   
 
   const handlePaymentTypeChange = (e) => {
@@ -444,7 +449,6 @@ const ProcedureComponent = () => {
 
   // Handle procedure selection from dropdown
   const handleProcedureSelect = (rowId, selectedValue) => {
-    console.log("Procedure selected:", selectedValue, "for row:", rowId)
 
     if (!selectedValue) {
       // Clear selection
@@ -463,7 +467,6 @@ const ProcedureComponent = () => {
     }
 
     const selectedProcedure = proceduresList.find((proc) => proc.id.toString() === selectedValue.toString())
-    console.log("Found procedure:", selectedProcedure)
 
     if (selectedProcedure) {
       setAdditionalProcedures((prev) =>

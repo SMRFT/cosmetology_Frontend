@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Typeahead } from 'react-bootstrap-typeahead';
 import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; // Import toast styles
+import 'react-toastify/dist/ReactToastify.css'; 
 import { Col, Row, Form, Button, Alert } from 'react-bootstrap';
 import styled from 'styled-components';
 
@@ -68,20 +68,17 @@ const Tests = ({ preSelectedTests, onSelectTests }) => {
       });
   }, []);
 
-  const handleAddNewTest = () => {
-    axios
-      .post(`${Cosmetologybaseurl}Tests/`, { test: newTest })
-      .then((response) => {
-        setTestsList([...testsList, response.data]);
-        setShowAddInput(false);
-        setNewTest('');
-        toast.success('New test added successfully!'); // Success toast for adding a test
-      })
-      .catch((error) => {
-        console.error('Error adding new test:', error);
-
-      });
-  };
+    const handleAddNewTest = () => {
+      axios.post(`${Cosmetologybaseurl}Tests/`, { test: newTest })
+        .then(response => {
+          setTestsList([...testsList, response.data]);
+          setShowAddInput(false);
+          setNewTest('');
+          toast.success('New Test stored successfully!');
+        })
+        .catch(error => console.error('Error adding Test:', error));
+        
+    };
 
   const handleTestChange = (selected, index) => {
     const newInputs = [...testsInputs];

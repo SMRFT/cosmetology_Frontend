@@ -51,7 +51,6 @@ const UnifiedLogin = ({ setUserRole }) => {
       }
 
       const data = await response.json()
-      console.log("Fetched all branches from API:", data)
 
       if (Array.isArray(data)) {
         setAllBranches(data)
@@ -82,8 +81,7 @@ const UnifiedLogin = ({ setUserRole }) => {
     setIsLoading(true)
 
     try {
-      console.log("Attempting login with:", { username })
-
+  
       // Single API call for authentication
       const response = await fetch(`${Cosmetologybaseurl}login/`, {
         method: "POST",
@@ -101,8 +99,6 @@ const UnifiedLogin = ({ setUserRole }) => {
       if (response.ok) {
         const responseData = await response.json()
         const userRole = responseData.role
-
-        console.log("Login successful:", { userRole, responseData })
 
         // Get the appropriate endpoint for this role
         const endpoint = getEndpointForRole(userRole)
@@ -150,7 +146,7 @@ const UnifiedLogin = ({ setUserRole }) => {
             Array.isArray(branchCodes) && branchCodes.length === 1 ? branchCodes[0] : responseData.branch_code || ""
 
           if (!branchCode) {
-            toast.error("No branch code available for this user")
+            toast.error("No Active Branch Found for this User")
             setIsLoading(false)
             return
           }

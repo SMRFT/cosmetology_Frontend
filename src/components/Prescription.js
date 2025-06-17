@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useRef } from "react"
 import { useLocation } from "react-router-dom"
 import { Col, Row, Form, Tab, Nav } from "react-bootstrap"
@@ -18,8 +20,6 @@ import Findings from "./Findings"
 import Tests from "./Tests"
 import Procedures from "./Procedure"
 import jsPDF from "jspdf"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
 import "jspdf-autotable"
 import PDFMain1 from "./images/PDF_Summary_branch1.jpeg"
 import PDFMain2 from "./images/PDF_Summary_branch2.jpeg"
@@ -302,11 +302,43 @@ const StockWarning = styled.div`
   color: #856404;
   padding: 8px;
   border-radius: 4px;
-  margin-top: 5px;
+  margin-bottom: 10px;
+  width: fit-content;
   font-size: 12px;
   display: flex;
   align-items: center;
   gap: 5px;
+`
+
+const SuccessMessage = styled.div`
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+  z-index: 1000;
+  ${(props) => {
+    if (props.type === "error") {
+      return `
+        background-color: white;
+        color: #ff4444;
+        border: 1px solid #cc0000;
+      `
+    } else if (props.type === "warning") {
+      return `
+        background-color: white;
+        color: #ffa500;
+        border: 1px solid #cc8400;
+      `
+    } else {
+      return `
+        background-color: white;
+        color: #ffa500;
+        border: 1px solid #45a049;
+      `
+    }
+  }}
 `
 
 const PrescriptionDetails = () => {
@@ -329,6 +361,7 @@ const PrescriptionDetails = () => {
     plan3: "",
   })
   const [branchCode, setBranchCode] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
 
   // ADD: New state to track loaded data separately
   const [loadedData, setLoadedData] = useState({
@@ -376,7 +409,6 @@ const PrescriptionDetails = () => {
     const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
     } else {
       console.warn("Branch code not found in localStorage")
     }
@@ -398,7 +430,6 @@ const PrescriptionDetails = () => {
           fullData: medicine,
         }))
         setMedicineOptions(medicineData)
-        console.log("Medicine data with stock:", medicineData) // ADD: Debug log
       })
       .catch((error) => {
         console.error("Error fetching medicine names:", error)
@@ -480,17 +511,15 @@ const PrescriptionDetails = () => {
 
   useEffect(() => {
     if (!patientUID || !branchCode) return
-
     axios
       .get(`${Cosmetologybaseurl}vitalform/`, {
         params: {
-          patientUID: patientUID,
+          patientUID,
           branch_code: branchCode,
         },
       })
       .then((response) => {
-        const vitalResponse = response.data.vital[0]
-        setVital(vitalResponse)
+        setVital(response.data.vital[0] || {}); // set the first item or empty object
       })
       .catch((error) => {
         console.error("Error fetching vital data:", error)
@@ -775,7 +804,7 @@ const PrescriptionDetails = () => {
         .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
         .join("\n")
 
-      const summaryDataToSend = {
+      const currentSummaryData = {
         patientName,
         patientUID,
         mobileNumber,
@@ -829,75 +858,168 @@ const PrescriptionDetails = () => {
       })
 
       if (getResponse.data && getResponse.data.length > 0) {
-        await axios.patch(`${Cosmetologybaseurl}summary/post/`, summaryDataToSend)
-        toast.success("Updated Successfully")
+        const existingData = getResponse.data[0]
+
+        // Enhanced deep comparison function
+        const normalizeValue = (value) => {
+          if (value === null || value === undefined) return ""
+          if (typeof value === "string") return value.trim()
+          if (typeof value === "object") return JSON.stringify(value)
+          return String(value)
+        }
+
+        const areObjectsEqual = (obj1, obj2) => {
+          const keys1 = Object.keys(obj1)
+          const keys2 = Object.keys(obj2)
+
+          // Get all unique keys from both objects
+          const allKeys = [...new Set([...keys1, ...keys2])]
+
+          for (const key of allKeys) {
+            const val1 = normalizeValue(obj1[key])
+            const val2 = normalizeValue(obj2[key])
+
+            if (val1 !== val2) {
+              console.log(`Difference found in key "${key}":`, { current: val1, existing: val2 })
+              return false
+            }
+          }
+          return true
+        }
+
+        // Create a comparable version of existingData with same structure as currentSummaryData
+        const existingDataComparable = {
+          patientName: existingData.patientName || "",
+          patientUID: existingData.patientUID || "",
+          mobileNumber: existingData.mobileNumber || "",
+          appointmentDate: existingData.appointmentDate || "",
+          branch_code: existingData.branch_code || "",
+          patient_handledby: existingData.patient_handledby || "",
+          diagnosis: existingData.diagnosis || "",
+          complaints: existingData.complaints || "",
+          findings: existingData.findings || "",
+          prescription: existingData.prescription || "",
+          plans: existingData.plans || "",
+          tests: existingData.tests || "",
+          uploadedImages: existingData.uploadedImages || [],
+          nextVisit: existingData.nextVisit || null,
+          vital: existingData.vital || "",
+          proceduresList: existingData.proceduresList || "",
+        }
+
+        // Check if there are actual changes
+        const hasChanges = !areObjectsEqual(currentSummaryData, existingDataComparable)
+
+        if (!hasChanges) {
+          setSuccessMessage("No changes made")
+        } else {
+          // Only make PATCH request if there are actual changes
+          await axios.patch(`${Cosmetologybaseurl}summary/post/`, currentSummaryData)
+          setSuccessMessage("Updated successfully")
+        }
       } else {
-        await axios.post(`${Cosmetologybaseurl}summary/post/`, summaryDataToSend)
-        toast.success("Saved Successfully")
+        // No existing data, so this is a new entry
+        await axios.post(`${Cosmetologybaseurl}summary/post/`, currentSummaryData)
+        setSuccessMessage("Saved successfully")
       }
+
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage("")
+      }, 3000)
     } catch (error) {
       console.error("Error submitting data", error)
-      toast.error("Error submitting data")
+      setSuccessMessage("Error submitting data")
+      setTimeout(() => {
+        setSuccessMessage("")
+      }, 3000)
     }
   }
-
-  const handleSubmitAll = async (e) => {
-    e.preventDefault()
-    try {
-      await handleSubmit()
-    } catch (error) {
-      toast.error("Error Submitting Data")
-    }
-  }
-
   const summaryRef = useRef(null)
 
   // UPDATED: Helper function to merge loaded data with current input data
   const getMergedData = () => {
+    // Start with the loaded data
+    const mergedDiagnosis = [...loadedData.diagnosis]
+    const mergedComplaints = [...loadedData.complaints]
+    const mergedFindings = [...loadedData.findings]
+    const mergedProcedures = [...loadedData.procedures]
+    const mergedTests = [...loadedData.tests]
+
+    // Add new (not previously loaded) items from current state
+    selectedDiagnosis.forEach((item) => {
+      if (!loadedData.diagnosis.some((loaded) => loaded.diagnosis === item.diagnosis)) {
+        mergedDiagnosis.push(item)
+      }
+    })
+
+    selectedComplaints.forEach((item) => {
+      if (!loadedData.complaints.some((loaded) => JSON.stringify(loaded) === JSON.stringify(item))) {
+        mergedComplaints.push(item)
+      }
+    })
+
+    selectedfindings.forEach((item) => {
+      if (!loadedData.findings.some((loaded) => loaded.findings === item.findings)) {
+        mergedFindings.push(item)
+      }
+    })
+
+    selectedprocedure.forEach((item) => {
+      if (!loadedData.procedures.some((loaded) => JSON.stringify(loaded) === JSON.stringify(item))) {
+        mergedProcedures.push(item)
+      }
+    })
+
+    selectedTests.forEach((item) => {
+      if (!loadedData.tests.some((loaded) => loaded.test === item.test)) {
+        mergedTests.push(item)
+      }
+    })
+
+    // Handle Prescriptions: Prioritize current prescriptionInputs
+    // If a prescription from loadedData is also present in prescriptionInputs (by name),
+    // use the one from prescriptionInputs. Otherwise, add both.
+    const mergedPrescriptions = []
+    // eslint-disable-next-line no-unused-vars
+    const processedLoadedPrescriptions = new Set() // To avoid duplicates
+
+    prescriptionInputs.forEach((input) => {
+      if (input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "") {
+        mergedPrescriptions.push(input)
+      }
+    })
+
+    loadedData.prescriptions.forEach((loadedRx) => {
+      const isAlreadyInCurrent = prescriptionInputs.some(
+        (currentRx) =>
+          currentRx.selectedPrescription?.length > 0 &&
+          currentRx.selectedPrescription[0]?.label === loadedRx.selectedPrescription[0]?.label,
+      )
+      if (!isAlreadyInCurrent) {
+        mergedPrescriptions.push(loadedRx)
+      }
+    })
+
+    // Handle Plans: Current planDetails override loadedData.plans
+    const mergedPlans = {
+      plan1: planDetails.plan1 || loadedData.plans.plan1,
+      plan2: planDetails.plan2 || loadedData.plans.plan2,
+      plan3: planDetails.plan3 || loadedData.plans.plan3,
+    }
+
+    // Handle Next Visit: Current selectedDate overrides loadedData.nextVisit
+    const mergedNextVisit = selectedDate || loadedData.nextVisit
+
     return {
-      diagnosis: [
-        ...loadedData.diagnosis,
-        ...selectedDiagnosis.filter(
-          (item) => !loadedData.diagnosis.some((loaded) => loaded.diagnosis === item.diagnosis),
-        ),
-      ],
-      complaints: [
-        ...loadedData.complaints,
-        ...selectedComplaints.filter(
-          (item) => !loadedData.complaints.some((loaded) => JSON.stringify(loaded) === JSON.stringify(item)),
-        ),
-      ],
-      findings: [
-        ...loadedData.findings,
-        ...selectedfindings.filter((item) => !loadedData.findings.some((loaded) => loaded.findings === item.findings)),
-      ],
-      procedures: [
-        ...loadedData.procedures,
-        ...selectedprocedure.filter(
-          (item) => !loadedData.procedures.some((loaded) => JSON.stringify(loaded) === JSON.stringify(item)),
-        ),
-      ],
-      prescriptions: [
-        ...loadedData.prescriptions,
-        ...prescriptionInputs.filter(
-          (input) =>
-            input.selectedPrescription?.length > 0 &&
-            input.selectedPrescription[0]?.label?.trim() !== "" &&
-            !loadedData.prescriptions.some(
-              (loaded) => loaded.selectedPrescription[0]?.label === input.selectedPrescription[0]?.label,
-            ),
-        ),
-      ],
-      tests: [
-        ...loadedData.tests,
-        ...selectedTests.filter((item) => !loadedData.tests.some((loaded) => loaded.test === item.test)),
-      ],
-      plans: {
-        plan1: planDetails.plan1 || loadedData.plans.plan1,
-        plan2: planDetails.plan2 || loadedData.plans.plan2,
-        plan3: planDetails.plan3 || loadedData.plans.plan3,
-      },
-      nextVisit: selectedDate || loadedData.nextVisit,
+      diagnosis: mergedDiagnosis,
+      complaints: mergedComplaints,
+      findings: mergedFindings,
+      procedures: mergedProcedures,
+      prescriptions: mergedPrescriptions,
+      tests: mergedTests,
+      plans: mergedPlans,
+      nextVisit: mergedNextVisit,
     }
   }
 
@@ -1299,7 +1421,15 @@ const PrescriptionDetails = () => {
 
   return (
     <StyledContainer>
-      <ToastContainer position="top-right" autoClose={5000} />
+      {successMessage && (
+        <SuccessMessage
+          type={
+            successMessage.includes("Error") ? "error" : successMessage.includes("No changes") ? "warning" : "success"
+          }
+        >
+          {successMessage}
+        </SuccessMessage>
+      )}
       <Tab.Container defaultActiveKey="consulting-room">
         <Nav style={{ justifyContent: "center" }}>
           <Nav.Item>
@@ -1392,9 +1522,7 @@ const PrescriptionDetails = () => {
                         {!loadedPrescriptionIndices.has(index) &&
                           input.selectedPrescription &&
                           input.selectedPrescription.length > 0 && (
-                            <div style={{ marginTop: "5px" }}>
-                              {getStockIndicator(getMedicineStock(input.selectedPrescription[0].label))}
-                            </div>
+                            <div style={{ marginTop: "5px" }}>{getStockIndicator}</div>
                           )}
                       </Col>
                       <Col sm="2">
@@ -1551,7 +1679,7 @@ const PrescriptionDetails = () => {
             <SummaryContainer>
               <center>
                 {getSummaryDetails()}
-                <button style={{ float: "right", marginTop: "-40px" }} onClick={handleSubmitAll}>
+                <button style={{ float: "right", marginTop: "-40px" }} onClick={handleSubmit}>
                   Save
                 </button>
               </center>

@@ -34,7 +34,6 @@ const PatientForm = ({ patientData, onClose }) => {
     const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
     } else {
       console.warn("Branch code not found in localStorage")
     }
@@ -326,7 +325,7 @@ const PatientForm = ({ patientData, onClose }) => {
         </Modal.Header>
         <Modal.Body>
           <VitalForm
-            patientUID={patientUID}
+            patientUID={formData.patientUID}
             patientName={formData.patientName}
             mobileNumber={formData.mobileNumber}
             onClose={handleModalClose}

@@ -24,7 +24,6 @@ function BookedAppointments() {
     const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
-      console.log("Branch code retrieved from localStorage:", code)
       fetchAppointments(code)
     } else {
       console.warn("Branch code not found in localStorage")
