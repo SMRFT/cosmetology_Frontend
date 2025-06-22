@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import styled from "styled-components"
@@ -49,6 +51,7 @@ const PatientProcedureContainer = styled.div`
   padding: 15px;
   border-radius: 8px;
   gap: 20px;
+  flex-wrap: wrap;
 `
 
 const PatientCard = styled.div`
@@ -64,7 +67,9 @@ const PatientCard = styled.div`
   transition: all 0.3s ease;
   height: auto;
   width: fit-content;
+  min-width: 250px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  cursor: pointer;
 
   &:hover {
     transform: translateY(-3px) scale(1.02);
@@ -101,6 +106,17 @@ const PatientCard = styled.div`
       background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
       transform: translateY(-1px);
     }
+  }
+
+  .data-source {
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.8;
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: ${(props) => (props.dataSource === "stored" ? "#28a745" : "#007bff")};
+    color: white;
   }
 `
 
@@ -154,6 +170,20 @@ const ProcedureNetInput = styled.input`
   margin-right: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
+`
+
+const EditableInput = styled.input`
+  width: 100px;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  
+  &:focus {
+    outline: none;
+    border-color: #9b85a8;
+    box-shadow: 0 0 0 2px rgba(155, 133, 168, 0.2);
+  }
 `
 
 const ConsumerNetContainer = styled.div`
@@ -300,9 +330,84 @@ const SectionTitle = styled.h4`
   margin: 0;
 `
 
+const LoadingSpinner = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  
+  .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #9b85a8;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  p {
+    margin-top: 15px;
+    font-size: 16px;
+    color: #666;
+    font-weight: 500;
+  }
+`
+
+const NoDataMessage = styled.div`
+  text-align: center;
+  font-size: 18px;
+  color: #888;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+`
+
+const TableContainer = styled.div`
+  overflow-x: auto;
+  margin: 20px 0;
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    th {
+      background-color: #9b85a8;
+      color: white;
+      font-weight: 600;
+      text-align: center;
+    }
+    
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+    
+    td {
+      text-align: center;
+    }
+  }
+`
+
 const ProcedureComponent = () => {
+  // State declarations
   const [patients, setPatients] = useState([])
   const [detailedRecords, setDetailedRecords] = useState([])
+  const [storedProcedureData, setStoredProcedureData] = useState([])
+  const [freshProcedureData, setFreshProcedureData] = useState([])
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [consumerRecords, setConsumerRecords] = useState([])
@@ -314,114 +419,549 @@ const ProcedureComponent = () => {
   const [consumerSection, setConsumerSection] = useState("Consumer")
   const [procedureSection, setProcedureSection] = useState("Procedure")
   const [branchCode, setBranchCode] = useState("")
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
-  // New states for procedure management
+  const [isDataFromStored, setIsDataFromStored] = useState(false)
+  const [editableTotals, setEditableTotals] = useState({})
   const [proceduresList, setProceduresList] = useState([])
   const [additionalProcedures, setAdditionalProcedures] = useState([])
   const [consultationFee, setConsultationFee] = useState(0)
-
-  // New state to control consumer table visibility
   const [showConsumerTable, setShowConsumerTable] = useState(false)
+  const [savedProcedureBillingData, setSavedProcedureBillingData] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [hasData, setHasData] = useState(true)
 
   const datePickerRef = useRef(null)
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
-  // Fetch procedures list
+  // Initialize branch code from localStorage
   useEffect(() => {
-    axios
-      .get(`${Cosmetologybaseurl}Procedure/`)
-      .then((response) => {
-        const formattedProceduresList = response.data.map((procedure, index) => ({
-          id: procedure.id || `proc_${index}`,
-          procedure: procedure.procedure || "",
-        }))
-        setProceduresList(formattedProceduresList)
-      })
-      .catch((error) => {
-        console.error("Error fetching procedures data:", error)
-        toast.error("Error fetching procedures data")
-      })
+    const code = localStorage.getItem("selectedBranch")
+    if (code) {
+      setBranchCode(code)
+    } else {
+      console.warn("Branch code not found in localStorage")
+    }
   }, [])
 
-    useEffect(() => {
-      const code = localStorage.getItem("selectedBranch")
-      if (code) {
-        setBranchCode(code)
-  
-      } else {
-        console.warn("Branch code not found in localStorage")
-      }
-    }, [])
+  // Fetch procedures list on component mount
+  useEffect(() => {
+    fetchProceduresList()
+  }, [])
 
-      // Fetch current date data when component mounts and branch code is available
-      useEffect(() => {
-        if (branchCode) {
-          const currentDate = new Date()
-          setSelectedDate(currentDate)
-          fetchProcedures(currentDate)
-        }
-      }, [branchCode])
-  
-
-  const handlePaymentTypeChange = (e) => {
-    setPaymentType(e.target.value)
-  }
-
-  const fetchProcedures = async (date) => {
-    try {
-      const formattedDate = format(date, "yyyy-MM-dd")
-      const response = await axios.get(
-        `${Cosmetologybaseurl}get_procedures_bill/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
-      )
-      if (Array.isArray(response.data.detailedRecords)) {
-        setPatients(response.data.detailedRecords)
-        if (!selectedPatient) {
-          setDetailedRecords([])
-        }
-      } else {
-        console.error("Expected an array for detailedRecords, but received:", response.data.detailedRecords)
-        setPatients([])
-        setDetailedRecords([])
-      }
-    } catch (error) {
-      console.error("Error fetching procedure list", error)
-      setPatients([])
-      setDetailedRecords([])
+  // Initialize with current date when branch code is available
+  useEffect(() => {
+    if (branchCode) {
+      const currentDate = new Date()
+      setSelectedDate(currentDate)
+      fetchProcedureDataWithPriority(currentDate)
     }
-  }
+  }, [branchCode])
 
+  // Fetch saved procedure billing data when patient is selected
+  useEffect(() => {
+    if (selectedPatient && branchCode && selectedDate) {
+      fetchSavedProcedureBillingData()
+    }
+  }, [selectedPatient, branchCode, selectedDate])
+
+  // Update patient records when selectedPatient changes
   useEffect(() => {
     if (selectedPatient) {
-      const selectedPatientProcedures = patients.filter((record) => record.patientUID === selectedPatient.patientUID)
-      setDetailedRecords(selectedPatientProcedures)
-      // Reset consumer records to empty array instead of initializing with one empty item
+      updateSelectedPatientRecords()
+      // Reset consumer and additional procedure states
       setConsumerRecords([])
-      // Hide consumer table when selecting a new patient
       setShowConsumerTable(false)
     } else {
-      setDetailedRecords([])
-      setConsumerRecords([])
-      setAdditionalProcedures([])
-      setConsultationFee(0)
-      setShowConsumerTable(false)
+      resetPatientData()
     }
-  }, [selectedPatient, patients])
+  }, [selectedPatient, patients, storedProcedureData, freshProcedureData, isDataFromStored])
 
-  const handleDateChange = (date) => {
-    setSelectedDate(date)
-    fetchProcedures(date)
+  // Calculate totals when relevant data changes
+  useEffect(() => {
+    calculateTotals()
+  }, [detailedRecords, additionalProcedures, consumerRecords, consultationFee, editableTotals])
+
+  // Fetch procedures list from API
+  const fetchProceduresList = async () => {
+    try {
+      const response = await axios.get(`${Cosmetologybaseurl}Procedure/`)
+      const formattedProceduresList = response.data.map((procedure, index) => ({
+        id: procedure.id || `proc_${index}`,
+        procedure: procedure.procedure || "",
+      }))
+      setProceduresList(formattedProceduresList)
+    } catch (error) {
+      console.error("Error fetching procedures data:", error)
+      toast.error("Error fetching procedures data")
+    }
   }
 
+  // ENHANCED: Improved function to handle stored data fetching with better error handling
+  const fetchProcedureDataWithPriority = async (date) => {
+    if (!branchCode || !date) return
+
+    setIsLoading(true)
+    const formattedDate = format(date, "yyyy-MM-dd")
+
+    try {
+      // Step 1: Try to fetch stored data without patientUID first
+      console.log("Checking for stored procedure data...")
+
+      // First attempt: Try to get stored data for the date and branch only
+      let storedResponse
+      try {
+        storedResponse = await fetch(
+          `${Cosmetologybaseurl}get/stored/procedurebill/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
+        )
+      } catch (error) {
+        console.log("Initial stored procedure data fetch failed, trying alternative approach...")
+        storedResponse = null
+      }
+
+      let hasStoredData = false
+      let storedPatients = []
+
+      if (storedResponse && storedResponse.ok) {
+        try {
+          const storedData = await storedResponse.json()
+          console.log("Raw stored data received:", storedData)
+
+          if (storedData && Array.isArray(storedData) && storedData.length > 0) {
+            // Transform stored data to match expected format
+            storedPatients = transformStoredDataToPatientFormat(storedData)
+            hasStoredData = true
+            setIsDataFromStored(true)
+          } else {
+            console.log("No stored data found or empty array")
+          }
+        } catch (parseError) {
+          console.error("Error parsing stored procedure data:", parseError)
+        }
+      }
+
+      // Step 2: If we have stored data, use it exclusively
+      if (hasStoredData && storedPatients.length > 0) {
+        setPatients(storedPatients.map((patient) => ({ ...patient, dataSource: "stored" })))
+        setStoredProcedureData(storedPatients)
+        setFreshProcedureData([])
+        setHasData(true)
+        setIsDataFromStored(true)
+        return // Exit early - don't fetch fresh data
+      }
+
+      setIsDataFromStored(false)
+
+      try {
+        const freshResponse = await axios.get(
+          `${Cosmetologybaseurl}get_procedures_bill/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
+        )
+
+        if (
+          freshResponse.data &&
+          Array.isArray(freshResponse.data.detailedRecords) &&
+          freshResponse.data.detailedRecords.length > 0
+        ) {
+          // Use fresh data
+          setFreshProcedureData(freshResponse.data.detailedRecords)
+          setPatients(freshResponse.data.detailedRecords.map((patient) => ({ ...patient, dataSource: "fresh" })))
+          setStoredProcedureData([])
+          setHasData(true)
+        } else {
+          // No data found at all
+          setPatients([])
+          setStoredProcedureData([])
+          setFreshProcedureData([])
+          setHasData(false)
+          toast.info("No procedure data found for the selected date")
+        }
+      } catch (freshError) {
+        console.error("Error fetching fresh procedure data:", freshError)
+        setPatients([])
+        setStoredProcedureData([])
+        setFreshProcedureData([])
+        setHasData(false)
+        toast.warning("No procedure data available for the selected date")
+      }
+    } catch (error) {
+      console.error("Error in fetchProcedureDataWithPriority:", error)
+      setPatients([])
+      setStoredProcedureData([])
+      setFreshProcedureData([])
+      setHasData(false)
+      toast.error("Error fetching procedure data. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // ENHANCED: Transform stored data format to match expected patient format
+  const transformStoredDataToPatientFormat = (storedData) => {
+    return storedData.map((record) => {
+      let procedures = []
+      let consumer = []
+
+      // Parse procedures JSON string - handle the exact format from your MongoDB
+      try {
+        if (record.procedures && typeof record.procedures === "string") {
+          procedures = JSON.parse(record.procedures)
+          console.log("Parsed procedures for", record.patientName, ":", procedures)
+        } else if (Array.isArray(record.procedures)) {
+          procedures = record.procedures
+        }
+      } catch (error) {
+        console.error("Error parsing procedures JSON:", error, record.procedures)
+        procedures = []
+      }
+
+      // Parse consumer JSON string - handle the exact format from your MongoDB
+      try {
+        if (record.consumer && typeof record.consumer === "string") {
+          consumer = JSON.parse(record.consumer)
+          console.log("Parsed consumer for", record.patientName, ":", consumer)
+        } else if (Array.isArray(record.consumer)) {
+          consumer = record.consumer
+        }
+      } catch (error) {
+        console.error("Error parsing consumer JSON:", error, record.consumer)
+        consumer = []
+      }
+
+      return {
+        patientUID: record.patientUID,
+        patientName: record.patientName,
+        patient_handledby: record.patient_handledby,
+        appointmentDate: record.appointmentDate,
+        procedures: procedures,
+        consumer: consumer,
+        procedureNetAmount: record.procedureNetAmount || "0",
+        consumerNetAmount: record.consumerNetAmount || "0",
+        totalAmount:
+          record.totalAmount ||
+          (
+            (Number.parseFloat(record.procedureNetAmount) || 0) + (Number.parseFloat(record.consumerNetAmount) || 0)
+          ).toFixed(2),
+        PaymentType: record.PaymentType || "Card",
+        consumerBillNumber: record.consumerBillNumber,
+        procedureBillNumber: record.procedureBillNumber,
+        isStored: true,
+        dataSource: "stored",
+      }
+    })
+  }
+
+  // Fetch saved procedure billing data for specific patient
+  const fetchSavedProcedureBillingData = async () => {
+    if (!selectedPatient || !branchCode || !selectedDate) return
+
+    try {
+      const response = await fetch(
+        `${Cosmetologybaseurl}get/stored/procedurebill/?patientUID=${selectedPatient.patientUID}&appointmentDate=${format(selectedDate, "yyyy-MM-dd")}&branch_code=${branchCode}`,
+      )
+
+      if (response.ok) {
+        const storedData = await response.json()
+        if (storedData && storedData.table_data && storedData.table_data.length > 0) {
+          setSavedProcedureBillingData(storedData.table_data)
+          loadSavedProcedureBillingDetails(storedData)
+        } else {
+          setSavedProcedureBillingData([])
+        }
+      } else if (response.status === 204) {
+        // No content found - this is expected when no saved data exists
+        setSavedProcedureBillingData([])
+        console.log("No saved procedure billing data found for this patient")
+      } else {
+        console.error("Error fetching saved procedure billing data:", response.status)
+        setSavedProcedureBillingData([])
+      }
+    } catch (error) {
+      console.error("Error fetching saved procedure billing data:", error)
+      setSavedProcedureBillingData([])
+    }
+  }
+
+  // Load saved procedure billing details into form
+  const loadSavedProcedureBillingDetails = (storedData) => {
+    setPaymentType(storedData.paymentType || "Card")
+    setConsultationFee(storedData.consultationFee || 0)
+    setProcedureNetAmount(storedData.procedureNetAmount || "0")
+    setConsumerNetAmount(storedData.consumerNetAmount || "0")
+    setTotalAmount(storedData.totalAmount || "0")
+
+    // Parse table_data if it's a string
+    let tableData = []
+    try {
+      if (typeof storedData.table_data === "string") {
+        tableData = JSON.parse(storedData.table_data)
+      } else if (Array.isArray(storedData.table_data)) {
+        tableData = storedData.table_data
+      }
+    } catch (error) {
+      console.error("Error parsing table_data:", error)
+      tableData = []
+    }
+
+    // Load saved procedure items as additional procedures (excluding consultation fee)
+    const savedProcedureRows = tableData
+      .filter((item) => item.particulars !== "Consultation Fee" && item.section === "Procedure")
+      .map((item, index) => ({
+        id: `saved-proc-${index}`,
+        procedure: item.particulars,
+        quantity: item.qty,
+        price: item.price,
+        CGST_percentage: item.CGST_percentage !== "N/A" ? item.CGST_percentage : 0,
+        CGST_value: item.CGST_value !== "N/A" ? item.CGST_value : 0,
+        SGST_percentage: item.SGST_percentage !== "N/A" ? item.SGST_percentage : 0,
+        SGST_value: item.SGST_value !== "N/A" ? item.SGST_value : 0,
+        selected: true,
+        total: item.total || (Number.parseFloat(item.price) * Number.parseFloat(item.qty)).toFixed(2),
+        isSaved: true,
+      }))
+
+    // Load saved consumer items
+    const savedConsumerRows = tableData
+      .filter((item) => item.section === "Consumer")
+      .map((item, index) => ({
+        id: `saved-consumer-${index}`,
+        particulars: item.particulars,
+        quantity: item.qty,
+        price: item.price,
+        CGST_percentage: item.CGST_percentage !== "N/A" ? item.CGST_percentage : 0,
+        CGST_value: item.CGST_value !== "N/A" ? item.CGST_value : 0,
+        SGST_percentage: item.SGST_percentage !== "N/A" ? item.SGST_percentage : 0,
+        SGST_value: item.SGST_value !== "N/A" ? item.SGST_value : 0,
+        selected: true,
+        total: item.total || (Number.parseFloat(item.price) * Number.parseFloat(item.qty)).toFixed(2),
+        isSaved: true,
+      }))
+
+    setAdditionalProcedures(savedProcedureRows)
+    setConsumerRecords(savedConsumerRows)
+
+    // Show consumer table if there are consumer records
+    if (savedConsumerRows.length > 0) {
+      setShowConsumerTable(true)
+    }
+  }
+
+  // ENHANCED: Update selected patient records based on data source
+  const updateSelectedPatientRecords = () => {
+    if (!selectedPatient) return
+
+    console.log("Updating patient records for:", selectedPatient.patientName)
+    console.log("Patient data source:", selectedPatient.dataSource)
+    console.log("Patient procedures:", selectedPatient.procedures)
+
+    // Prioritize stored data if available
+    if (selectedPatient.dataSource === "stored" || selectedPatient.isStored) {
+      // Use stored data - create proper structure for procedures display
+      const transformedRecord = {
+        patientUID: selectedPatient.patientUID,
+        patientName: selectedPatient.patientName,
+        patient_handledby: selectedPatient.patient_handledby,
+        appointmentDate: selectedPatient.appointmentDate,
+        procedures: selectedPatient.procedures || [],
+        isStored: true,
+      }
+
+      setDetailedRecords([transformedRecord])
+
+      // Also populate consumer records if they exist
+      if (selectedPatient.consumer && selectedPatient.consumer.length > 0) {
+        const transformedConsumerRecords = selectedPatient.consumer.map((item, index) => ({
+          id: `stored-consumer-${index}`,
+          item: item.item || item.particulars,
+          qty: item.qty || item.quantity,
+          price: item.price,
+          total: item.total,
+          isStored: true,
+        }))
+        setConsumerRecords(transformedConsumerRecords)
+        setShowConsumerTable(true)
+      }
+
+      // Set the totals from stored data
+      setProcedureNetAmount(selectedPatient.procedureNetAmount || "0")
+      setConsumerNetAmount(selectedPatient.consumerNetAmount || "0")
+      setTotalAmount(selectedPatient.totalAmount || "0")
+      setPaymentType(selectedPatient.PaymentType || "Card")
+    } else {
+      // Use fresh data
+      const freshPatientData = freshProcedureData.filter((record) => record.patientUID === selectedPatient.patientUID)
+      if (freshPatientData.length > 0) {
+        setDetailedRecords(freshPatientData)
+      } else {
+        setDetailedRecords([])
+      }
+    }
+  }
+
+  // Reset patient-related data
+  const resetPatientData = () => {
+    setDetailedRecords([])
+    setConsumerRecords([])
+    setAdditionalProcedures([])
+    setConsultationFee(0)
+    setShowConsumerTable(false)
+    setSavedProcedureBillingData([])
+  }
+
+  // Handle date change
+  const handleDateChange = (date) => {
+    setSelectedDate(date)
+    setSelectedPatient(null) // Reset selected patient when date changes
+    fetchProcedureDataWithPriority(date)
+  }
+
+  // Handle view patient details
   const handleViewClick = (patient) => {
     setSelectedPatient(patient)
     setViewDetails(true)
   }
 
+  // Handle back button
   const handleBackClick = () => {
     setSelectedPatient(null)
     setViewDetails(false)
-    setAdditionalProcedures([])
-    setConsultationFee(0)
-    setShowConsumerTable(false)
+    resetPatientData()
+  }
+
+  // Handle payment type change
+  const handlePaymentTypeChange = (e) => {
+    setPaymentType(e.target.value)
+  }
+
+  // Enhanced save function with better error handling and validation
+  const handleSave = async () => {
+    if (!selectedPatient) {
+      toast.error("No patient selected")
+      return
+    }
+
+    try {
+      const appointmentDate = detailedRecords[0]?.appointmentDate
+
+      // Process detailed records procedures
+      const proceduresWithoutPatientInfo = detailedRecords.flatMap(({ procedures }) => {
+        return procedures.map((procedure, index) => {
+          const key = `procedure-${index}`
+          const price = Number.parseFloat(procedure.price) || 0
+          const gst = Number.parseFloat(procedure.gst) || 0
+          const total = editableTotals[key] ? Number.parseFloat(editableTotals[key]) : price + gst
+          return {
+            ...procedure,
+            total: total.toFixed(2),
+          }
+        })
+      })
+
+      // Process additional procedures
+      const additionalProceduresData = additionalProcedures
+        .filter((procedure) => procedure.selected)
+        .map((procedure) => {
+          const key = `additional-${procedure.id}`
+          const price = Number.parseFloat(procedure.price) || 0
+          const gst = Number.parseFloat(procedure.gst) || 0
+          const total = editableTotals[key] ? Number.parseFloat(editableTotals[key]) : price + gst
+          return {
+            procedure: procedure.procedure,
+            procedureDate: procedure.procedureDate,
+            price: price.toString(),
+            gstRate: procedure.gstRate,
+            gst: gst.toString(),
+            total: total.toFixed(2),
+          }
+        })
+
+      // Combine all procedures
+      const allProcedures = [...proceduresWithoutPatientInfo, ...additionalProceduresData]
+
+      // Add consultation fee if applicable
+      if (consultationFee > 0) {
+        allProcedures.push({
+          procedure: "Consultation Fee",
+          procedureDate: format(new Date(), "yyyy-MM-dd"),
+          price: consultationFee.toString(),
+          gstRate: 0,
+          gst: "0",
+          total: consultationFee.toFixed(2),
+        })
+      }
+
+      // Prepare payload
+      const payload = {
+        patientName: selectedPatient.patientName,
+        patientUID: selectedPatient.patientUID,
+        patient_handledby: selectedPatient.patient_handledby || "N/A",
+        procedures: allProcedures,
+        consumer: consumerRecords,
+        appointmentDate: appointmentDate,
+        procedureNetAmount: procedureNetAmount,
+        consumerNetAmount: consumerNetAmount,
+        totalAmount: totalAmount,
+        PaymentType,
+        consumerSection,
+        procedureSection,
+        consultationFee: consultationFee,
+        branch_code: branchCode,
+        isFromStoredData: isDataFromStored,
+      }
+
+      // Send request
+      const response = await axios.post(`${Cosmetologybaseurl}Post_Procedure_Bill/`, payload, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      })
+
+      toast.success(`Procedure bill generated successfully for ${selectedPatient.patientName}`)
+
+      // Refresh the saved data after successful save
+      await fetchSavedProcedureBillingData()
+    } catch (error) {
+      console.error("Error generating enhanced procedure bill:", error)
+      toast.error("Error generating enhanced procedure bill")
+    }
+  }
+
+  // Helper function to calculate totals
+  const calculateTotals = () => {
+    const procedureTotal = detailedRecords.reduce((sum, record) => {
+      return (
+        sum +
+        record.procedures.reduce((procSum, procedure, index) => {
+          const key = `procedure-${index}`
+          const price = Number.parseFloat(procedure.price) || 0
+          const gst = Number.parseFloat(procedure.gst) || 0
+          const total = editableTotals[key] ? Number.parseFloat(editableTotals[key]) : price + gst
+          return procSum + total
+        }, 0)
+      )
+    }, 0)
+
+    const additionalProcedureTotal = additionalProcedures
+      .filter((proc) => proc.selected)
+      .reduce((sum, proc) => {
+        const key = `additional-${proc.id}`
+        const price = Number.parseFloat(proc.price) || 0
+        const gst = Number.parseFloat(proc.gst) || 0
+        const total = editableTotals[key] ? Number.parseFloat(editableTotals[key]) : price + gst
+        return sum + total
+      }, 0)
+
+    const consumerTotal = consumerRecords.reduce((sum, record) => {
+      return sum + (Number.parseFloat(record.total) || 0)
+    }, 0)
+
+    const newProcedureNetAmount = (procedureTotal + additionalProcedureTotal + consultationFee).toFixed(2)
+    const newConsumerNetAmount = consumerTotal.toFixed(2)
+    const newTotalAmount = (Number.parseFloat(newProcedureNetAmount) + Number.parseFloat(newConsumerNetAmount)).toFixed(
+      2,
+    )
+
+    setProcedureNetAmount(newProcedureNetAmount)
+    setConsumerNetAmount(newConsumerNetAmount)
+    setTotalAmount(newTotalAmount)
   }
 
   // Add new procedure row functionality
@@ -432,26 +972,29 @@ const ProcedureComponent = () => {
       {
         id: newRowId,
         procedure: "",
-        selectedProcedureId: "", // Add this to track selected procedure ID
+        selectedProcedureId: "",
         procedureDate: format(new Date(), "yyyy-MM-dd"),
         price: "",
         gstRate: 18,
         gst: "",
-        selected: false,
+        selected: true,
       },
     ])
   }
 
   // Delete procedure row functionality
   const handleDeleteProcedureRow = (rowId) => {
-    setAdditionalProcedures((prev) => prev.filter((row) => row.id !== rowId))
+    const rowToDelete = additionalProcedures.find((row) => row.id === rowId)
+    if (rowToDelete && !rowToDelete.isSaved) {
+      setAdditionalProcedures((prev) => prev.filter((row) => row.id !== rowId))
+    } else {
+      toast.warning("Cannot delete saved procedure data. Please remove it from the database first.")
+    }
   }
 
   // Handle procedure selection from dropdown
   const handleProcedureSelect = (rowId, selectedValue) => {
-
     if (!selectedValue) {
-      // Clear selection
       setAdditionalProcedures((prev) =>
         prev.map((row) =>
           row.id === rowId
@@ -483,7 +1026,7 @@ const ProcedureComponent = () => {
     }
   }
 
-  // Update additional procedure data
+  // Update additional procedure data with auto GST calculation
   const handleAdditionalProcedureChange = (rowId, field, value) => {
     setAdditionalProcedures((prev) =>
       prev.map((row) => {
@@ -516,20 +1059,59 @@ const ProcedureComponent = () => {
     setDetailedRecords(updatedRecords)
   }
 
-  const handleTotalChange = (index, newTotal) => {
-    const updatedRecords = [...detailedRecords]
-    const total = Number.parseFloat(newTotal)
+  // Enhanced total change with editable functionality for both existing and additional procedures
+  const handleTotalChange = (index, newTotal, isAdditional = false, rowId = null) => {
+    let key
+    if (isAdditional && rowId) {
+      key = `additional-${rowId}`
+    } else {
+      key = `procedure-${index}`
+    }
 
-    updatedRecords.forEach((record) => {
-      if (record.procedures[index]) {
-        const gstRate = record.procedures[index].gstRate || 0
-        const gst = (total * gstRate) / (100 + gstRate)
-        const price = total - gst
-        record.procedures[index].price = isNaN(price) ? "" : price.toFixed(2)
-        record.procedures[index].gst = isNaN(gst) ? "" : gst.toFixed(2)
-      }
-    })
-    setDetailedRecords(updatedRecords)
+    setEditableTotals((prev) => ({
+      ...prev,
+      [key]: newTotal,
+    }))
+
+    if (!isAdditional) {
+      // Reverse calculate price from total for existing procedures
+      const updatedRecords = [...detailedRecords]
+      const total = Number.parseFloat(newTotal)
+
+      updatedRecords.forEach((record) => {
+        if (record.procedures[index]) {
+          const gstRate = record.procedures[index].gstRate || 0
+          const gst = (total * gstRate) / (100 + gstRate)
+          const price = total - gst
+          record.procedures[index].price = isNaN(price) ? "" : price.toFixed(2)
+          record.procedures[index].gst = isNaN(gst) ? "" : gst.toFixed(2)
+        }
+      })
+      setDetailedRecords(updatedRecords)
+    }
+  }
+
+  // Enhanced total change specifically for additional procedures
+  const handleAdditionalTotalChange = (rowId, newTotal) => {
+    handleTotalChange(null, newTotal, true, rowId)
+
+    // Reverse calculate price from total for additional procedures
+    const total = Number.parseFloat(newTotal)
+    setAdditionalProcedures((prev) =>
+      prev.map((row) => {
+        if (row.id === rowId) {
+          const gstRate = row.gstRate || 0
+          const gst = (total * gstRate) / (100 + gstRate)
+          const price = total - gst
+          return {
+            ...row,
+            price: isNaN(price) ? "" : price.toFixed(2),
+            gst: isNaN(gst) ? "" : gst.toFixed(2),
+          }
+        }
+        return row
+      }),
+    )
   }
 
   const handleGstRateChange = (index, newGstRate) => {
@@ -552,7 +1134,10 @@ const ProcedureComponent = () => {
     return price && gst ? Math.round(Number.parseFloat(price) + Number.parseFloat(gst)).toString() : "0"
   }
 
-  const consumerOptions = consumerItems.map((item) => ({ value: item, label: item }))
+const consumerOptions = consumerItems.map((item) => ({
+  value: item,
+  label: item,
+}));
 
   const handleConsumerChange = (index, field, value) => {
     setConsumerRecords((prevRecords) => {
@@ -579,10 +1164,8 @@ const ProcedureComponent = () => {
     setConsumerRecords(newRecords)
   }
 
-  // Show consumer table and add first row when button is clicked
   const handleShowConsumerTable = () => {
     setShowConsumerTable(true)
-    // Only add a new row if there are no rows yet
     if (consumerRecords.length === 0) {
       setConsumerRecords([{ item: "", qty: "", price: "", total: "" }])
     }
@@ -590,139 +1173,6 @@ const ProcedureComponent = () => {
 
   const addConsumerRow = () => {
     setConsumerRecords((prevRecords) => [...prevRecords, { item: "", qty: "", price: "", total: "" }])
-  }
-
-  const calculateProcedureTotal = () => {
-    // Calculate total from existing procedures
-    const existingTotal = detailedRecords.reduce((acc, record) => {
-      return (
-        acc +
-        record.procedures.reduce((sum, procedure) => {
-          const price = Number.parseFloat(procedure.price) || 0
-          const gst = Number.parseFloat(procedure.gst) || 0
-          return sum + price + gst
-        }, 0)
-      )
-    }, 0)
-
-    // Calculate total from additional procedures
-    const additionalTotal = additionalProcedures.reduce((acc, procedure) => {
-      if (procedure.selected) {
-        const price = Number.parseFloat(procedure.price) || 0
-        const gst = Number.parseFloat(procedure.gst) || 0
-        return acc + price + gst
-      }
-      return acc
-    }, 0)
-
-    // Add consultation fee
-    const consultationAmount = Number.parseFloat(consultationFee) || 0
-
-    const total = existingTotal + additionalTotal + consultationAmount
-    setProcedureNetAmount(total.toFixed(2))
-  }
-
-  useEffect(() => {
-    calculateProcedureTotal()
-  }, [detailedRecords, additionalProcedures, consultationFee])
-
-  useEffect(() => {
-    const procedureAmount = Number.parseFloat(procedureNetAmount) || 0
-    const consumerAmount = Number.parseFloat(consumerNetAmount) || 0
-    setTotalAmount((procedureAmount + consumerAmount).toFixed(2))
-  }, [procedureNetAmount, consumerNetAmount])
-
-  const calculateConsumerTotal = () => {
-    const total = consumerRecords.reduce((acc, record) => {
-      const itemTotal = Number.parseFloat(record.total) || 0
-      return acc + itemTotal
-    }, 0)
-
-    setConsumerNetAmount(total.toFixed(2))
-  }
-
-  useEffect(() => {
-    calculateConsumerTotal()
-  }, [consumerRecords])
-
-  const handleSave = async () => {
-    if (selectedPatient) {
-      const appointmentDate = detailedRecords[0]?.appointmentDate
-
-      const proceduresWithoutPatientInfo = detailedRecords.flatMap(({ procedures }) => {
-        return procedures.map((procedure) => {
-          const price = Number.parseFloat(procedure.price) || 0
-          const gst = Number.parseFloat(procedure.gst) || 0
-          const total = price + gst
-          return {
-            ...procedure,
-            total: total.toFixed(2),
-          }
-        })
-      })
-
-      // Add additional procedures to the payload
-      const additionalProceduresData = additionalProcedures
-        .filter((procedure) => procedure.selected)
-        .map((procedure) => {
-          const price = Number.parseFloat(procedure.price) || 0
-          const gst = Number.parseFloat(procedure.gst) || 0
-          const total = price + gst
-          return {
-            procedure: procedure.procedure,
-            procedureDate: procedure.procedureDate,
-            price: price.toString(),
-            gstRate: procedure.gstRate,
-            gst: gst.toString(),
-            total: total.toFixed(2),
-          }
-        })
-
-      const allProcedures = [...proceduresWithoutPatientInfo, ...additionalProceduresData]
-
-      // Add consultation fee as a procedure if present
-      if (consultationFee > 0) {
-        allProcedures.push({
-          procedure: "Consultation Fee",
-          procedureDate: format(new Date(), "yyyy-MM-dd"),
-          price: consultationFee.toString(),
-          gstRate: 0,
-          gst: "0",
-          total: consultationFee.toFixed(2),
-        })
-      }
-
-      const payload = {
-        patientName: selectedPatient.patientName,
-        patientUID: selectedPatient.patientUID,
-        patient_handledby: selectedPatient.patient_handledby || "N/A",
-        procedures: allProcedures,
-        consumer: consumerRecords,
-        appointmentDate: appointmentDate,
-        procedureNetAmount: procedureNetAmount,
-        consumerNetAmount: consumerNetAmount,
-        totalAmount: totalAmount,
-        PaymentType,
-        consumerSection,
-        procedureSection,
-        consultationFee: consultationFee,
-        branch_code: branchCode,
-      }
-
-      try {
-        const response = await axios.post(`${Cosmetologybaseurl}Post_Procedure_Bill/`, payload, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        })
-        toast.success(`Procedure bill generated successfully for ${selectedPatient.patientName}`)
-      } catch (error) {
-        toast.error("Error generating procedure bill")
-      }
-    } else {
-      toast.error("No patient selected")
-    }
   }
 
   const convertToBase64 = (url, callback) => {
@@ -746,7 +1196,6 @@ const ProcedureComponent = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    // Select PDF background based on branch code without directly using branch names
     const backgroundImageMap = {
       SCC001: PDFMain1,
       SCC002: PDFMain2,
@@ -755,58 +1204,62 @@ const ProcedureComponent = () => {
 
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+
+      // ✨ Header
       const startY = 85
-
-      // Enhanced patient name styling
       doc.setFont("helvetica", "bold")
-      doc.setFontSize(16)
-      doc.setTextColor(40, 40, 40)
-      doc.text(`Patient: ${selectedPatient.patientName.toUpperCase()}`, 16, startY)
-
-      // Patient details with improved formatting
+      doc.setFontSize(14)
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Patient Name:`, 16, startY)
       doc.setFont("helvetica", "normal")
-      doc.setFontSize(11)
-      doc.text(`Patient UID: ${selectedPatient.patientUID}`, 16, startY + 10)
+      doc.setFontSize(13)
+      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 60, startY)
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(14)
+      doc.text(`Patient UID:`, 16, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(13)
+      doc.text(`${selectedPatient.patientUID}`, 60, startY + 8)
 
       let yOffset = startY + 20
 
-      // Add procedure details table with enhanced styling
+      // 🧾 Procedure Table
+      const allProcedureTable = []
+
       if (detailedRecords.length > 0 || additionalProcedures.some((p) => p.selected)) {
         const existingProcedureTable = detailedRecords.flatMap((record) =>
-          record.procedures.map((procedure) => [
-            procedure.procedure,
-            procedure.procedureDate,
-            `${procedure.price}`,
-            `${procedure.gstRate}%`,
-            `${calculateGST(procedure.price, procedure.gstRate)}`,
-            `${calculateTotal(procedure.price, calculateGST(procedure.price, procedure.gstRate))}`,
-          ]),
+          record.procedures.map((procedure, index) => {
+            const key = `procedure-${index}`
+            const total =
+              editableTotals[key] || calculateTotal(procedure.price, calculateGST(procedure.price, procedure.gstRate))
+            return [
+              procedure.procedure,
+              procedure.procedureDate,
+              `${procedure.price}`,
+              `${procedure.gstRate}%`,
+              `${calculateGST(procedure.price, procedure.gstRate)}`,
+              total,
+            ]
+          }),
         )
 
         const additionalProcedureTable = additionalProcedures
           .filter((procedure) => procedure.selected)
-          .map((procedure) => [
-            procedure.procedure,
-            procedure.procedureDate,
-            `${procedure.price}`,
-            `${procedure.gstRate}%`,
-            `${procedure.gst}`,
-            `${calculateTotal(procedure.price, procedure.gst)}`,
-          ])
+          .map((procedure) => {
+            const key = `additional-${procedure.id}`
+            const total = editableTotals[key] || calculateTotal(procedure.price, procedure.gst)
+            return [
+              procedure.procedure,
+              procedure.procedureDate,
+              `${procedure.price}`,
+              `${procedure.gstRate}%`,
+              `${procedure.gst}`,
+              total,
+            ]
+          })
 
-        const allProcedureTable = [...existingProcedureTable, ...additionalProcedureTable]
-
-        // Add consultation fee to PDF if present
-        if (consultationFee > 0) {
-          allProcedureTable.push([
-            "Consultation Fee",
-            format(new Date(), "yyyy-MM-dd"),
-            consultationFee.toString(),
-            "0%",
-            "0",
-            consultationFee.toFixed(2),
-          ])
-        }
+        allProcedureTable.push(...existingProcedureTable, ...additionalProcedureTable)
 
         doc.autoTable({
           head: [["Procedure", "Procedure Date", "Price", "GST Rate (%)", "GST", "Total"]],
@@ -830,7 +1283,7 @@ const ProcedureComponent = () => {
         yOffset = doc.lastAutoTable.finalY + 10
       }
 
-      // Add consumer records table with enhanced styling
+      // 🍽️ Consumer Table
       if (consumerRecords.length > 0 && consumerRecords.some((record) => record.item)) {
         const consumerTable = consumerRecords
           .filter((record) => record.item)
@@ -860,14 +1313,25 @@ const ProcedureComponent = () => {
         }
       }
 
-      // Enhanced total amount styling
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(14)
-      doc.setTextColor(0, 100, 0)
-      doc.text(`Total Amount: ${totalAmount}`, 14, yOffset)
+      // 💵 Separate Consultation Fee (if applicable)
+      if (consultationFee > 0) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(11)
+        doc.setTextColor(33, 33, 33)
+        doc.text("Consultation Fee", 14, yOffset)
+        doc.text(":", 80, yOffset)
+        doc.text(`Rs. ${consultationFee.toFixed(2)}`, 85, yOffset)
+        yOffset += 8
+      }
 
-      // Save the PDF
-      doc.save(`${selectedPatient.patientName}_procedure_bill.pdf`)
+      // ✅ Final Total
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(13)
+      doc.setTextColor(0, 100, 0)
+      doc.text(`Net Total: Rs. ${totalAmount}`, 14, yOffset + 5)
+
+      // 📁 Save
+      doc.save(`${selectedPatient.patientName}_Bill.pdf`)
     })
   }
 
@@ -908,137 +1372,208 @@ const ProcedureComponent = () => {
             {(detailedRecords.length > 0 || additionalProcedures.length > 0) && (
               <>
                 <div className="d-flex justify-content-between align-items-center">
-                  <h4 style={{ fontWeight: "600" }}>Procedures</h4>
+                  <h4 style={{ fontWeight: "600" }}>
+                    Procedures
+                  </h4>
                   <AddRowButton onClick={handleAddProcedureRow}>
                     <FaPlus /> Add Procedure
                   </AddRowButton>
                 </div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Select</th>
-                      <th>Procedure</th>
-                      <th>Procedure Date</th>
-                      <th>Price</th>
-                      <th>GST Rate (%)</th>
-                      <th>GST</th>
-                      <th>Total</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Existing procedures */}
-                    {detailedRecords.map((record, recordIndex) => {
-                      return record.procedures.map((procedure, index) => {
-                        const gst = calculateGST(procedure.price, procedure.gstRate)
-                        const total = calculateTotal(procedure.price, gst)
+
+                <TableContainer>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Select</th>
+                        <th>Procedure</th>
+                        <th>Procedure Date</th>
+                        <th>Price</th>
+                        <th>GST Rate (%)</th>
+                        <th>GST</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* ENHANCED: Display stored procedures properly */}
+                      {isDataFromStored &&
+                        detailedRecords.map((record, recordIndex) => {
+                          return record.procedures.map((procedure, index) => {
+                            const key = `stored-procedure-${recordIndex}-${index}`
+
+                            // For stored data, use the values directly from the stored procedure
+                            const procedureName = procedure.procedure || "N/A"
+                            const procedureDate = procedure.procedureDate || "N/A"
+                            const price = procedure.price || "0"
+                            const gstRate = procedure.gstRate || 0
+                            const gst = procedure.gst || "0"
+                            const total = procedure.total || "0"
+
+                            return (
+                              <tr key={key}>
+                                <td>
+                                  <input type="checkbox" checked disabled />
+                                </td>
+                                <td>{procedureName}</td>
+                                <td>{procedureDate}</td>
+                                <td>
+                                  <EditableInput
+                                    type="text"
+                                    value={price}
+                                    onChange={(e) => handlePriceChange(index, e.target.value)}
+                                    placeholder="Enter price"
+                                  />
+                                </td>
+                                <td>
+                                  <EditableInput
+                                    type="text"
+                                    value={gstRate}
+                                    onChange={(e) => handleGstRateChange(index, e.target.value)}
+                                    placeholder="Enter GST rate"
+                                  />
+                                </td>
+                                <td>{gst}</td>
+                                <td>
+                                  <EditableInput
+                                    type="text"
+                                    value={editableTotals[key] || total}
+                                    onChange={(e) => handleTotalChange(index, e.target.value)}
+                                    placeholder="Enter total"
+                                  />
+                                </td>
+                              </tr>
+                            )
+                          })
+                        })}
+
+                      {/* Fresh data procedures - only show if NOT using stored data */}
+                      {!isDataFromStored &&
+                        detailedRecords.map((record, recordIndex) => {
+                          return record.procedures.map((procedure, index) => {
+                            const key = `procedure-${index}`
+                            const gst = calculateGST(procedure.price, procedure.gstRate)
+                            const total = editableTotals[key] || calculateTotal(procedure.price, gst)
+
+                            return (
+                              <tr key={`${recordIndex}-${index}`}>
+                                <td>
+                                  <input type="checkbox" checked disabled />
+                                </td>
+                                <td>{procedure.procedure}</td>
+                                <td>{procedure.procedureDate}</td>
+                                <td>
+                                  <EditableInput
+                                    type="text"
+                                    value={procedure.price}
+                                    onChange={(e) => handlePriceChange(index, e.target.value)}
+                                    placeholder="Enter price"
+                                  />
+                                </td>
+                                <td>
+                                  <EditableInput
+                                    type="text"
+                                    value={procedure.gstRate}
+                                    onChange={(e) => handleGstRateChange(index, e.target.value)}
+                                    placeholder="Enter GST rate"
+                                  />
+                                </td>
+                                <td>{gst}</td>
+                                <td>
+                                  <EditableInput
+                                    type="text"
+                                    value={total}
+                                    onChange={(e) => handleTotalChange(index, e.target.value)}
+                                    placeholder="Enter total"
+                                  />
+                                </td>
+                                <td>-</td>
+                              </tr>
+                            )
+                          })
+                        })}
+
+                      {/* Additional procedures with editable totals */}
+                      {additionalProcedures.map((procedure) => {
+                        const key = `additional-${procedure.id}`
+                        const calculatedTotal = calculateTotal(procedure.price, procedure.gst)
+                        const displayTotal = editableTotals[key] || calculatedTotal
 
                         return (
-                          <tr key={`${recordIndex}-${index}`}>
-                            <td>
-                              <input type="checkbox" checked disabled />
-                            </td>
-                            <td>{procedure.procedure}</td>
-                            <td>{procedure.procedureDate}</td>
+                          <tr key={procedure.id}>
                             <td>
                               <input
+                                type="checkbox"
+                                checked={procedure.selected}
+                                onChange={(e) =>
+                                  handleAdditionalProcedureChange(procedure.id, "selected", e.target.checked)
+                                }
+                              />
+                            </td>
+                            <td>
+                              <ProcedureSelect
+                                value={procedure.selectedProcedureId || ""}
+                                onChange={(e) => handleProcedureSelect(procedure.id, e.target.value)}
+                              >
+                                <option value="">Select Procedure...</option>
+                                {proceduresList.map((proc) => (
+                                  <option key={proc.id} value={proc.id}>
+                                    {proc.procedure}
+                                  </option>
+                                ))}
+                              </ProcedureSelect>
+                            </td>
+                            <td>
+                              <input
+                                type="date"
+                                value={procedure.procedureDate}
+                                onChange={(e) =>
+                                  handleAdditionalProcedureChange(procedure.id, "procedureDate", e.target.value)
+                                }
+                                className="form-control"
+                              />
+                            </td>
+                            <td>
+                              <EditableInput
                                 type="text"
                                 value={procedure.price}
-                                onChange={(e) => handlePriceChange(index, e.target.value)}
-                                className="form-control"
+                                onChange={(e) => handleAdditionalProcedureChange(procedure.id, "price", e.target.value)}
                                 placeholder="Enter price"
                               />
                             </td>
                             <td>
-                              <input
-                                type="text"
+                              <EditableInput
+                                type="number"
                                 value={procedure.gstRate}
-                                onChange={(e) => handleGstRateChange(index, e.target.value)}
-                                className="form-control"
-                                placeholder="Enter GST rate"
+                                onChange={(e) =>
+                                  handleAdditionalProcedureChange(procedure.id, "gstRate", e.target.value)
+                                }
+                                placeholder="GST rate"
                               />
                             </td>
-                            <td>{gst}</td>
+                            <td>{procedure.gst}</td>
                             <td>
-                              <input
+                              <EditableInput
                                 type="text"
-                                value={total}
-                                onChange={(e) => handleTotalChange(index, e.target.value)}
-                                className="form-control"
+                                value={displayTotal}
+                                onChange={(e) => handleAdditionalTotalChange(procedure.id, e.target.value)}
                                 placeholder="Enter total"
                               />
                             </td>
-                            <td>-</td>
+                            <td>
+                              <FaTrash
+                                style={{
+                                  cursor: procedure.isSaved ? "not-allowed" : "pointer",
+                                  color: procedure.isSaved ? "#ccc" : "#dc3545",
+                                }}
+                                onClick={() => handleDeleteProcedureRow(procedure.id)}
+                              />
+                            </td>
                           </tr>
                         )
-                      })
-                    })}
-
-                    {/* Additional procedures */}
-                    {additionalProcedures.map((procedure) => (
-                      <tr key={procedure.id}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={procedure.selected}
-                            onChange={(e) =>
-                              handleAdditionalProcedureChange(procedure.id, "selected", e.target.checked)
-                            }
-                          />
-                        </td>
-                        <td>
-                          <ProcedureSelect
-                            value={procedure.selectedProcedureId || ""}
-                            onChange={(e) => handleProcedureSelect(procedure.id, e.target.value)}
-                          >
-                            <option value="">Select Procedure...</option>
-                            {proceduresList.map((proc) => (
-                              <option key={proc.id} value={proc.id}>
-                                {proc.procedure}
-                              </option>
-                            ))}
-                          </ProcedureSelect>
-                        </td>
-                        <td>
-                          <input
-                            type="date"
-                            value={procedure.procedureDate}
-                            onChange={(e) =>
-                              handleAdditionalProcedureChange(procedure.id, "procedureDate", e.target.value)
-                            }
-                            className="form-control"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            value={procedure.price}
-                            onChange={(e) => handleAdditionalProcedureChange(procedure.id, "price", e.target.value)}
-                            className="form-control"
-                            placeholder="Enter price"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            value={procedure.gstRate}
-                            onChange={(e) => handleAdditionalProcedureChange(procedure.id, "gstRate", e.target.value)}
-                            className="form-control"
-                            placeholder="GST rate"
-                          />
-                        </td>
-                        <td>{procedure.gst}</td>
-                        <td>{calculateTotal(procedure.price, procedure.gst)}</td>
-                        <td>
-                          <FaTrash
-                            style={{ cursor: "pointer", color: "#dc3545" }}
-                            onClick={() => handleDeleteProcedureRow(procedure.id)}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      })}
+                    </tbody>
+                  </table>
+                </TableContainer>
 
                 {/* Consultation Fee Section */}
                 <ConsultationSection>
@@ -1082,64 +1617,68 @@ const ProcedureComponent = () => {
                 {/* Only show consumer table if showConsumerTable is true */}
                 {showConsumerTable && (
                   <>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Item</th>
-                          <th>Qty</th>
-                          <th>Price</th>
-                          <th>Total</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {consumerRecords.map((record, index) => (
-                          <tr key={index}>
-                            <td>
-                              <CreatableSelect
-                                options={consumerOptions}
-                                isClearable
-                                isSearchable
-                                onChange={(selectedOption) => handleSelectChange(selectedOption, index)}
-                                value={
-                                  consumerOptions.find((option) => option.value === record.item) || {
-                                    value: record.item,
-                                    label: record.item,
-                                  }
-                                }
-                                placeholder="Select or enter item"
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                value={record.qty}
-                                onChange={(e) => handleConsumerChange(index, "qty", e.target.value)}
-                                className="form-control"
-                                placeholder="Enter quantity"
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                value={record.price}
-                                onChange={(e) => handleConsumerChange(index, "price", e.target.value)}
-                                className="form-control"
-                                placeholder="Enter price"
-                              />
-                            </td>
-                            <td>{record.total}</td>
-                            <td>
-                              <FaTrash
-                                onClick={() => {
-                                  setConsumerRecords((prevRecords) => prevRecords.filter((_, i) => i !== index))
-                                }}
-                              />
-                            </td>
+                    <TableContainer>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                            <th>Action</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {consumerRecords.map((record, index) => (
+                            <tr key={index}>
+                    <td>
+      <CreatableSelect
+        options={consumerOptions}
+        isClearable
+        isSearchable
+        onChange={(selectedOption) => handleSelectChange(selectedOption, index)}
+        value={
+          record?.item
+            ? consumerOptions.find((option) => option.value === record.item) || {
+                value: record.item,
+                label: record.item,
+              }
+            : null
+        }
+        placeholder="Select or enter item"
+      />
+    </td>
+                              <td>
+                                <input
+                                  type="text"
+                                  value={record.qty}
+                                  onChange={(e) => handleConsumerChange(index, "qty", e.target.value)}
+                                  className="form-control"
+                                  placeholder="Enter quantity"
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="text"
+                                  value={record.price}
+                                  onChange={(e) => handleConsumerChange(index, "price", e.target.value)}
+                                  className="form-control"
+                                  placeholder="Enter price"
+                                />
+                              </td>
+                              <td>{record.total}</td>
+                              <td>
+                                <FaTrash
+                                  onClick={() => {
+                                    setConsumerRecords((prevRecords) => prevRecords.filter((_, i) => i !== index))
+                                  }}
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </TableContainer>
                     <br />
                     <ConsumerNetContainer>
                       <ConsumerNetLabel htmlFor="Net">Net Amount:</ConsumerNetLabel>
@@ -1168,14 +1707,10 @@ const ProcedureComponent = () => {
                 <div className="d-flex flex-column align-items-center mt-4">
                   <Row className="g-3">
                     <Col xs="auto">
-                      <button onClick={handleSave}>
-                        Save
-                      </button>
+                      <button onClick={handleSave}>Save</button>
                     </Col>
                     <Col xs="auto">
-                      <button onClick={handleDownload}>
-                        Download as PDF
-                      </button>
+                      <button onClick={handleDownload}>Download as PDF</button>
                     </Col>
                   </Row>
                 </div>
@@ -1203,23 +1738,26 @@ const ProcedureComponent = () => {
           </center>
           <br />
           <PatientProcedureContainer>
-            {patients.length > 0 ? (
+            {isLoading ? (
+              <LoadingSpinner>
+                <div className="spinner"></div>
+                <p>Loading procedure data...</p>
+              </LoadingSpinner>
+            ) : patients.length > 0 ? (
               patients.map((patient, index) => (
                 <PatientContainer key={index}>
-                  <PatientCard>
+                  <PatientCard dataSource={patient.dataSource} onClick={() => handleViewClick(patient)}>
                     <div className="card-title">{patient.patientName}</div>
                     <div className="card-subtitle">{patient.patientUID}</div>
-                    <button style={{ fontSize: "0.9rem" }} onClick={() => handleViewClick(patient)}>
-                      View Procedure
-                    </button>
+                    <button style={{ fontSize: "0.9rem" }}>View Procedure</button>
                   </PatientCard>
                   <br />
                 </PatientContainer>
               ))
             ) : (
-              <div className="d-flex flex-column justify-content-center align-items-center" style={{ height: "300px" }}>
-                <p style={{ fontSize: "18px", color: "#666", fontWeight: "500" }}>No procedures found for this date.</p>
-              </div>
+              <NoDataMessage>
+                {!hasData ? "No procedure data available for the selected date" : "Loading..."}
+              </NoDataMessage>
             )}
           </PatientProcedureContainer>
         </div>

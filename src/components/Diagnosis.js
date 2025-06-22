@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Typeahead } from 'react-bootstrap-typeahead';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import styled from 'styled-components';
-import { Col, Row, Form, Button, Alert } from 'react-bootstrap';
+import { Col, Row, Form, Button } from 'react-bootstrap';
 
 const DiagnosisContainer = styled.div`
   flex: 1;
-  margin: 0 15px; // Adjusted margin for balanced spacing
+  margin: 0 15px;
   padding: 20px;
-  background-color: #b798c0; // Light brown background
+  background-color: #b798c0;
   border-radius: 10px;
   text-align: center;
 `;
@@ -27,19 +25,44 @@ const FlexContainer = styled.div`
   align-items: center;
 `;
 
-const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis }) => {
+const MessageContainer = styled.div`
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+  z-index: 1000;
+  ${(props) => {
+    if (props.type === "error") {
+      return `
+        background-color: white;
+        color: #ff4444;
+        border: 1px solid #cc0000;
+      `
+    } else {
+      return `
+        background-color: white;
+        color: #28a745;
+        border: 1px solid #45a049;
+      `
+    }
+  }}
+`;
+
+
+const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis}) => {
   const [diagnosisList, setDiagnosisList] = useState([]);
   const [diagnosisInputs, setDiagnosisInputs] = useState([{ selectedDiagnosis: [] }]);
-  const [newDiagnosis, setNewDiagnosis] = useState('');
   const [showAddInput, setShowAddInput] = useState(false);
-  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
+  const [newDiagnosis, setNewDiagnosis] = useState('');
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('success');
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
     if (preSelectedDiagnosis) {
-      // Ensure preSelectedDiagnosis is an array of objects if Typeahead expects objects
-      // Assuming preSelectedDiagnosis is a comma-separated string of diagnosis names
-      const parsedDiagnosis = preSelectedDiagnosis.split(', ').map(d => ({ diagnosis: d.trim() }));
-      setDiagnosisInputs([{ selectedDiagnosis: parsedDiagnosis }]);
+      setDiagnosisInputs([{ selectedDiagnosis: preSelectedDiagnosis.split(', ') }]);
     } else {
       setDiagnosisInputs([{ selectedDiagnosis: [] }]);
     }
@@ -55,39 +78,30 @@ const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis }) => {
       });
   }, []);
 
+  const showMessage = (msg, type = 'success') => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => {
+      setMessage('');
+    }, 3000);
+  };
+
   const handleAddNewDiagnosis = () => {
     if (!newDiagnosis.trim()) {
-      toast.error("Diagnosis name cannot be empty.");
+      showMessage('Disgnosis name cannot be empty.', 'error');
       return;
     }
 
-    axios.post(`${Cosmetologybaseurl}diagnoses/`, { diagnosis: newDiagnosis.trim() })
+    axios.post(`${Cosmetologybaseurl}diagnoses/`, { diagnosis: newDiagnosis })
       .then(response => {
-        const addedDiagnosis = response.data; // The newly added diagnosis object from the backend
-
-        setDiagnosisList(prevList => [...prevList, addedDiagnosis]); // Add to the list of available diagnoses
-
-        // Optionally, immediately select the newly added diagnosis in the first input field
-        setDiagnosisInputs(prevInputs => {
-          const updatedInputs = [...prevInputs];
-          // Assuming you want to add the newly created diagnosis to the first diagnosis input's selection
-          // You might need to adjust this logic if you have multiple diagnosis input fields
-          // or if the new diagnosis should be selected in a specific field.
-          const firstInput = updatedInputs[0];
-          if (firstInput) {
-            firstInput.selectedDiagnosis = [...firstInput.selectedDiagnosis, addedDiagnosis];
-            onSelectDiagnosis(firstInput.selectedDiagnosis); // Notify parent of the updated selection
-          }
-          return updatedInputs;
-        });
-
+        setDiagnosisList([...diagnosisList, response.data]);
         setShowAddInput(false);
         setNewDiagnosis('');
-        toast.success('New diagnosis stored successfully!'); // This toast should now display immediately.
+        showMessage('New Disgnosis stored successfully!');
       })
       .catch(error => {
-        console.error('Error adding new diagnosis:', error);
-        toast.error('Error adding new diagnosis.');
+        console.error('Error adding new Disgnosis:', error);
+        showMessage('Error adding new Disgnosis.', 'error');
       });
   };
 
@@ -100,7 +114,12 @@ const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis }) => {
 
   return (
     <DiagnosisContainer>
-      <ToastContainer position="top-right" autoClose={5000} /> {/* Toast container */}
+      {message && (
+        <MessageContainer type={messageType}>
+          {message}
+        </MessageContainer>
+      )}
+
       {diagnosisInputs.map((input, index) => (
         <Row className="justify-content-center mb-3" key={index}>
           <CenteredFormGroup as={Col} md="4" controlId={`diagnosis-${index}`}>
@@ -121,7 +140,6 @@ const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis }) => {
         </Row>
       ))}
 
-      {/* New Diagnosis Input Section */}
       {showAddInput && (
         <Row className="justify-content-center mb-3">
           <CenteredFormGroup as={Col} md="4">
@@ -141,7 +159,6 @@ const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis }) => {
         </Row>
       )}
 
-      {/* Button to show/hide the new diagnosis input field */}
       <button onClick={() => setShowAddInput(!showAddInput)}>
         {showAddInput ? 'Close' : 'Add New Diagnosis'}
       </button>

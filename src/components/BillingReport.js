@@ -265,7 +265,7 @@ const BillingReport = () => {
     }
   }
 
-  const generatePharmacyPDF = (patientUID, billNumber) => {
+const generatePharmacyPDF = (patientUID, billNumber) => {
     const patientData = billingData.find((item) => item.patientUID === patientUID && item.billNumber === billNumber)
     if (!patientData) {
       toast.error("Patient data not found for PDF generation.")
@@ -285,21 +285,36 @@ const BillingReport = () => {
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
       let startY = 85
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(14)
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Patient Name:`, 16, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(13)
+      doc.text(`${patientData.patientName.toUpperCase()}`, 60, startY)
 
       doc.setFont("helvetica", "bold")
       doc.setFontSize(14)
-      doc.setTextColor(40, 40, 40)
-      doc.text(`Patient: ${patientData.patientName.toUpperCase()}`, 16, startY)
-
+      doc.text(`Patient UID:`, 16, startY + 8)
       doc.setFont("helvetica", "normal")
-      doc.setFontSize(11)
-      doc.text(`Patient UID: ${patientData.patientUID}`, 16, startY + 8)
-      doc.text(`Bill Number: ${patientData.billNumber}`, 16, startY + 16)
-      doc.text(`Bill Date: ${patientData.appointmentDate}`, 16, startY + 24);
+      doc.setFontSize(13)
+      doc.text(`${patientData.patientUID}`, 60, startY + 8)
 
       startY += 35
 
-      const medicineTable = patientData.table_data.map((data) => [
+      // Filter out consultation fee from table data
+      const medicineData = patientData.table_data.filter(data => 
+        !data.particulars.toLowerCase().includes('consultation') && 
+        !data.particulars.toLowerCase().includes('consult')
+      )
+      
+      // Find consultation fee
+      const consultationFee = patientData.table_data.find(data => 
+        data.particulars.toLowerCase().includes('consultation') || 
+        data.particulars.toLowerCase().includes('consult')
+      )
+
+      const medicineTable = medicineData.map((data) => [
         data.particulars,
         data.qty,
         `${data.price}`,
@@ -330,11 +345,23 @@ const BillingReport = () => {
         }
       })
 
-      const total = patientData.table_data.reduce((sum, data) => sum + Number.parseFloat(data.total || 0), 0)
+      let currentY = doc.previousAutoTable.finalY + 15
+
+      // Display consultation fee separately if it exists
+      if (consultationFee) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(11)
+        doc.setTextColor(40, 40, 40)
+        doc.text(`Consultation Fee: ${Number.parseFloat(consultationFee.total || 0).toFixed(2)}`, 14, currentY)
+        currentY += 8
+      }
+
+      // Calculate and display net total
+      const netTotal = patientData.table_data.reduce((sum, data) => sum + Number.parseFloat(data.total || 0), 0)
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(0, 100, 0)
-      doc.text(`Total Amount: ${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
+      doc.text(`Net Amount: ${netTotal.toFixed(2)}`, 14, currentY)
 
       const pdfBlob = doc.output("blob")
       const pdfUrl = URL.createObjectURL(pdfBlob)
@@ -342,6 +369,7 @@ const BillingReport = () => {
       toast.success("PDF generated successfully!");
     })
   }
+  
 
   const handleDelete = async (patientUID, billNumber) => {
     if (!window.confirm(`Are you sure you want to delete bill ${billNumber} for ${patientUID}?`)) {
@@ -379,7 +407,7 @@ const BillingReport = () => {
       >
         <FaFilePdf />
       </button>
-      {userRole !== "Manager" && userRole !== "manager" && (
+      {userRole !== "Manager" && userRole !== "Receptionist" && (
         // Only show delete if not Manager/manager
         <button
           title="Delete Bill"
@@ -397,10 +425,12 @@ const BillingReport = () => {
       <ToastContainer position="top-right" autoClose={5000} />
       <Header>
         <h3 className="text-center mb-2">Billing Report</h3>
+
         <button title="Download Excel" onClick={downloadCSV}>
           <FaDownload /> 
         </button>
       </Header>
+      
       <IntervalSelector>
         <ButtonGroup>
           <IntervalButton
@@ -560,6 +590,7 @@ const BillingReport = () => {
 }
 
 export default BillingReport
+
 
 const Container = styled.div`
   display: flex;

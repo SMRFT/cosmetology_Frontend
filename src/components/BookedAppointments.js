@@ -113,25 +113,33 @@ function BookedAppointments() {
     }
   }
 
-  const generateTimeSlots = () => {
-    let startTime = new Date(`${selectedDate}T10:00:00`)
-    const endTime = new Date(`${selectedDate}T20:00:00`)
-    const timeSlots = []
+const generateTimeSlots = () => {
+  let startTime = new Date(`${selectedDate}T10:00:00`)
+  const endTime = new Date(`${selectedDate}T20:00:00`)
+  const timeSlots = []
 
-    while (startTime < endTime) {
-      const endTimeSlot = new Date(startTime.getTime() + 30 * 60000)
-      const timeSlot = {
-        start: startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        end: endTimeSlot.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      }
-      timeSlots.push(timeSlot)
-      startTime = endTimeSlot
+  while (startTime < endTime) {
+    const endTimeSlot = new Date(startTime.getTime() + 30 * 60000)
+    const timeSlot = {
+      start: startTime.toLocaleTimeString('en-US', {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      }),
+      end: endTimeSlot.toLocaleTimeString('en-US', {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      }),
     }
-
-    return timeSlots
+    timeSlots.push(timeSlot)
+    startTime = endTimeSlot
   }
 
-  const timeSlots = generateTimeSlots()
+  return timeSlots
+}
+
+const timeSlots = generateTimeSlots()
 
   const handleViewDetailsClick = (appointment) => {
     const role = localStorage.getItem("userRole")

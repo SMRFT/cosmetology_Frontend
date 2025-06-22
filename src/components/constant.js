@@ -12,7 +12,4 @@ export const purposeOfVisit=[
   'Skin brightening and lightening'
 ]
 
-export const consumerItems = [
-  'Gloves',
-  'needles',
-    ];
+export const consumerItems = ['Gloves', 'needles'];

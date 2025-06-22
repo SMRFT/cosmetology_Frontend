@@ -372,6 +372,41 @@ function App() {
           />
 
           <Route
+            path="/Reception/BillingReport"
+            element={
+              <ProtectedRoute requiredAccess="/Reception">
+                <BillingReport />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/Reception/SummaryReport"
+            element={
+              <ProtectedRoute requiredAccess="/Reception">
+                <SummaryReport />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/Reception/BillingProcedureReport"
+            element={
+              <ProtectedRoute requiredAccess="/Reception">
+                <BillingProcedureReport />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/Reception/Report"
+            element={
+              <ProtectedRoute requiredAccess="/Reception">
+                <Report />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/Reception/Pharmacy"
             element={
               <ProtectedRoute requiredAccess="/Reception">

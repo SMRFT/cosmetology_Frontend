@@ -147,7 +147,10 @@ const Header = ({ userRole }) => {
             id: "patient-services",
             title: "Patient & Services",
             icon: "👥",
-            items: [{ to: "/Reception/PatientDetails", label: "Patient Details" }],
+            items: [
+              { to: "/Reception/PatientDetails", label: "Patient Details" },
+              { to: "/Reception/Report", label: "Report" },
+            ],
           },
           {
             id: "billing",

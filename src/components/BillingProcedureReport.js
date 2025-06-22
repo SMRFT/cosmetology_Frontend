@@ -170,64 +170,69 @@ const BillingProcedureReport = () => {
     return uniqueWeeks;
   }
 
-  const downloadProcedureCSV = () => {
-    if (!billingData || billingData.length === 0) {
-      toast.warning("No procedure data available to download")
-      return
-    }
-
-    const headers = [
-      "Patient Name",
-      "Patient UID",
-      "Procedure Billnumber",
-      "Appointment Date",
-      "Doctor Name",
-      "Procedure",
-      "Procedure Date",
-      "Price",
-      "GST",
-      "GST Rate",
-      "Total",
-      "Branch Code",
-    ]
-    let totalSum = 0
-    const rows = billingData.flatMap((item) => {
-      const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures
-      return procedures.map((proc) => {
-        totalSum += Number.parseFloat(proc.total || 0)
-        return [
-          item.patientName,
-          item.patientUID,
-          item.procedureBillNumber,
-          item.appointmentDate,
-          item.patient_handledby,
-          proc.procedure,
-          proc.procedureDate,
-          proc.price,
-          proc.gst,
-          proc.gstRate,
-          proc.total,
-          branchCode,
-        ]
-      })
-    })
-
-    rows.push(["", "", "", "", "", "", "", "", "Grand Total", totalSum.toFixed(2), "", ""])
-
-    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.setAttribute(
-      "download",
-      `Procedure_${getReportHeading(selectedInterval)}_${branchCode}_${format(selectedDate, "yyyy-MM-dd")}.csv`,
-    )
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+const downloadProcedureCSV = () => {
+  if (!billingData || billingData.length === 0) {
+    toast.warn("No data to download.");
+    return;
   }
+
+  const headers = [
+    "Patient Name",
+    "Patient UID",
+    "Procedure Billnumber",
+    "Appointment Date",
+    "Doctor Name",
+    "Procedure",
+    "Procedure Date",
+    "Price",
+    "GST",
+    "GST Rate",
+    "Total",
+  ];
+
+  const rows = billingData.flatMap((item) => {
+    const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures;
+    return procedures.map((proc, index) => [
+      index === 0 ? `"${item.patientName}"` : "",
+      index === 0 ? `"${item.patientUID}"` : "",
+      index === 0 ? `"${item.procedureBillNumber}"` : "",
+      index === 0 ? `"${item.appointmentDate}"` : "",
+      index === 0 ? `"${item.patient_handledby}"` : "",
+      `"${proc.procedure}"`,
+      `"${proc.procedureDate}"`,
+      proc.price,
+      proc.gst,
+      proc.gstRate,
+      proc.total,
+    ]);
+  });
+
+  const currentGrandTotal = (billingData || []).reduce((sum, item) => {
+    const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures;
+    return (
+      sum +
+      (procedures || []).reduce((innerSum, proc) => {
+        const total = Number.parseFloat(proc.total || 0);
+        return innerSum + (isNaN(total) ? 0 : total);
+      }, 0)
+    );
+  }, 0);
+
+  rows.push(["", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2)]);
+
+  const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `Procedure_${getReportHeading(selectedInterval).replace(/\s/g, '_')}_${branchCode}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  toast.success("CSV downloaded successfully!");
+};
 
   const downloadConsumerCSV = () => {
     if (!billingData || billingData.length === 0) {
@@ -291,7 +296,6 @@ const BillingProcedureReport = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    // Select PDF background based on branch code without directly using branch names
     const backgroundImageMap = {
       SCC001: PDFMain1,
       SCC002: PDFMain2,
@@ -302,23 +306,30 @@ const BillingProcedureReport = () => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
       let startY = 85
 
-      // Set font style for patient name - make it more prominent
       doc.setFont("helvetica", "bold")
       doc.setFontSize(14)
       doc.setTextColor(40, 40, 40)
       doc.text(`Patient: ${patientData.patientName.toUpperCase()}`, 16, startY)
 
-      // Patient details with better formatting
       doc.setFont("helvetica", "normal")
       doc.setFontSize(11)
       doc.text(`Patient UID: ${patientData.patientUID}`, 16, startY + 8)
-      doc.text(`Bill Number: ${patientData.procedureBillNumber}`, 16, startY + 16)
-      doc.text(`Branch: ${branchCode}`, 140, startY + 8)
 
       startY += 30
 
-      // Procedure Table
-      const procedureTable = patientData.procedures.map((proc) => [
+      // Filter out consultation fee from procedures
+      const procedureData = patientData.procedures.filter(proc => 
+        !proc.procedure.toLowerCase().includes('consultation') && 
+        !proc.procedure.toLowerCase().includes('consult')
+      )
+      
+      // Find consultation fee
+      const consultationFee = patientData.procedures.find(proc => 
+        proc.procedure.toLowerCase().includes('consultation') || 
+        proc.procedure.toLowerCase().includes('consult')
+      )
+
+      const procedureTable = procedureData.map((proc) => [
         proc.procedure,
         proc.procedureDate,
         `${proc.price}`,
@@ -345,14 +356,15 @@ const BillingProcedureReport = () => {
         margin: { left: 14, right: 14 },
       })
 
-      // Total with better styling
-      const total = patientData.procedures.reduce((sum, proc) => sum + Number.parseFloat(proc.total || 0), 0)
+      let currentY = doc.previousAutoTable.finalY + 15
+
+      // Calculate and display net total
+      const netTotal = patientData.procedures.reduce((sum, proc) => sum + Number.parseFloat(proc.total || 0), 0)
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(0, 100, 0)
-      doc.text(`Total Amount: ${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
+      doc.text(`Net Amount: ${netTotal.toFixed(2)}`, 14, currentY)
 
-      // Open in new window instead of auto-print
       const pdfBlob = doc.output("blob")
       const pdfUrl = URL.createObjectURL(pdfBlob)
       window.open(pdfUrl, "_blank")
@@ -493,7 +505,7 @@ const BillingProcedureReport = () => {
       >
         <FaFilePdf />
       </button>
-      {userRole !== "Manager" && userRole !== "manager" && (
+      {userRole !== "Manager" && userRole !== "Receptionist" && (
         <button
           title="Delete Record"
           className="btn btn-danger"

@@ -5,6 +5,8 @@ import styled from "styled-components"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import mainImage from "../components/images/background-panel-image-login.png"
+import { FaEye, FaEyeSlash } from "react-icons/fa"
+
 
 const UnifiedLogin = ({ setUserRole }) => {
   const [username, setUsername] = useState("")
@@ -12,6 +14,7 @@ const UnifiedLogin = ({ setUserRole }) => {
   const [selectedBranch, setSelectedBranch] = useState("")
   const [availableBranches, setAvailableBranches] = useState([])
   const [allBranches, setAllBranches] = useState([])
+  const [showPassword, setShowPassword] = useState(false)
   const [showBranchSelection, setShowBranchSelection] = useState(false)
   const [userData, setUserData] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -265,18 +268,34 @@ const UnifiedLogin = ({ setUserRole }) => {
                 <Row className="mb-3">
                   <Form.Group controlId="formPassword">
                     <Form.Label>Password</Form.Label>
-                    <Form.Control
-                      type="password"
-                      placeholder="Enter password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="new-password"
-                      required
-                      style={{ border: "1px solid #DAD1E1" }}
-                      disabled={isLoading}
-                    />
+                    <div style={{ position: "relative" }}>
+                      <Form.Control
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoComplete="new-password"
+                        required
+                        style={{ border: "1px solid #DAD1E1", paddingRight: "40px" }}
+                        disabled={isLoading}
+                      />
+                      <span
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          right: "10px",
+                          transform: "translateY(-50%)",
+                          cursor: "pointer",
+                          color: "#6c757d",
+                        }}
+                      >
+                        {showPassword ? <FaEyeSlash /> : <FaEye />}
+                      </span>
+                    </div>
                     <Form.Control.Feedback type="invalid">Password is required.</Form.Control.Feedback>
                   </Form.Group>
+
                 </Row>
                 <center>
                   <LoginButton type="submit" className="mb-3" disabled={isLoading}>
