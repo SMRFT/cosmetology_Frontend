@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import styled from "styled-components"
@@ -178,7 +176,7 @@ const EditableInput = styled.input`
   border: 1px solid #ddd;
   border-radius: 4px;
   text-align: center;
-  
+ 
   &:focus {
     outline: none;
     border-color: #9b85a8;
@@ -233,11 +231,11 @@ const InfoText = styled.div`
 
 const PatientInfo = styled.div`
   flex: 1;
-  
+ 
   div {
     margin-bottom: 5px;
     font-weight: 500;
-    
+   
     strong {
       font-weight: 600;
       margin-right: 8px;
@@ -248,10 +246,10 @@ const PatientInfo = styled.div`
 const DoctorInfo = styled.div`
   flex: 1;
   text-align: right;
-  
+ 
   div {
     font-weight: 500;
-    
+   
     strong {
       font-weight: 600;
     }
@@ -269,7 +267,7 @@ const AddRowButton = styled.button`
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  
+ 
   &:hover {
     background-color: #8a7497;
   }
@@ -336,7 +334,7 @@ const LoadingSpinner = styled.div`
   justify-content: center;
   align-items: center;
   height: 300px;
-  
+ 
   .spinner {
     border: 4px solid #f3f3f3;
     border-top: 4px solid #9b85a8;
@@ -345,12 +343,12 @@ const LoadingSpinner = styled.div`
     height: 40px;
     animation: spin 1s linear infinite;
   }
-  
+ 
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
-  
+ 
   p {
     margin-top: 15px;
     font-size: 16px;
@@ -370,7 +368,7 @@ const NoDataMessage = styled.div`
 const TableContainer = styled.div`
   overflow-x: auto;
   margin: 20px 0;
-  
+
   table {
     width: 100%;
     border-collapse: collapse;
@@ -378,29 +376,30 @@ const TableContainer = styled.div`
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
     overflow: hidden;
-    
+
     th, td {
       padding: 12px;
-      text-align: left;
+      text-align: center;
       border-bottom: 1px solid #ddd;
+      overflow: visible; /* important */
     }
-    
+
     th {
       background-color: #9b85a8;
       color: white;
       font-weight: 600;
-      text-align: center;
     }
-    
+
+    tr {
+      overflow: visible; /* important */
+    }
+
     tr:hover {
       background-color: #f5f5f5;
     }
-    
-    td {
-      text-align: center;
-    }
   }
-`
+`;
+
 
 const ProcedureComponent = () => {
   // State declarations
@@ -467,9 +466,9 @@ const ProcedureComponent = () => {
   useEffect(() => {
     if (selectedPatient) {
       updateSelectedPatientRecords()
-      // Reset consumer and additional procedure states
-      setConsumerRecords([])
-      setShowConsumerTable(false)
+      // Don't reset consumer records here - let updateSelectedPatientRecords handle it
+      console.log("Selected patient changed:", selectedPatient.patientName)
+      console.log("Patient consumer data:", selectedPatient.consumer)
     } else {
       resetPatientData()
     }
@@ -593,207 +592,283 @@ const ProcedureComponent = () => {
     }
   }
 
-  // ENHANCED: Transform stored data format to match expected patient format
-  const transformStoredDataToPatientFormat = (storedData) => {
-    return storedData.map((record) => {
-      let procedures = []
-      let consumer = []
+// ENHANCED: Update the transformStoredDataToPatientFormat function
+const transformStoredDataToPatientFormat = (storedData) => {
+  return storedData.map((record) => {
+    let procedures = []
+    let consumer = []
 
-      // Parse procedures JSON string - handle the exact format from your MongoDB
-      try {
-        if (record.procedures && typeof record.procedures === "string") {
-          procedures = JSON.parse(record.procedures)
-          console.log("Parsed procedures for", record.patientName, ":", procedures)
-        } else if (Array.isArray(record.procedures)) {
-          procedures = record.procedures
-        }
-      } catch (error) {
-        console.error("Error parsing procedures JSON:", error, record.procedures)
-        procedures = []
-      }
-
-      // Parse consumer JSON string - handle the exact format from your MongoDB
-      try {
-        if (record.consumer && typeof record.consumer === "string") {
-          consumer = JSON.parse(record.consumer)
-          console.log("Parsed consumer for", record.patientName, ":", consumer)
-        } else if (Array.isArray(record.consumer)) {
-          consumer = record.consumer
-        }
-      } catch (error) {
-        console.error("Error parsing consumer JSON:", error, record.consumer)
-        consumer = []
-      }
-
-      return {
-        patientUID: record.patientUID,
-        patientName: record.patientName,
-        patient_handledby: record.patient_handledby,
-        appointmentDate: record.appointmentDate,
-        procedures: procedures,
-        consumer: consumer,
-        procedureNetAmount: record.procedureNetAmount || "0",
-        consumerNetAmount: record.consumerNetAmount || "0",
-        totalAmount:
-          record.totalAmount ||
-          (
-            (Number.parseFloat(record.procedureNetAmount) || 0) + (Number.parseFloat(record.consumerNetAmount) || 0)
-          ).toFixed(2),
-        PaymentType: record.PaymentType || "Card",
-        consumerBillNumber: record.consumerBillNumber,
-        procedureBillNumber: record.procedureBillNumber,
-        isStored: true,
-        dataSource: "stored",
-      }
-    })
-  }
-
-  // Fetch saved procedure billing data for specific patient
-  const fetchSavedProcedureBillingData = async () => {
-    if (!selectedPatient || !branchCode || !selectedDate) return
-
+    // Parse procedures JSON string - handle the exact format from your MongoDB
     try {
-      const response = await fetch(
-        `${Cosmetologybaseurl}get/stored/procedurebill/?patientUID=${selectedPatient.patientUID}&appointmentDate=${format(selectedDate, "yyyy-MM-dd")}&branch_code=${branchCode}`,
-      )
-
-      if (response.ok) {
-        const storedData = await response.json()
-        if (storedData && storedData.table_data && storedData.table_data.length > 0) {
-          setSavedProcedureBillingData(storedData.table_data)
-          loadSavedProcedureBillingDetails(storedData)
-        } else {
-          setSavedProcedureBillingData([])
-        }
-      } else if (response.status === 204) {
-        // No content found - this is expected when no saved data exists
-        setSavedProcedureBillingData([])
-        console.log("No saved procedure billing data found for this patient")
-      } else {
-        console.error("Error fetching saved procedure billing data:", response.status)
-        setSavedProcedureBillingData([])
+      if (record.procedures && typeof record.procedures === "string") {
+        procedures = JSON.parse(record.procedures)
+        console.log("Parsed procedures for", record.patientName, ":", procedures)
+      } else if (Array.isArray(record.procedures)) {
+        procedures = record.procedures
       }
     } catch (error) {
-      console.error("Error fetching saved procedure billing data:", error)
+      console.error("Error parsing procedures JSON:", error, record.procedures)
+      procedures = []
+    }
+
+    // ENHANCED: Parse consumer JSON string - handle the exact format from your MongoDB
+    try {
+      if (record.consumer && typeof record.consumer === "string") {
+        consumer = JSON.parse(record.consumer)
+        console.log("Parsed consumer for", record.patientName, ":", consumer)
+      } else if (Array.isArray(record.consumer)) {
+        consumer = record.consumer
+      }
+    } catch (error) {
+      console.error("Error parsing consumer JSON:", error, record.consumer)
+      consumer = []
+    }
+
+    return {
+      patientUID: record.patientUID,
+      patientName: record.patientName,
+      patient_handledby: record.patient_handledby,
+      appointmentDate: record.appointmentDate,
+      procedures: procedures,
+      consumer: consumer, // ENHANCED: Ensure consumer data is properly included
+      procedureNetAmount: record.procedureNetAmount || "0",
+      consumerNetAmount: record.consumerNetAmount || "0",
+      totalAmount:
+        record.totalAmount ||
+        (
+          (Number.parseFloat(record.procedureNetAmount) || 0) + (Number.parseFloat(record.consumerNetAmount) || 0)
+        ).toFixed(2),
+      PaymentType: record.PaymentType || "Card",
+      consumerBillNumber: record.consumerBillNumber,
+      procedureBillNumber: record.procedureBillNumber,
+      isStored: true,
+      dataSource: "stored",
+    }
+  })
+}
+
+// ENHANCED: Update the updateSelectedPatientRecords function to properly handle consumer data
+const updateSelectedPatientRecords = () => {
+  if (!selectedPatient) return
+
+  console.log("Updating patient records for:", selectedPatient.patientName)
+  console.log("Patient data source:", selectedPatient.dataSource)
+  console.log("Patient procedures:", selectedPatient.procedures)
+  console.log("Patient consumer data:", selectedPatient.consumer) // ENHANCED: Log consumer data
+
+  // Prioritize stored data if available
+  if (selectedPatient.dataSource === "stored" || selectedPatient.isStored) {
+    // Use stored data - create proper structure for procedures display
+    const transformedRecord = {
+      patientUID: selectedPatient.patientUID,
+      patientName: selectedPatient.patientName,
+      patient_handledby: selectedPatient.patient_handledby,
+      appointmentDate: selectedPatient.appointmentDate,
+      procedures: selectedPatient.procedures || [],
+      isStored: true,
+    }
+
+    setDetailedRecords([transformedRecord])
+
+    // ENHANCED: Properly populate consumer records if they exist in stored data
+    if (selectedPatient.consumer && selectedPatient.consumer.length > 0) {
+      console.log("Setting consumer records from stored data:", selectedPatient.consumer)
+     
+      const transformedConsumerRecords = selectedPatient.consumer.map((item, index) => ({
+        id: `stored-consumer-${index}`,
+        item: item.item || item.particulars || "",
+        qty: item.qty || item.quantity || "",
+        price: item.price || "",
+        total: item.total || "",
+        isStored: true,
+      }))
+     
+      setConsumerRecords(transformedConsumerRecords)
+      setShowConsumerTable(true)
+      console.log("Consumer records set:", transformedConsumerRecords)
+    } else {
+      console.log("No consumer data found in stored data")
+      setConsumerRecords([])
+      setShowConsumerTable(false)
+    }
+
+    // ENHANCED: Set the totals from stored data
+    setProcedureNetAmount(selectedPatient.procedureNetAmount || "0")
+    setConsumerNetAmount(selectedPatient.consumerNetAmount || "0")
+    setTotalAmount(selectedPatient.totalAmount || "0")
+    setPaymentType(selectedPatient.PaymentType || "Card")
+  } else {
+    // Use fresh data
+    const freshPatientData = freshProcedureData.filter((record) => record.patientUID === selectedPatient.patientUID)
+    if (freshPatientData.length > 0) {
+      setDetailedRecords(freshPatientData)
+    } else {
+      setDetailedRecords([])
+    }
+  }
+}
+
+// ENHANCED: Update the fetchSavedProcedureBillingData function to handle consumer data better
+const fetchSavedProcedureBillingData = async () => {
+  if (!selectedPatient || !branchCode || !selectedDate) return
+
+  try {
+    const response = await fetch(
+      `${Cosmetologybaseurl}get/stored/procedurebill/?patientUID=${selectedPatient.patientUID}&appointmentDate=${format(selectedDate, "yyyy-MM-dd")}&branch_code=${branchCode}`,
+    )
+
+    if (response.ok) {
+      const storedData = await response.json()
+      console.log("Fetched saved procedure billing data:", storedData) // ENHANCED: Debug log
+     
+      if (storedData && storedData.table_data && storedData.table_data.length > 0) {
+        setSavedProcedureBillingData(storedData.table_data)
+        loadSavedProcedureBillingDetails(storedData)
+      } else if (storedData && Array.isArray(storedData) && storedData.length > 0) {
+        // ENHANCED: Handle case where storedData is directly an array
+        setSavedProcedureBillingData(storedData)
+       
+        // If the stored data contains consumer information, process it
+        const patientStoredData = storedData.find(record => record.patientUID === selectedPatient.patientUID)
+        if (patientStoredData && patientStoredData.consumer) {
+          try {
+            let consumerData = []
+            if (typeof patientStoredData.consumer === "string") {
+              consumerData = JSON.parse(patientStoredData.consumer)
+            } else if (Array.isArray(patientStoredData.consumer)) {
+              consumerData = patientStoredData.consumer
+            }
+           
+            if (consumerData.length > 0) {
+              const transformedConsumerRecords = consumerData.map((item, index) => ({
+                id: `billing-consumer-${index}`,
+                item: item.item || item.particulars || "",
+                qty: item.qty || item.quantity || "",
+                price: item.price || "",
+                total: item.total || "",
+                isSaved: true,
+              }))
+             
+              setConsumerRecords(transformedConsumerRecords)
+              setShowConsumerTable(true)
+              console.log("Consumer records loaded from billing data:", transformedConsumerRecords)
+            }
+          } catch (error) {
+            console.error("Error parsing consumer data from billing:", error)
+          }
+        }
+      } else {
+        setSavedProcedureBillingData([])
+      }
+    } else if (response.status === 204) {
+      // No content found - this is expected when no saved data exists
+      setSavedProcedureBillingData([])
+      console.log("No saved procedure billing data found for this patient")
+    } else {
+      console.error("Error fetching saved procedure billing data:", response.status)
       setSavedProcedureBillingData([])
     }
+  } catch (error) {
+    console.error("Error fetching saved procedure billing data:", error)
+    setSavedProcedureBillingData([])
+  }
+}
+
+// ENHANCED: Update the loadSavedProcedureBillingDetails function to handle consumer data
+const loadSavedProcedureBillingDetails = (storedData) => {
+  setPaymentType(storedData.paymentType || storedData.PaymentType || "Card")
+  setConsultationFee(storedData.consultationFee || 0)
+  setProcedureNetAmount(storedData.procedureNetAmount || "0")
+  setConsumerNetAmount(storedData.consumerNetAmount || "0")
+  setTotalAmount(storedData.totalAmount || "0")
+
+  // Parse table_data if it's a string
+  let tableData = []
+  try {
+    if (typeof storedData.table_data === "string") {
+      tableData = JSON.parse(storedData.table_data)
+    } else if (Array.isArray(storedData.table_data)) {
+      tableData = storedData.table_data
+    }
+  } catch (error) {
+    console.error("Error parsing table_data:", error)
+    tableData = []
   }
 
-  // Load saved procedure billing details into form
-  const loadSavedProcedureBillingDetails = (storedData) => {
-    setPaymentType(storedData.paymentType || "Card")
-    setConsultationFee(storedData.consultationFee || 0)
-    setProcedureNetAmount(storedData.procedureNetAmount || "0")
-    setConsumerNetAmount(storedData.consumerNetAmount || "0")
-    setTotalAmount(storedData.totalAmount || "0")
+  // Load saved procedure items as additional procedures (excluding consultation fee)
+  const savedProcedureRows = tableData
+    .filter((item) => item.particulars !== "Consultation Fee" && item.section === "Procedure")
+    .map((item, index) => ({
+      id: `saved-proc-${index}`,
+      procedure: item.particulars,
+      quantity: item.qty,
+      price: item.price,
+      CGST_percentage: item.CGST_percentage !== "N/A" ? item.CGST_percentage : 0,
+      CGST_value: item.CGST_value !== "N/A" ? item.CGST_value : 0,
+      SGST_percentage: item.SGST_percentage !== "N/A" ? item.SGST_percentage : 0,
+      SGST_value: item.SGST_value !== "N/A" ? item.SGST_value : 0,
+      selected: true,
+      total: item.total || (Number.parseFloat(item.price) * Number.parseFloat(item.qty)).toFixed(2),
+      isSaved: true,
+    }))
 
-    // Parse table_data if it's a string
-    let tableData = []
+  // ENHANCED: Load saved consumer items with better error handling
+  const savedConsumerRows = tableData
+    .filter((item) => item.section === "Consumer")
+    .map((item, index) => ({
+      id: `saved-consumer-${index}`,
+      item: item.particulars || item.item || "",
+      qty: item.qty || item.quantity || "",
+      price: item.price || "",
+      total: item.total || (Number.parseFloat(item.price || 0) * Number.parseFloat(item.qty || 0)).toFixed(2),
+      CGST_percentage: item.CGST_percentage !== "N/A" ? item.CGST_percentage : 0,
+      CGST_value: item.CGST_value !== "N/A" ? item.CGST_value : 0,
+      SGST_percentage: item.SGST_percentage !== "N/A" ? item.SGST_percentage : 0,
+      SGST_value: item.SGST_value !== "N/A" ? item.SGST_value : 0,
+      selected: true,
+      isSaved: true,
+    }))
+
+  setAdditionalProcedures(savedProcedureRows)
+ 
+  // ENHANCED: Set consumer records and show table if consumer data exists
+  if (savedConsumerRows.length > 0) {
+    setConsumerRecords(savedConsumerRows)
+    setShowConsumerTable(true)
+    console.log("Consumer records loaded from table data:", savedConsumerRows)
+  }
+
+  // ENHANCED: Also check if there's direct consumer data in the stored record
+  if (storedData.consumer) {
     try {
-      if (typeof storedData.table_data === "string") {
-        tableData = JSON.parse(storedData.table_data)
-      } else if (Array.isArray(storedData.table_data)) {
-        tableData = storedData.table_data
+      let consumerData = []
+      if (typeof storedData.consumer === "string") {
+        consumerData = JSON.parse(storedData.consumer)
+      } else if (Array.isArray(storedData.consumer)) {
+        consumerData = storedData.consumer
+      }
+     
+      if (consumerData.length > 0 && savedConsumerRows.length === 0) {
+        // Only set if we don't already have consumer rows from table_data
+        const directConsumerRows = consumerData.map((item, index) => ({
+          id: `direct-consumer-${index}`,
+          item: item.item || item.particulars || "",
+          qty: item.qty || item.quantity || "",
+          price: item.price || "",
+          total: item.total || "",
+          isSaved: true,
+        }))
+       
+        setConsumerRecords(directConsumerRows)
+        setShowConsumerTable(true)
+        console.log("Consumer records loaded from direct consumer data:", directConsumerRows)
       }
     } catch (error) {
-      console.error("Error parsing table_data:", error)
-      tableData = []
-    }
-
-    // Load saved procedure items as additional procedures (excluding consultation fee)
-    const savedProcedureRows = tableData
-      .filter((item) => item.particulars !== "Consultation Fee" && item.section === "Procedure")
-      .map((item, index) => ({
-        id: `saved-proc-${index}`,
-        procedure: item.particulars,
-        quantity: item.qty,
-        price: item.price,
-        CGST_percentage: item.CGST_percentage !== "N/A" ? item.CGST_percentage : 0,
-        CGST_value: item.CGST_value !== "N/A" ? item.CGST_value : 0,
-        SGST_percentage: item.SGST_percentage !== "N/A" ? item.SGST_percentage : 0,
-        SGST_value: item.SGST_value !== "N/A" ? item.SGST_value : 0,
-        selected: true,
-        total: item.total || (Number.parseFloat(item.price) * Number.parseFloat(item.qty)).toFixed(2),
-        isSaved: true,
-      }))
-
-    // Load saved consumer items
-    const savedConsumerRows = tableData
-      .filter((item) => item.section === "Consumer")
-      .map((item, index) => ({
-        id: `saved-consumer-${index}`,
-        particulars: item.particulars,
-        quantity: item.qty,
-        price: item.price,
-        CGST_percentage: item.CGST_percentage !== "N/A" ? item.CGST_percentage : 0,
-        CGST_value: item.CGST_value !== "N/A" ? item.CGST_value : 0,
-        SGST_percentage: item.SGST_percentage !== "N/A" ? item.SGST_percentage : 0,
-        SGST_value: item.SGST_value !== "N/A" ? item.SGST_value : 0,
-        selected: true,
-        total: item.total || (Number.parseFloat(item.price) * Number.parseFloat(item.qty)).toFixed(2),
-        isSaved: true,
-      }))
-
-    setAdditionalProcedures(savedProcedureRows)
-    setConsumerRecords(savedConsumerRows)
-
-    // Show consumer table if there are consumer records
-    if (savedConsumerRows.length > 0) {
-      setShowConsumerTable(true)
+      console.error("Error parsing direct consumer data:", error)
     }
   }
+}
 
-  // ENHANCED: Update selected patient records based on data source
-  const updateSelectedPatientRecords = () => {
-    if (!selectedPatient) return
-
-    console.log("Updating patient records for:", selectedPatient.patientName)
-    console.log("Patient data source:", selectedPatient.dataSource)
-    console.log("Patient procedures:", selectedPatient.procedures)
-
-    // Prioritize stored data if available
-    if (selectedPatient.dataSource === "stored" || selectedPatient.isStored) {
-      // Use stored data - create proper structure for procedures display
-      const transformedRecord = {
-        patientUID: selectedPatient.patientUID,
-        patientName: selectedPatient.patientName,
-        patient_handledby: selectedPatient.patient_handledby,
-        appointmentDate: selectedPatient.appointmentDate,
-        procedures: selectedPatient.procedures || [],
-        isStored: true,
-      }
-
-      setDetailedRecords([transformedRecord])
-
-      // Also populate consumer records if they exist
-      if (selectedPatient.consumer && selectedPatient.consumer.length > 0) {
-        const transformedConsumerRecords = selectedPatient.consumer.map((item, index) => ({
-          id: `stored-consumer-${index}`,
-          item: item.item || item.particulars,
-          qty: item.qty || item.quantity,
-          price: item.price,
-          total: item.total,
-          isStored: true,
-        }))
-        setConsumerRecords(transformedConsumerRecords)
-        setShowConsumerTable(true)
-      }
-
-      // Set the totals from stored data
-      setProcedureNetAmount(selectedPatient.procedureNetAmount || "0")
-      setConsumerNetAmount(selectedPatient.consumerNetAmount || "0")
-      setTotalAmount(selectedPatient.totalAmount || "0")
-      setPaymentType(selectedPatient.PaymentType || "Card")
-    } else {
-      // Use fresh data
-      const freshPatientData = freshProcedureData.filter((record) => record.patientUID === selectedPatient.patientUID)
-      if (freshPatientData.length > 0) {
-        setDetailedRecords(freshPatientData)
-      } else {
-        setDetailedRecords([])
-      }
-    }
-  }
 
   // Reset patient-related data
   const resetPatientData = () => {
@@ -1139,24 +1214,32 @@ const consumerOptions = consumerItems.map((item) => ({
   label: item,
 }));
 
-  const handleConsumerChange = (index, field, value) => {
-    setConsumerRecords((prevRecords) => {
-      const updatedRecords = [...prevRecords]
-      if (field === "item") {
-        updatedRecords[index][field] = value
-      } else {
-        updatedRecords[index][field] = value
-      }
+// ENHANCED: Update the handleConsumerChange function to handle stored data
+const handleConsumerChange = (index, field, value) => {
+  setConsumerRecords((prevRecords) => {
+    const updatedRecords = [...prevRecords]
+   
+    // Check if this is a saved/stored record
+    if (updatedRecords[index].isSaved || updatedRecords[index].isStored) {
+      // For saved records, you might want to show a warning or handle differently
+      console.log("Modifying saved consumer record:", updatedRecords[index])
+    }
+   
+    if (field === "item") {
+      updatedRecords[index][field] = value
+    } else {
+      updatedRecords[index][field] = value
+    }
 
-      if (field === "qty" || field === "price") {
-        const qty = Number.parseFloat(updatedRecords[index].qty)
-        const price = Number.parseFloat(updatedRecords[index].price)
-        updatedRecords[index].total = !isNaN(qty) && !isNaN(price) ? (qty * price).toFixed(2) : "0"
-      }
+    if (field === "qty" || field === "price") {
+      const qty = Number.parseFloat(updatedRecords[index].qty)
+      const price = Number.parseFloat(updatedRecords[index].price)
+      updatedRecords[index].total = !isNaN(qty) && !isNaN(price) ? (qty * price).toFixed(2) : "0"
+    }
 
-      return updatedRecords
-    })
-  }
+    return updatedRecords
+  })
+}
 
   const handleSelectChange = (selectedOption, index) => {
     const newRecords = [...consumerRecords]
@@ -1615,7 +1698,7 @@ const consumerOptions = consumerItems.map((item) => ({
                 </SectionHeader>
 
                 {/* Only show consumer table if showConsumerTable is true */}
-                {showConsumerTable && (
+                {(showConsumerTable || consumerRecords.length > 0) && (
                   <>
                     <TableContainer>
                       <table>
@@ -1630,24 +1713,30 @@ const consumerOptions = consumerItems.map((item) => ({
                         </thead>
                         <tbody>
                           {consumerRecords.map((record, index) => (
-                            <tr key={index}>
-                    <td>
-      <CreatableSelect
-        options={consumerOptions}
-        isClearable
-        isSearchable
-        onChange={(selectedOption) => handleSelectChange(selectedOption, index)}
-        value={
-          record?.item
-            ? consumerOptions.find((option) => option.value === record.item) || {
-                value: record.item,
-                label: record.item,
-              }
-            : null
-        }
-        placeholder="Select or enter item"
-      />
-    </td>
+                            <tr key={record.id || index}>
+                              <td>
+                                <CreatableSelect
+                                  options={consumerOptions}
+                                  isClearable
+                                  isSearchable
+                                  onChange={(selectedOption) => handleSelectChange(selectedOption, index)}
+                                  value={
+                                    record?.item
+                                      ? consumerOptions.find((option) => option.value === record.item) || {
+                                          value: record.item,
+                                          label: record.item,
+                                        }
+                                      : null
+                                  }
+                                  placeholder="Select or enter item"
+                                  isDisabled={record.isSaved || record.isStored}
+                                  menuPortalTarget={document.body} // ✅ Portal the dropdown to the body
+                                  styles={{
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }), // ✅ Ensure it's above everything
+                                    menu: (base) => ({ ...base, zIndex: 9999 }),        // optional extra safety
+                                  }}
+                                />
+                              </td>
                               <td>
                                 <input
                                   type="text"
@@ -1655,6 +1744,7 @@ const consumerOptions = consumerItems.map((item) => ({
                                   onChange={(e) => handleConsumerChange(index, "qty", e.target.value)}
                                   className="form-control"
                                   placeholder="Enter quantity"
+                                  readOnly={record.isSaved || record.isStored} // Make read-only for saved records
                                 />
                               </td>
                               <td>
@@ -1664,13 +1754,22 @@ const consumerOptions = consumerItems.map((item) => ({
                                   onChange={(e) => handleConsumerChange(index, "price", e.target.value)}
                                   className="form-control"
                                   placeholder="Enter price"
+                                  readOnly={record.isSaved || record.isStored} // Make read-only for saved records
                                 />
                               </td>
                               <td>{record.total}</td>
                               <td>
                                 <FaTrash
+                                  style={{
+                                    cursor: (record.isSaved || record.isStored) ? "not-allowed" : "pointer",
+                                    color: (record.isSaved || record.isStored) ? "#ccc" : "#dc3545",
+                                  }}
                                   onClick={() => {
-                                    setConsumerRecords((prevRecords) => prevRecords.filter((_, i) => i !== index))
+                                    if (!record.isSaved && !record.isStored) {
+                                      setConsumerRecords((prevRecords) => prevRecords.filter((_, i) => i !== index))
+                                    } else {
+                                      toast.warning("Cannot delete saved consumer data. Please remove it from the database first.")
+                                    }
                                   }}
                                 />
                               </td>
@@ -1679,6 +1778,7 @@ const consumerOptions = consumerItems.map((item) => ({
                         </tbody>
                       </table>
                     </TableContainer>
+
                     <br />
                     <ConsumerNetContainer>
                       <ConsumerNetLabel htmlFor="Net">Net Amount:</ConsumerNetLabel>
