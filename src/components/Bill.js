@@ -17,294 +17,303 @@ import "react-toastify/dist/ReactToastify.css"
 import axios from "axios"
 
 const StyledContainer = styled.div`
- padding: 10px;
- max-width: 90%;
- margin: 20px auto;
- border-collapse: collapse;
+  padding: 10px;
+  max-width: 90%;
+  margin: 20px auto;
+  border-collapse: collapse;
 `
 
 const Container = styled.div`
- margin-top: 65px;
+  margin-top: 65px;
 `
 
 const TableContainer = styled.div`
- overflow-y: auto;
- scrollbar-width: thin;
+  overflow-y: auto;
+  scrollbar-width: thin;
 `
 
 const Patientcardcontainer = styled.div`
- background-color: white;
- border-radius: 10px;
- box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
- width: 500px;
- height: auto;
- padding: 10px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 500px;
+  height: auto;
+  padding: 10px;
 `
 
 const PatientCard = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- background-color: #BCAEC7;
- color: white;
- padding: 8px 15px;
- border-radius: 8px;
- margin-bottom: 10px;
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
- flex-grow: 1;
- flex-shrink: 1;
- width: 50%;
- text-align: center;
- cursor: pointer;
- transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #BCAEC7;
+  color: white;
+  padding: 8px 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  flex-grow: 1;
+  flex-shrink: 1;
+  width: 50%;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
 
- &:hover {
- background-color: #a89bb5;
- transform: translateY(-2px);
- box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
- }
+  &:hover {
+    background-color: #a89bb5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
 
- .patient-name {
- font-size: 18px;
- font-weight: 600;
- letter-spacing: 0.5px;
- text-transform: capitalize;
- }
+  .patient-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: capitalize;
+  }
 
- .patient-details {
- display: flex;
- flex-direction: column;
- align-items: flex-start;
- }
+  .patient-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
- .patient-contact {
- font-size: 14px;
- font-weight: 400;
- opacity: 0.9;
- }
+  .patient-contact {
+    font-size: 14px;
+    font-weight: 400;
+    opacity: 0.9;
+  }
+
+  .data-source {
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.8;
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: ${(props) => (props.dataSource === "stored" ? "#28a745" : "#007bff")};
+  }
 `
 
 const DatePickerWrapper = styled.div`
- display: flex;
- align-items: center;
+  display: flex;
+  align-items: center;
 
- .react-datepicker-wrapper {
- width: 100%;
- }
+  .react-datepicker-wrapper {
+    width: 100%;
+  }
 
- .custom-date-input {
- display: flex;
- align-items: center;
- justify-content: center;
- border: none;
- border-radius: 0.25rem;
- padding: 0.375rem 0.75rem;
- width: 200px;
- background-color: #fff;
- cursor: pointer;
- margin-right: 10px;
- }
+  .custom-date-input {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    width: 200px;
+    background-color: #fff;
+    cursor: pointer;
+    margin-right: 10px;
+  }
 
- .calendar-icon {
- margin-right: 8px;
- color: #C85C8E;
- }
+  .calendar-icon {
+    margin-right: 8px;
+    color: #C85C8E;
+  }
 `
 
 const InfoContainer = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- color: white;
- padding: 15px 25px;
- border-radius: 8px;
- margin-bottom: 20px;
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
- max-width: 90%;
- margin: 0 auto;
- box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
- background: linear-gradient(135deg, #ad97b4 0%, #9b85a8 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 90%;
+  margin: 0 auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #ad97b4 0%, #9b85a8 100%);
 `
 
 const InfoText = styled.div`
- display: flex;
- justify-content: space-between;
- width: 100%;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 `
 
 const PatientInfo = styled.div`
- flex: 1;
- 
- div {
- margin-bottom: 5px;
- font-weight: 500;
- 
- strong {
- font-weight: 600;
- margin-right: 8px;
- }
- }
+  flex: 1;
+  
+  div {
+    margin-bottom: 5px;
+    font-weight: 500;
+    
+    strong {
+      font-weight: 600;
+      margin-right: 8px;
+    }
+  }
 `
 
 const DoctorInfo = styled.div`
- flex: 1;
- text-align: right;
- 
- div {
- font-weight: 500;
- 
- strong {
- font-weight: 600;
- }
- }
+  flex: 1;
+  text-align: right;
+  
+  div {
+    font-weight: 500;
+    
+    strong {
+      font-weight: 600;
+    }
+  }
 `
 
 const MedicineSelect = styled.select`
- width: 100%;
- padding: 8px;
- border: 1px solid #ddd;
- border-radius: 4px;
- font-size: 14px;
- background-color: white;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
 
- &:focus {
- outline: none;
- border-color: #9b85a8;
- box-shadow: 0 0 0 2px rgba(155, 133, 168, 0.2);
- }
+  &:focus {
+    outline: none;
+    border-color: #9b85a8;
+    box-shadow: 0 0 0 2px rgba(155, 133, 168, 0.2);
+  }
 `
 
 const AddRowButton = styled.button`
- background-color: #9b85a8 ;
- color: white;
- border: none;
- padding: 8px 16px;
- border-radius: 4px;
- cursor: pointer;
- display: flex;
- align-items: center;
- gap: 8px;
- margin-bottom: 10px;
- 
- &:hover {
- background-color: #218838;
- }
+  background-color: #9b85a8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  
+  &:hover {
+    background-color: #218838;
+  }
 `
 
 const DeleteRowButton = styled.button`
- background-color: #dc3545;
- color: white;
- border: none;
- padding: 4px 8px;
- border-radius: 4px;
- cursor: pointer;
- 
- &:hover {
- background-color: #c82333;
- }
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: #c82333;
+  }
 `
 
 const ConsultationSection = styled.div`
- background-color: #f8f9fa;
- padding: 15px;
- border-radius: 8px;
- margin-top: 20px;
- border: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid #dee2e6;
 `
 
 const ConsultationRow = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 `
 
 const ConsultationLabel = styled.label`
- font-weight: 500;
- margin-right: 10px;
+  font-weight: 500;
+  margin-right: 10px;
 `
 
 const ConsultationInput = styled.input`
- padding: 8px;
- border: 1px solid #ddd;
- border-radius: 4px;
- width: 120px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 120px;
 `
 
 const DiscountContainer = styled.div`
- display: flex;
- align-items: center;
+  display: flex;
+  align-items: center;
 `
 
 const DiscountLabel = styled.label`
- margin-right: 10px;
- font-size: 16px;
- font-weight: 500;
+  margin-right: 10px;
+  font-size: 16px;
+  font-weight: 500;
 `
 
 const DiscountInput = styled.input`
- padding: 8px;
- font-size: 16px;
- margin-right: 10px;
- border: 1px solid #ddd;
- border-radius: 4px;
+  padding: 8px;
+  font-size: 16px;
+  margin-right: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 `
 
 const PaymentTypeContainer = styled.div`
- display: flex;
- align-items: center;
+  display: flex;
+  align-items: center;
 `
 
 const PaymentTypeLabel = styled.label`
- margin-right: 10px;
- font-size: 16px;
- font-weight: 500;
+  margin-right: 10px;
+  font-size: 16px;
+  font-weight: 500;
 `
 
 const PaymentTypeInput = styled.select`
- padding: 8px;
- font-size: 16px;
- margin-right: 10px;
- border: 1px solid #ddd;
- border-radius: 4px;
+  padding: 8px;
+  font-size: 16px;
+  margin-right: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 `
 
 const NetContainer = styled.div`
- display: flex;
- align-items: center;
+  display: flex;
+  align-items: center;
 `
 
 const NetLabel = styled.label`
- margin-right: 10px;
- font-size: 16px;
- font-weight: 500;
+  margin-right: 10px;
+  font-size: 16px;
+  font-weight: 500;
 `
 
 const NetInput = styled.input`
- padding: 8px;
- font-size: 16px;
- margin-right: 10px;
- border: 1px solid #ddd;
- border-radius: 4px;
- background-color: #f8f9fa;
+  padding: 8px;
+  font-size: 16px;
+  margin-right: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f8f9fa;
 `
 
 const FlexRow = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
 `
 
 const NoDataMessage = styled.div`
- text-align: center;
- font-size: 18px;
- color: #888;
- padding: 20px;
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-align: center;
+  font-size: 18px;
+  color: #888;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 `
 
-// Add after the ErrorMessage styled component
 const StockWarning = styled.div`
   background-color: ${(props) => {
     if (props.stock === 0) return "#ffebee"
@@ -328,6 +337,43 @@ const StockWarning = styled.div`
   font-weight: 500;
 `
 
+const EditableInput = styled.input`
+  width: 80px;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+`
+
+const LoadingSpinner = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  
+  .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #9b85a8;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  p {
+    margin-top: 15px;
+    font-size: 16px;
+    color: #666;
+    font-weight: 500;
+  }
+`
+
 const Bill = () => {
   const [startDate, setStartDate] = useState(new Date())
   const [patientData, setPatientData] = useState([])
@@ -343,13 +389,17 @@ const Bill = () => {
   const [paymentType, setPaymentType] = useState("Card")
   const [section, setSection] = useState("Pharmacy")
   const [editablePrices, setEditablePrices] = useState({})
+  const [editableTotals, setEditableTotals] = useState({})
   const [branchCode, setBranchCode] = useState("")
   const [medicineErrors, setMedicineErrors] = useState({})
+  const [isDataFromStored, setIsDataFromStored] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   // New states for pharmacy dropdown and additional rows
   const [medicineOptions, setMedicineOptions] = useState([])
   const [additionalRows, setAdditionalRows] = useState([])
   const [consultationFee, setConsultationFee] = useState(0)
+  const [savedBillingData, setSavedBillingData] = useState([])
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   // Initialize branch code and fetch current date data
@@ -367,10 +417,228 @@ const Bill = () => {
     if (branchCode) {
       const currentDate = new Date()
       setStartDate(currentDate)
-      fetchPatientData(currentDate)
-      fetchBillingData(currentDate)
+      fetchDataWithPriority(currentDate)
     }
   }, [branchCode])
+
+  // Fetch saved billing data when patient is selected
+  useEffect(() => {
+    if (selectedPatient && branchCode) {
+      fetchSavedBillingData()
+    }
+  }, [selectedPatient, branchCode, startDate])
+
+  // ENHANCED: Improved function to handle stored data fetching with better error handling
+  const fetchDataWithPriority = async (date) => {
+    if (!branchCode || !date) return
+
+    setIsLoading(true)
+    const formattedDate = format(date, "yyyy-MM-dd")
+
+    try {
+      // Step 1: Try to fetch stored data without patientUID first
+      console.log("Checking for stored bill data...")
+
+      // First attempt: Try to get stored data for the date and branch only
+      let storedResponse
+      try {
+        storedResponse = await fetch(
+          `${Cosmetologybaseurl}get/stored/bill/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
+        )
+      } catch (error) {
+        console.log("Initial stored data fetch failed, trying alternative approach...")
+        storedResponse = null
+      }
+
+      let hasStoredData = false
+      let storedPatients = []
+
+      if (storedResponse && storedResponse.ok) {
+        try {
+          const storedData = await storedResponse.json()
+          if (storedData && Array.isArray(storedData) && storedData.length > 0) {
+            // Transform stored data to match expected format
+            storedPatients = transformStoredDataToPatientFormat(storedData)
+            hasStoredData = true
+            setIsDataFromStored(true)
+            console.log("Found stored data:", storedPatients.length, "patients")
+          }
+        } catch (parseError) {
+          console.error("Error parsing stored data:", parseError)
+        }
+      }
+
+      // Step 2: If we have stored data, use it exclusively
+      if (hasStoredData && storedPatients.length > 0) {
+        setPatientData(storedPatients.map((patient) => ({ ...patient, dataSource: "stored" })))
+        setBillingData(storedPatients.map((patient) => ({ ...patient, dataSource: "stored" })))
+        setHasData(true)
+        setIsDataFromStored(true) // Add this line
+        console.log("Using stored data exclusively")
+        return // Exit early - don't fetch fresh data
+      }
+
+      // Step 3: No stored data found, fetch fresh data
+      console.log("No stored data found, fetching fresh data...")
+      setIsDataFromStored(false)
+
+      try {
+        const [patientResponse, billingResponse] = await Promise.all([
+          fetch(
+            `${Cosmetologybaseurl}summary/post/patient_details/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
+          ),
+          fetch(`${Cosmetologybaseurl}summary/post/?appointmentDate=${formattedDate}&branch_code=${branchCode}`),
+        ])
+
+        if (patientResponse.ok && billingResponse.ok) {
+          const patientData = await patientResponse.json()
+          const billingData = await billingResponse.json()
+
+          if (patientData && Array.isArray(patientData) && patientData.length > 0) {
+            // Use fresh data
+            setPatientData(patientData.map((patient) => ({ ...patient, dataSource: "fresh" })))
+            setBillingData(billingData.map((bill) => ({ ...bill, dataSource: "fresh" })))
+            setHasData(true)
+            console.log("Found fresh data:", patientData.length, "patients")
+          } else {
+            // No data found at all
+            setPatientData([])
+            setBillingData([])
+            setHasData(false)
+            toast.info("No billing data found for the selected date")
+          }
+        } else {
+          throw new Error("Failed to fetch fresh data")
+        }
+      } catch (freshError) {
+        console.error("Error fetching fresh data:", freshError)
+        setPatientData([])
+        setBillingData([])
+        setHasData(false)
+        toast.warning("No data available for the selected date")
+      }
+    } catch (error) {
+      console.error("Error in fetchDataWithPriority:", error)
+      setPatientData([])
+      setBillingData([])
+      setHasData(false)
+      toast.error("Error fetching data. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Transform stored data format to match expected patient format
+  const transformStoredDataToPatientFormat = (storedData) => {
+    return storedData.map((record) => {
+      let tableData = []
+
+      // Parse table_data JSON string
+      try {
+        if (record.table_data && typeof record.table_data === "string") {
+          tableData = JSON.parse(record.table_data)
+        } else if (Array.isArray(record.table_data)) {
+          tableData = record.table_data
+        }
+      } catch (error) {
+        console.error("Error parsing table_data JSON:", error)
+        tableData = []
+      }
+
+      // Convert table data to prescription format - but don't duplicate
+      const prescription = "N/A" // Set to N/A since we'll load this as saved billing data instead
+
+      return {
+        patientUID: record.patientUID,
+        patientName: record.patientName,
+        patient_handledby: record.patient_handledby,
+        appointmentDate: record.appointmentDate,
+        mobileNumber: record.mobileNumber || "N/A",
+        prescription: prescription || "N/A",
+        paymentType: record.paymentType,
+        netAmount: record.netAmount,
+        discount: record.discount,
+        consultationFee: record.consultationFee,
+        isStored: true,
+      }
+    })
+  }
+
+  // ENHANCED: Fetch saved billing data from database with better error handling
+  const fetchSavedBillingData = async () => {
+    if (!selectedPatient || !branchCode || !startDate) return
+
+    try {
+      const response = await fetch(
+        `${Cosmetologybaseurl}get/stored/bill/?patientUID=${selectedPatient.patientUID}&appointmentDate=${format(startDate, "yyyy-MM-dd")}&branch_code=${branchCode}`,
+      )
+
+      if (response.ok) {
+        const storedData = await response.json()
+        if (storedData && storedData.table_data && storedData.table_data.length > 0) {
+          setSavedBillingData(storedData.table_data)
+          loadSavedBillingDetails(storedData)
+        } else {
+          setSavedBillingData([])
+        }
+      } else if (response.status === 204) {
+        // No content found - this is expected when no saved data exists
+        setSavedBillingData([])
+        console.log("No saved billing data found for this patient")
+      } else {
+        console.error("Error fetching saved billing data:", response.status)
+        setSavedBillingData([])
+      }
+    } catch (error) {
+      console.error("Error fetching saved billing data:", error)
+      setSavedBillingData([])
+    }
+  }
+
+  // Load saved billing details into form
+  const loadSavedBillingDetails = (storedData) => {
+    setDiscount(Number.parseFloat(storedData.discount?.replace("%", "")) || 0)
+    setPaymentType(storedData.paymentType || "Card")
+    setConsultationFee(storedData.consultationFee || 0)
+    setNetAmount(storedData.netAmount || "0.00")
+
+    // Parse table_data if it's a string
+    let tableData = []
+    try {
+      if (typeof storedData.table_data === "string") {
+        tableData = JSON.parse(storedData.table_data)
+      } else if (Array.isArray(storedData.table_data)) {
+        tableData = storedData.table_data
+      }
+    } catch (error) {
+      console.error("Error parsing table_data:", error)
+      tableData = []
+    }
+
+    // Load all items as additional rows (including consultation fee separately)
+    const savedRows = tableData
+      .filter((item) => item.particulars !== "Consultation Fee")
+      .map((item, index) => ({
+        id: `saved-${index}`,
+        particulars: item.particulars,
+        quantity: item.qty,
+        price: item.price,
+        CGST_percentage: item.CGST_percentage !== "N/A" ? item.CGST_percentage : 0,
+        CGST_value: item.CGST_value !== "N/A" ? item.CGST_value : 0,
+        SGST_percentage: item.SGST_percentage !== "N/A" ? item.SGST_percentage : 0,
+        SGST_value: item.SGST_value !== "N/A" ? item.SGST_value : 0,
+        batch_number: item.batch_number !== "N/A" ? item.batch_number : "",
+        selected: true,
+        total: item.total || (Number.parseFloat(item.price) * Number.parseFloat(item.qty)).toFixed(2),
+        isSaved: true,
+      }))
+
+    setAdditionalRows(savedRows)
+
+    // Clear any existing prescription selections since we're using saved data
+    setSelectedPrescriptions({})
+    setQuantity({})
+  }
 
   // Fetch medicine options for dropdown with better data type handling
   useEffect(() => {
@@ -423,7 +691,6 @@ const Bill = () => {
       .catch((error) => {
         console.error("Error fetching medicine names:", error)
         setMedicineOptions([])
-        toast.error("Failed to fetch medicine data")
       })
   }, [branchCode])
 
@@ -435,38 +702,59 @@ const Bill = () => {
     if (selectedPatient) {
       calculateNetAmount()
     }
-  }, [billingData, quantity, selectedPrescriptions, medicineDetails, additionalRows, consultationFee])
+  }, [billingData, quantity, selectedPrescriptions, medicineDetails, additionalRows, consultationFee, editableTotals])
 
-  const fetchPatientData = async (date) => {
-    try {
-      const response = await fetch(
-        `${Cosmetologybaseurl}summary/post/patient_details/?appointmentDate=${format(date, "yyyy-MM-dd")}&branch_code=${branchCode}`,
-      )
-      if (!response.ok) {
-        throw new Error("Network response was not ok")
-      }
-      const data = await response.json()
-      setPatientData(data)
-      setHasData(data.length > 0)
-    } catch (error) {
-      console.error("Error fetching patient data:", error)
+  // Auto-calculate CGST and SGST values based on percentages
+  const calculateGSTValues = (price, cgstPercentage, sgstPercentage) => {
+    const priceNum = Number.parseFloat(price) || 0
+    const cgstValue = (priceNum * (Number.parseFloat(cgstPercentage) || 0)) / 100
+    const sgstValue = (priceNum * (Number.parseFloat(sgstPercentage) || 0)) / 100
+    return {
+      cgstValue: cgstValue.toFixed(2),
+      sgstValue: sgstValue.toFixed(2),
     }
   }
 
-  const fetchBillingData = async (date) => {
-    try {
-      const response = await fetch(
-        `${Cosmetologybaseurl}summary/post/?appointmentDate=${format(date, "yyyy-MM-dd")}&branch_code=${branchCode}`,
-      )
-      if (!response.ok) {
-        throw new Error("Network response was not ok")
-      }
-      const data = await response.json()
-      setBillingData(data)
-      setHasData(data.length > 0)
-    } catch (error) {
-      console.error("Error fetching billing data:", error)
-    }
+  // Handle CGST percentage change and auto-calculate value
+  const handleCGSTPercentageChange = (rowId, percentage) => {
+    setAdditionalRows((prev) =>
+      prev.map((row) => {
+        if (row.id === rowId) {
+          const { cgstValue } = calculateGSTValues(row.price, percentage, row.SGST_percentage)
+          return {
+            ...row,
+            CGST_percentage: percentage,
+            CGST_value: cgstValue,
+          }
+        }
+        return row
+      }),
+    )
+  }
+
+  // Handle SGST percentage change and auto-calculate value
+  const handleSGSTPercentageChange = (rowId, percentage) => {
+    setAdditionalRows((prev) =>
+      prev.map((row) => {
+        if (row.id === rowId) {
+          const { sgstValue } = calculateGSTValues(row.price, row.CGST_percentage, percentage)
+          return {
+            ...row,
+            SGST_percentage: percentage,
+            SGST_value: sgstValue,
+          }
+        }
+        return row
+      }),
+    )
+  }
+
+  // Handle total change - make total editable
+  const handleTotalChange = (rowId, newTotal) => {
+    setEditableTotals((prev) => ({
+      ...prev,
+      [rowId]: newTotal,
+    }))
   }
 
   // UPDATED: Enhanced fetchMedicineDetails to use get_medicine_price endpoint
@@ -571,8 +859,8 @@ const Bill = () => {
 
   const handleDateChange = (date) => {
     setStartDate(date)
-    fetchPatientData(date)
-    fetchBillingData(date)
+    setSelectedPatient(null) // Reset selected patient when date changes
+    fetchDataWithPriority(date)
   }
 
   // Add new row functionality
@@ -591,13 +879,20 @@ const Bill = () => {
         SGST_value: 0,
         batch_number: "",
         selected: false,
+        total: 0,
+        isSaved: false,
       },
     ])
   }
 
-  // Delete row functionality
+  // Delete row functionality - only allow deletion of non-saved rows
   const handleDeleteRow = (rowId) => {
-    setAdditionalRows((prev) => prev.filter((row) => row.id !== rowId))
+    const rowToDelete = additionalRows.find((row) => row.id === rowId)
+    if (rowToDelete && !rowToDelete.isSaved) {
+      setAdditionalRows((prev) => prev.filter((row) => row.id !== rowId))
+    } else {
+      toast.warning("Cannot delete saved billing data. Please remove it from the database first.")
+    }
   }
 
   // Handle medicine selection from dropdown
@@ -605,6 +900,12 @@ const Bill = () => {
     const selectedMedicine = medicineOptions.find((med) => med.id === medicineId)
 
     if (selectedMedicine) {
+      const { cgstValue, sgstValue } = calculateGSTValues(
+        selectedMedicine.price,
+        selectedMedicine.CGST_percentage,
+        selectedMedicine.SGST_percentage,
+      )
+
       setAdditionalRows((prev) =>
         prev.map((row) =>
           row.id === rowId
@@ -613,9 +914,9 @@ const Bill = () => {
                 particulars: selectedMedicine.label,
                 price: selectedMedicine.price || 0,
                 CGST_percentage: selectedMedicine.CGST_percentage || 0,
-                CGST_value: selectedMedicine.CGST_value || 0,
+                CGST_value: cgstValue,
                 SGST_percentage: selectedMedicine.SGST_percentage || 0,
-                SGST_value: selectedMedicine.SGST_value || 0,
+                SGST_value: sgstValue,
                 batch_number: selectedMedicine.batch_number || "",
                 stock: selectedMedicine.stock || 0,
                 company_name: selectedMedicine.company_name || "",
@@ -627,9 +928,24 @@ const Bill = () => {
     }
   }
 
-  // Update additional row data
   const handleAdditionalRowChange = (rowId, field, value) => {
-    setAdditionalRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)))
+    setAdditionalRows((prev) =>
+      prev.map((row) => {
+        if (row.id === rowId) {
+          const updatedRow = { ...row, [field]: value }
+
+          // Auto-calculate GST values when price changes
+          if (field === "price") {
+            const { cgstValue, sgstValue } = calculateGSTValues(value, row.CGST_percentage, row.SGST_percentage)
+            updatedRow.CGST_value = cgstValue
+            updatedRow.SGST_value = sgstValue
+          }
+
+          return updatedRow
+        }
+        return row
+      }),
+    )
   }
 
   const extractPrescriptionDetails = (prescription) => {
@@ -686,6 +1002,22 @@ const Bill = () => {
   const handlePatientCardClick = (patient) => {
     setSelectedPatient(patient)
     setIsBillingDisplayed(true)
+    // Reset states when selecting a new patient
+    setAdditionalRows([])
+    setConsultationFee(0)
+    setDiscount(0)
+    setNetAmount("")
+    setSelectedPrescriptions({})
+    setQuantity({})
+    setEditablePrices({})
+    setEditableTotals({})
+
+    // If this is stored data, don't show prescription rows since we'll load saved billing data
+    if (patient.dataSource === "stored" || patient.isStored) {
+      // The saved billing data will be loaded by the useEffect hook
+      console.log("Loading stored billing data for patient:", patient.patientName)
+    }
+
     calculateNetAmount()
   }
 
@@ -694,6 +1026,13 @@ const Bill = () => {
     setIsBillingDisplayed(false)
     setAdditionalRows([])
     setConsultationFee(0)
+    setSavedBillingData([])
+    setDiscount(0)
+    setNetAmount("")
+    setSelectedPrescriptions({})
+    setQuantity({})
+    setEditablePrices({})
+    setEditableTotals({})
   }
 
   useEffect(() => {
@@ -733,7 +1072,12 @@ const Bill = () => {
     }))
   }
 
-  const calculateTotal = (price, qty) => {
+  const calculateTotal = (price, qty, rowId = null) => {
+    // Check if there's an editable total for this row
+    if (rowId && editableTotals[rowId]) {
+      return editableTotals[rowId]
+    }
+
     qty = Number.parseFloat(qty)
 
     if (isNaN(Number.parseFloat(price)) || price === "Loading..." || price === "N/A") {
@@ -748,63 +1092,6 @@ const Bill = () => {
   const handleDiscountChange = (e) => {
     const discountValue = Number.parseFloat(e.target.value)
     setDiscount(discountValue)
-  }
-
-  const handleCGSTValueChange = (itemIndex, prescriptionIndex, value) => {
-    setBillingData((prevData) => {
-      const updatedData = [...prevData]
-      const prescriptions = extractPrescriptionDetails(updatedData[itemIndex].prescription)
-
-      if (typeof prescriptions[prescriptionIndex] === "object") {
-        const updatedPrescription = {
-          ...prescriptions[prescriptionIndex],
-          CGST_value: value,
-        }
-
-        updatedData[itemIndex].prescription = prescriptions.map((prescription, index) =>
-          index === prescriptionIndex ? updatedPrescription : prescription,
-        )
-
-        return updatedData
-      } else {
-        console.error("Expected an object for prescription:", prescriptions[prescriptionIndex])
-        return prevData
-      }
-    })
-  }
-
-  const handleSGSTValueChange = (itemIndex, prescriptionIndex, value) => {
-    setBillingData((prevData) => {
-      const updatedData = [...prevData]
-      const prescriptions = extractPrescriptionDetails(updatedData[itemIndex].prescription)
-      const updatedPrescription = {
-        ...prescriptions[prescriptionIndex],
-        SGST_value: value,
-      }
-
-      updatedData[itemIndex].prescription = prescriptions.map((prescription, index) =>
-        index === prescriptionIndex ? updatedPrescription : prescription,
-      )
-
-      return updatedData
-    })
-  }
-
-  const handleBatchNumberChange = (itemIndex, prescriptionIndex, value) => {
-    setBillingData((prevData) => {
-      const updatedData = [...prevData]
-      const prescriptions = extractPrescriptionDetails(updatedData[itemIndex].prescription)
-      const updatedPrescription = {
-        ...prescriptions[prescriptionIndex],
-        batch_number: value,
-      }
-
-      updatedData[itemIndex].prescription = prescriptions.map((prescription, index) =>
-        index === prescriptionIndex ? updatedPrescription : prescription,
-      )
-
-      return updatedData
-    })
   }
 
   const calculateNetAmount = () => {
@@ -843,7 +1130,7 @@ const Bill = () => {
           }
 
           price = Number.parseFloat(price)
-          const totalForMedicine = calculateTotal(price, qty)
+          const totalForMedicine = calculateTotal(price, qty, key)
 
           total += Number.parseFloat(totalForMedicine) || 0
         }
@@ -853,7 +1140,7 @@ const Bill = () => {
     // Add total from additional rows
     additionalRows.forEach((row) => {
       if (row.selected) {
-        const rowTotal = Number.parseFloat(row.price) * Number.parseFloat(row.quantity)
+        const rowTotal = editableTotals[row.id] || Number.parseFloat(row.price) * Number.parseFloat(row.quantity)
         total += rowTotal || 0
       }
     })
@@ -881,15 +1168,6 @@ const Bill = () => {
     const discountAmount = (total * discountValue) / 100
     const discountedTotal = total - discountAmount
     return discountedTotal
-  }
-
-  const applyDiscount = () => {
-    if (netAmount !== "") {
-      const currentNetAmount = Number.parseFloat(netAmount)
-      const discountAmount = (currentNetAmount * discount) / 100
-      const newNetAmount = currentNetAmount - discountAmount
-      setNetAmount(newNetAmount.toFixed(2))
-    }
   }
 
   const handleSaveData = async () => {
@@ -931,7 +1209,7 @@ const Bill = () => {
 
           const medicineDetail = medicineDetails[particulars] || {}
           const price = editablePrices[`${itemIndex}-${prescriptionIndex}`] || medicineDetail.price || "0.00"
-          const total = calculateTotal(price, qty)
+          const total = editableTotals[`${itemIndex}-${prescriptionIndex}`] || calculateTotal(price, qty)
 
           return {
             particulars,
@@ -947,14 +1225,14 @@ const Bill = () => {
         })
       })
 
-    // Add additional rows to table_data
+    // Add additional rows to table_data (only non-saved rows that are selected)
     const additionalRowsData = additionalRows
-      .filter((row) => row.selected)
+      .filter((row) => row.selected && !row.isSaved)
       .map((row) => ({
         particulars: row.particulars,
         qty: row.quantity,
         price: row.price,
-        total: (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
+        total: editableTotals[row.id] || (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
         CGST_percentage: row.CGST_percentage,
         CGST_value: row.CGST_value,
         SGST_percentage: row.SGST_percentage,
@@ -962,7 +1240,22 @@ const Bill = () => {
         batch_number: row.batch_number,
       }))
 
-    const allTableData = [...table_data, ...additionalRowsData]
+    // Add saved billing data to table_data
+    const savedRowsData = additionalRows
+      .filter((row) => row.selected && row.isSaved)
+      .map((row) => ({
+        particulars: row.particulars,
+        qty: row.quantity,
+        price: row.price,
+        total: editableTotals[row.id] || row.total,
+        CGST_percentage: row.CGST_percentage,
+        CGST_value: row.CGST_value,
+        SGST_percentage: row.SGST_percentage,
+        SGST_value: row.SGST_value,
+        batch_number: row.batch_number,
+      }))
+
+    const allTableData = [...table_data, ...additionalRowsData, ...savedRowsData]
 
     // Add consultation fee if present
     if (consultationFee > 0) {
@@ -980,7 +1273,7 @@ const Bill = () => {
     }
 
     if (errorMessages.length > 0) {
-      toast.error(errorMessages.join(" "))
+      console.error(errorMessages.join(" "))
       return
     }
 
@@ -1026,86 +1319,82 @@ const Bill = () => {
 
       const stockUpdated = await updateStock()
       if (!stockUpdated) {
-        toast.error("Stock update failed.")
+        console.error("Stock update failed.")
       }
     } catch (error) {
       console.error("Error submitting data:", error)
-      toast.error("Error submitting data.")
+      toast.error("Error saving billing data. Please try again.")
     }
   }
 
-const updateStock = async () => {
+  const updateStock = async () => {
     const stockUpdates = billingData
-        .filter((item) => item.patientUID === selectedPatient.patientUID)
-        .flatMap((item, itemIndex) => {
-            const prescriptions = extractPrescriptionDetails(item.prescription)
+      .filter((item) => item.patientUID === selectedPatient.patientUID)
+      .flatMap((item, itemIndex) => {
+        const prescriptions = extractPrescriptionDetails(item.prescription)
 
-            return prescriptions
-                .map((prescription, prescriptionIndex) => {
-                    if (!selectedPrescriptions[`${itemIndex}-${prescriptionIndex}`]) return null
+        return prescriptions
+          .map((prescription, prescriptionIndex) => {
+            if (!selectedPrescriptions[`${itemIndex}-${prescriptionIndex}`]) return null
 
-                    const { particulars } = prescription; // Only need particulars to look up in medicineDetails
-                    const qty =
-                        quantity[`${itemIndex}-${prescriptionIndex}`] !== undefined
-                            ? quantity[`${itemIndex}-${prescriptionIndex}`]
-                            : prescription.totalDosage;
+            const { particulars } = prescription
+            const qty =
+              quantity[`${itemIndex}-${prescriptionIndex}`] !== undefined
+                ? quantity[`${itemIndex}-${prescriptionIndex}`]
+                : prescription.totalDosage
 
-                    // Get the actual medicine details which contains the batch_number
-                    const medicineDetail = medicineDetails[particulars] || {};
-                    const actualBatchNumber = medicineDetail.batch_number || "N/A";
+            const medicineDetail = medicineDetails[particulars] || {}
+            const actualBatchNumber = medicineDetail.batch_number || "N/A"
 
-                    return {
-                        medicine_name: particulars,
-                        qty,
-                        branch_code: branchCode,
-                        batch_number: actualBatchNumber, // Use the batch number from fetched details
-                    };
-                })
-                .filter(Boolean);
-        });
+            return {
+              medicine_name: particulars,
+              qty,
+              branch_code: branchCode,
+              batch_number: actualBatchNumber,
+            }
+          })
+          .filter(Boolean)
+      })
 
-    // Additional rows stock updates remain the same as they already include batch_number
     const additionalStockUpdates = additionalRows
-        .filter((row) => row.selected)
-        .map((row) => ({
-            medicine_name: row.particulars,
-            qty: row.quantity,
-            branch_code: branchCode,
-            batch_number: row.batch_number,
-        }));
+      .filter((row) => row.selected)
+      .map((row) => ({
+        medicine_name: row.particulars,
+        qty: row.quantity,
+        branch_code: branchCode,
+        batch_number: row.batch_number,
+      }))
 
-    const allStockUpdates = [...stockUpdates, ...additionalStockUpdates];
+    const allStockUpdates = [...stockUpdates, ...additionalStockUpdates]
 
-    let allStockUpdated = true;
+    let allStockUpdated = true
 
     for (const stockUpdate of allStockUpdates) {
-        try {
-            const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(stockUpdate),
-            });
+      try {
+        const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(stockUpdate),
+        })
 
-            if (!response.ok) {
-                // Read the error message from the response if available
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to update stock");
-            }
-
-            const data = await response.json();
-            toast.success("Stock updated successfully!");
-        } catch (error) {
-            console.error("Error updating stock:", error);
-            toast.error(`Error updating stock: ${error.message}`); // Display specific error from backend
-            allStockUpdated = false;
-            break;
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to update stock")
         }
+
+        const data = await response.json()
+        toast.success("Stock updated successfully!")
+      } catch (error) {
+        console.error("Error updating stock:", error)
+        allStockUpdated = false
+        break
+      }
     }
 
-    return allStockUpdated;
-};
+    return allStockUpdated
+  }
 
   const convertToBase64 = (url, callback) => {
     const img = new Image()
@@ -1124,7 +1413,7 @@ const updateStock = async () => {
   }
 
   const handleDownload = () => {
-    if (!selectedPatient || !billingData.length) {
+    if (!selectedPatient || (!billingData.length && !additionalRows.length)) {
       console.error("No patient selected or billing data is empty")
       return
     }
@@ -1141,7 +1430,7 @@ const updateStock = async () => {
           const medicineDetail = medicineDetails[prescription.particulars] || {}
           const { CGST_percentage, CGST_value, SGST_percentage, SGST_value, batch_number } = medicineDetail
           const price = editablePrices[`${itemIndex}-${prescriptionIndex}`] || medicineDetail.price || "0.00"
-          const total = calculateTotal(price, qty)
+          const total = editableTotals[key] || calculateTotal(price, qty)
 
           return [
             prescription.particulars || "N/A",
@@ -1158,7 +1447,6 @@ const updateStock = async () => {
         .filter(Boolean)
     })
 
-    // Add additional rows to PDF
     const additionalRowsForPDF = additionalRows
       .filter((row) => row.selected)
       .map((row) => [
@@ -1170,26 +1458,13 @@ const updateStock = async () => {
         row.SGST_percentage || "N/A",
         row.SGST_value || "N/A",
         row.batch_number || "N/A",
-        (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
+        editableTotals[row.id] || (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
       ])
 
-    // Add consultation fee to PDF
+    // Generate main table *without* consultation fee
     const allPDFRows = [...procedureTable, ...additionalRowsForPDF]
-    if (consultationFee > 0) {
-      allPDFRows.push([
-        "Consultation Fee",
-        "1",
-        consultationFee,
-        "N/A",
-        "N/A",
-        "N/A",
-        "N/A",
-        "N/A",
-        consultationFee.toFixed(2),
-      ])
-    }
 
-    if (allPDFRows.length === 0) {
+    if (allPDFRows.length === 0 && consultationFee <= 0) {
       alert("Please select a prescription to download the bill.")
       return
     }
@@ -1198,7 +1473,6 @@ const updateStock = async () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    // Select PDF background based on branch code without directly using branch names
     const backgroundImageMap = {
       SCC001: PDFMain1,
       SCC002: PDFMain2,
@@ -1207,49 +1481,77 @@ const updateStock = async () => {
 
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+
+      // Updated Patient Details UI
       let startY = 85
-
-      // Enhanced patient name styling
       doc.setFont("helvetica", "bold")
-      doc.setFontSize(16)
-      doc.setTextColor(40, 40, 40)
-      doc.text(`Patient: ${selectedPatient.patientName.toUpperCase()}`, 16, startY)
-
-      // Patient details with improved formatting
+      doc.setFontSize(14)
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Patient Name:`, 16, startY)
       doc.setFont("helvetica", "normal")
-      doc.setFontSize(11)
-      doc.text(`Patient UID: ${selectedPatient.patientUID}`, 16, startY + 10)
+      doc.setFontSize(13)
+      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 60, startY)
 
-      startY += 15
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(14)
+      doc.text(`Patient UID:`, 16, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(13)
+      doc.text(`${selectedPatient.patientUID}`, 60, startY + 8)
 
-      // Enhanced table styling
-      doc.autoTable({
-        head: [
-          ["Particulars", "Qty", "Price", "CGST (%)", "CGST Value", "SGST (%)", "SGST Value", "Batch No.", "Total"],
-        ],
-        body: allPDFRows,
-        startY: startY,
-        theme: "grid",
-        headStyles: {
-          fillColor: [116, 180, 155],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 10,
-        },
-        bodyStyles: {
-          fontSize: 9,
-          textColor: [40, 40, 40],
-          font: "helvetica",
-        },
-        margin: { left: 14, right: 14 },
-      })
+      startY += 20
 
-      const yOffset = doc.lastAutoTable.finalY + 15
-      // Enhanced total styling
+      // Main Table
+      if (allPDFRows.length > 0) {
+        doc.autoTable({
+          head: [
+            ["Particulars", "Qty", "Price", "CGST (%)", "CGST Value", "SGST (%)", "SGST Value", "Batch No.", "Total"],
+          ],
+          body: allPDFRows,
+          startY: startY,
+          theme: "grid",
+          headStyles: {
+            fillColor: [116, 180, 155],
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+            fontSize: 10,
+          },
+          bodyStyles: {
+            fontSize: 9,
+            textColor: [40, 40, 40],
+            font: "helvetica",
+          },
+          margin: { left: 14, right: 14 },
+        })
+
+        startY = doc.lastAutoTable.finalY
+      }
+
+      let finalY = startY
+
+      // Consultation Fee Separately
+      if (consultationFee > 0) {
+        finalY += 10
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(11)
+        doc.setTextColor(60, 60, 60)
+        doc.text("Consultation Fee", 16, finalY)
+        doc.setFont("helvetica", "normal")
+        doc.text(`Rs. ${consultationFee.toFixed(2)}`, 170, finalY, { align: "right" })
+      }
+
+      // Net Amount Below Consultation Fee
+      finalY += 12
+      doc.setDrawColor(150)
+      doc.setLineWidth(0.5)
+      doc.line(14, finalY, pageWidth - 14, finalY)
+
+      finalY += 6
       doc.setFont("helvetica", "bold")
       doc.setFontSize(14)
       doc.setTextColor(0, 100, 0)
-      doc.text(`Net Amount: ${netAmount || "N/A"}`, 14, yOffset)
+      doc.text(`Net Amount: Rs. ${netAmount || "N/A"}`, 14, finalY)
+
       doc.save(`${selectedPatient.patientName}_Bill.pdf`)
     })
   }
@@ -1280,17 +1582,28 @@ const updateStock = async () => {
       <center>
         {!selectedPatient && (
           <Patientcardcontainer className="mt-4">
-            <ul>
-              {patientData.map((patient, index) => (
-                <PatientCard key={index} onClick={() => handlePatientCardClick(patient)}>
-                  <div className="patient-details">
-                    <div className="patient-name">{patient.patientName}</div>
-                    <div className="patient-contact">{patient.mobileNumber}</div>
-                  </div>
-                </PatientCard>
-              ))}
-            </ul>
-            {!hasData && <NoDataMessage>No data available for the selected date</NoDataMessage>}
+            {isLoading ? (
+              <LoadingSpinner>
+                <div className="spinner"></div>
+                <p>Loading patient data...</p>
+              </LoadingSpinner>
+            ) : (
+              <ul>
+                {patientData.map((patient, index) => (
+                  <PatientCard
+                    key={index}
+                    onClick={() => handlePatientCardClick(patient)}
+                    dataSource={patient.dataSource}
+                  >
+                    <div className="patient-details">
+                      <div className="patient-name">{patient.patientName}</div>
+                      <div className="patient-uid">{patient.patientUID}</div>
+                    </div>
+                  </PatientCard>
+                ))}
+              </ul>
+            )}
+            {!hasData && !isLoading && <NoDataMessage>No data available for the selected date</NoDataMessage>}
           </Patientcardcontainer>
         )}
       </center>
@@ -1342,85 +1655,72 @@ const updateStock = async () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Existing prescription rows */}
-                  {billingData
-                    .filter((item) => item.patientUID === selectedPatient.patientUID)
-                    .map((item, itemIndex) => {
-                      const prescriptions = extractPrescriptionDetails(item.prescription)
-                      return prescriptions.map((prescription, prescriptionIndex) => {
-                        const { particulars } = prescription
-                        const qty =
-                          quantity[`${itemIndex}-${prescriptionIndex}`] !== undefined
-                            ? quantity[`${itemIndex}-${prescriptionIndex}`]
-                            : prescription.totalDosage
-                        const medicineDetail = medicineDetails[particulars] || {}
-                        const { price, CGST_percentage, CGST_value, SGST_percentage, SGST_value, batch_number } =
-                          medicineDetail || {}
-                        const editablePrice = editablePrices[`${itemIndex}-${prescriptionIndex}`] || price
+                  {/* Existing prescription rows - only show if NOT using stored data */}
+                  {!isDataFromStored &&
+                    billingData
+                      .filter((item) => item.patientUID === selectedPatient.patientUID)
+                      .map((item, itemIndex) => {
+                        const prescriptions = extractPrescriptionDetails(item.prescription)
+                        return prescriptions.map((prescription, prescriptionIndex) => {
+                          const { particulars } = prescription
+                          const qty =
+                            quantity[`${itemIndex}-${prescriptionIndex}`] !== undefined
+                              ? quantity[`${itemIndex}-${prescriptionIndex}`]
+                              : prescription.totalDosage
+                          const medicineDetail = medicineDetails[particulars] || {}
+                          const { price, CGST_percentage, CGST_value, SGST_percentage, SGST_value, batch_number } =
+                            medicineDetail || {}
+                          const editablePrice = editablePrices[`${itemIndex}-${prescriptionIndex}`] || price
+                          const key = `${itemIndex}-${prescriptionIndex}`
 
-                        return (
-                          <tr key={`${itemIndex}-${prescriptionIndex}`}>
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                type="checkbox"
-                                checked={selectedPrescriptions[`${itemIndex}-${prescriptionIndex}`] || false}
-                                onChange={(e) =>
-                                  setSelectedPrescriptions((prevState) => ({
-                                    ...prevState,
-                                    [`${itemIndex}-${prescriptionIndex}`]: e.target.checked,
-                                  }))
-                                }
-                              />
-                            </td>
-                            <td>{particulars}</td>
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                style={{ width: "60px" }}
-                                type="text"
-                                value={qty}
-                                onChange={(e) => handleQuantityChange(itemIndex, prescriptionIndex, e.target.value)}
-                              />
-                            </td>
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                style={{ width: "80px" }}
-                                type="text"
-                                value={editablePrice}
-                                onChange={(e) => handlePriceChange(itemIndex, prescriptionIndex, e.target.value)}
-                              />
-                            </td>
-                            <td style={{ textAlign: "center" }}>{CGST_percentage || "N/A"}</td>
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                type="text"
-                                style={{ width: "80px" }}
-                                value={CGST_value !== undefined ? CGST_value : ""}
-                                onChange={(e) => handleCGSTValueChange(itemIndex, prescriptionIndex, e.target.value)}
-                              />
-                            </td>
-                            <td style={{ textAlign: "center" }}>{SGST_percentage || "N/A"}</td>
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                style={{ width: "80px" }}
-                                type="text"
-                                value={SGST_value !== undefined ? SGST_value : ""}
-                                onChange={(e) => handleSGSTValueChange(itemIndex, prescriptionIndex, e.target.value)}
-                              />
-                            </td>
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                style={{ width: "80px" }}
-                                type="text"
-                                value={batch_number !== undefined ? batch_number : ""}
-                                onChange={(e) => handleBatchNumberChange(itemIndex, prescriptionIndex, e.target.value)}
-                              />
-                            </td>
-                            <td style={{ textAlign: "center" }}>{calculateTotal(editablePrice, qty)}</td>
-                            <td style={{ textAlign: "center" }}>-</td>
-                          </tr>
-                        )
-                      })
-                    })}
+                          return (
+                            <tr key={key}>
+                              <td style={{ textAlign: "center" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPrescriptions[key] || false}
+                                  onChange={(e) =>
+                                    setSelectedPrescriptions((prevState) => ({
+                                      ...prevState,
+                                      [key]: e.target.checked,
+                                    }))
+                                  }
+                                />
+                              </td>
+                              <td>{particulars}</td>
+                              <td style={{ textAlign: "center" }}>
+                                <input
+                                  style={{ width: "60px" }}
+                                  type="text"
+                                  value={qty}
+                                  onChange={(e) => handleQuantityChange(itemIndex, prescriptionIndex, e.target.value)}
+                                />
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                <input
+                                  style={{ width: "80px" }}
+                                  type="text"
+                                  value={editablePrice}
+                                  onChange={(e) => handlePriceChange(itemIndex, prescriptionIndex, e.target.value)}
+                                />
+                              </td>
+                              <td style={{ textAlign: "center" }}>{CGST_percentage || "N/A"}</td>
+                              <td style={{ textAlign: "center" }}>{CGST_value || "N/A"}</td>
+                              <td style={{ textAlign: "center" }}>{SGST_percentage || "N/A"}</td>
+                              <td style={{ textAlign: "center" }}>{SGST_value || "N/A"}</td>
+                              <td style={{ textAlign: "center" }}>{batch_number || "N/A"}</td>
+                              <td style={{ textAlign: "center" }}>
+                                <EditableInput
+                                  type="text"
+                                  value={editableTotals[key] || calculateTotal(editablePrice, qty)}
+                                  onChange={(e) => handleTotalChange(key, e.target.value)}
+                                />
+                              </td>
+                              <td style={{ textAlign: "center" }}>-</td>
+                            </tr>
+                          )
+                        })
+                      })}
 
                   {/* Additional rows */}
                   {additionalRows.map((row) => (
@@ -1452,8 +1752,7 @@ const updateStock = async () => {
                                     : ` - Stock: ${medicine.stock}`
                               return (
                                 <option key={medicine.id} value={medicine.id} disabled={medicine.stock === 0}>
-                                  {medicine.label} | {medicine.company_name} | Exp: {medicine.expiry_date}
-                                  {stockStatus}
+                                  {medicine.label}
                                 </option>
                               )
                             })
@@ -1463,23 +1762,9 @@ const updateStock = async () => {
                             </option>
                           )}
                         </MedicineSelect>
-                        {/* Add stock warning below the dropdown */}
                         {row.particulars &&
                           (() => {
                             const selectedMed = medicineOptions.find((med) => med.label === row.particulars)
-                            if (selectedMed) {
-                              return (
-                                <StockWarning stock={selectedMed.stock}>
-                                  {selectedMed.stock === 0
-                                    ? "⚠️ OUT OF STOCK"
-                                    : selectedMed.stock < 10
-                                      ? `⚠️ LOW STOCK: ${selectedMed.stock} remaining`
-                                      : `✅ In Stock: ${selectedMed.stock} available`}
-                                  {selectedMed.expiry_date !== "N/A" && ` | Expires: ${selectedMed.expiry_date}`}
-                                </StockWarning>
-                              )
-                            }
-                            return null
                           })()}
                       </td>
                       <td style={{ textAlign: "center" }}>
@@ -1503,33 +1788,19 @@ const updateStock = async () => {
                           style={{ width: "60px" }}
                           type="number"
                           value={row.CGST_percentage}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "CGST_percentage", e.target.value)}
+                          onChange={(e) => handleCGSTPercentageChange(row.id, e.target.value)}
                         />
                       </td>
-                      <td style={{ textAlign: "center" }}>
-                        <input
-                          style={{ width: "80px" }}
-                          type="number"
-                          value={row.CGST_value}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "CGST_value", e.target.value)}
-                        />
-                      </td>
+                      <td style={{ textAlign: "center" }}>{row.CGST_value}</td>
                       <td style={{ textAlign: "center" }}>
                         <input
                           style={{ width: "60px" }}
                           type="number"
                           value={row.SGST_percentage}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "SGST_percentage", e.target.value)}
+                          onChange={(e) => handleSGSTPercentageChange(row.id, e.target.value)}
                         />
                       </td>
-                      <td style={{ textAlign: "center" }}>
-                        <input
-                          style={{ width: "80px" }}
-                          type="number"
-                          value={row.SGST_value}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "SGST_value", e.target.value)}
-                        />
-                      </td>
+                      <td style={{ textAlign: "center" }}>{row.SGST_value}</td>
                       <td style={{ textAlign: "center" }}>
                         <input
                           style={{ width: "80px" }}
@@ -1539,7 +1810,14 @@ const updateStock = async () => {
                         />
                       </td>
                       <td style={{ textAlign: "center" }}>
-                        {(Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2)}
+                        <EditableInput
+                          type="text"
+                          value={
+                            editableTotals[row.id] ||
+                            (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2)
+                          }
+                          onChange={(e) => handleTotalChange(row.id, e.target.value)}
+                        />
                       </td>
                       <td style={{ textAlign: "center" }}>
                         <DeleteRowButton onClick={() => handleDeleteRow(row.id)}>
@@ -1558,7 +1836,7 @@ const updateStock = async () => {
               <ConsultationRow>
                 <ConsultationLabel>Consultation Fee:</ConsultationLabel>
                 <ConsultationInput
-                  type="number"
+                  type="text"
                   value={consultationFee}
                   onChange={(e) => setConsultationFee(Number.parseFloat(e.target.value) || 0)}
                   placeholder="Enter consultation fee"
@@ -1577,9 +1855,8 @@ const updateStock = async () => {
                 id="discount"
                 value={discount}
                 placeholder="Discount %"
-                onChange={(e) => setDiscount(e.target.value)}
+                onChange={handleDiscountChange}
               />
-              <button onClick={applyDiscount}>Apply</button>
             </DiscountContainer>
 
             <PaymentTypeContainer>
@@ -1592,7 +1869,7 @@ const updateStock = async () => {
 
             <NetContainer>
               <NetLabel htmlFor="Net">Net Amount:</NetLabel>
-              <NetInput type="text" id="Net" value={netAmount} readOnly />
+              <NetInput type="text" id="Net" value={netAmount} onChange={(e) => setNetAmount(e.target.value)} />
             </NetContainer>
           </FlexRow>
         )}

@@ -23,6 +23,8 @@ import jsPDF from "jspdf"
 import "jspdf-autotable"
 import PDFMain1 from "./images/PDF_Summary_branch1.jpeg"
 import PDFMain2 from "./images/PDF_Summary_branch2.jpeg"
+import { FaEdit, FaSave, FaTimes } from "react-icons/fa"
+import Swal from 'sweetalert2'
 
 const darkGray = "#b3a591"
 
@@ -93,13 +95,15 @@ export const CenteredFormGroup = styled(Form.Group)`
 `
 
 export const SummaryContainer = styled.div`
-  padding: 10px;
-  background-color: #b798c0;
-  border-radius: 10px;
+  padding: 20px;
+  background: linear-gradient(135deg, #b798c0 0%, #a688b5 50%, #9578aa 100%);
+  border-radius: 15px;
   width: 100%;
   height: auto;
   margin-left: auto;
   margin-right: auto;
+  box-shadow: 0 8px 25px rgba(183, 152, 192, 0.3);
+  border: 2px solid rgba(183, 152, 192, 0.5);
 `
 
 const SummaryDetailsContainer = styled.div`
@@ -107,33 +111,48 @@ const SummaryDetailsContainer = styled.div`
   flex-direction: column;
   align-items: flex-start;
   margin-top: 20px;
-  padding: 20px;
-  background-color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 25px;
+  background: linear-gradient(145deg, #ffffff 0%, #f8f6fa 100%);
+  border-radius: 15px;
+  box-shadow: 
+    0 10px 30px rgba(183, 152, 192, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   width: 100%;
   margin: 0 auto;
+  border: 1px solid rgba(183, 152, 192, 0.3);
 `
 
 const SummaryTitle = styled.h3`
   text-align: center;
   width: 100%;
-  margin-bottom: 20px;
-  color: #333;
+  margin-bottom: 25px;
+  color: #6b4c7a;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(183, 152, 192, 0.3);
+  font-size: 28px;
 `
 
 const SummaryItemTitle = styled.h4`
-  margin-top: 10px;
-  margin-bottom: 10px;
-  color: ${darkGray};
+  margin-top: 15px;
+  margin-bottom: 12px;
+  color: #8a6b9c;
+  font-weight: 600;
+  padding: 8px 15px;
+  background: linear-gradient(90deg, rgba(183, 152, 192, 0.1) 0%, rgba(183, 152, 192, 0.05) 100%);
+  border-left: 4px solid #b798c0;
+  border-radius: 5px;
 `
 
 const PatientDetailsRow = styled.div`
   display: flex;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: 10px;
-  line-height: 1.6;
+  margin-bottom: 15px;
+  line-height: 1.8;
+  padding: 15px;
+  background: rgba(183, 152, 192, 0.05);
+  border-radius: 10px;
+  border: 1px solid rgba(183, 152, 192, 0.2);
 `
 
 const PatientDetailsColumn = styled.div`
@@ -141,12 +160,24 @@ const PatientDetailsColumn = styled.div`
   &:first-child {
     margin-right: 20px;
   }
+  
+  div {
+    margin-bottom: 8px;
+    color: #5a4a6b;
+    font-weight: 500;
+    
+    strong {
+      color: #6b4c7a;
+    }
+  }
 `
 
 const Divider = styled.hr`
   width: 100%;
-  margin: 10px 0;
-  border: 1px solid #ddd;
+  margin: 20px 0;
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #b798c0 50%, transparent 100%);
 `
 
 const DateDisplay = styled.div`
@@ -268,7 +299,6 @@ border-radius: 10px;
 text-align: center;
 `
 
-// ADD: New styled components for stock indicators
 const StockIndicator = styled.div`
   display: inline-block;
   padding: 2px 6px;
@@ -334,25 +364,82 @@ const SuccessMessage = styled.div`
     } else {
       return `
         background-color: white;
-        color: #ffa500;
+        color: #28a745;
         border: 1px solid #45a049;
       `
     }
   }}
 `
 
+const SummaryListItem = styled.li`
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: rgba(183, 152, 192, 0.08);
+  border-radius: 6px;
+  border-left: 3px solid #b798c0;
+  color: #5a4a6b;
+  line-height: 1.5;
+  
+  &:hover {
+    background: rgba(183, 152, 192, 0.12);
+  }
+`
+
+const SummaryList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+`
+
+const EditIcon = styled(FaEdit)`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  color: white;
+  font-size: 18px;
+  &:hover {
+    color: #f0f0f0;
+  }
+`
+
+const VitalsEditContainer = styled.div`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 10px;
+`
+
+const EditButton = styled.button`
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  &:hover {
+    color: #f0f0f0;
+  }
+`
+
+const VitalInput = styled.input`
+  width: 60px;
+  padding: 2px 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 12px;
+`
+
 const PrescriptionDetails = () => {
   const [selectedDiagnosis, setSelectedDiagnosis] = useState([])
   const [selectedComplaints, setSelectedComplaints] = useState([])
-  const [selectedfindings, setSelectedFindings] = useState([])
-  const [selectedprocedure, setSelectedprocedure] = useState([])
+  const [selectedFindings, setSelectedFindings] = useState([])
+  const [selectedProcedure, setSelectedProcedure] = useState([])
   const [prescriptionInputs, setPrescriptionInputs] = useState([
     { selectedPrescription: [], dosage: "", durationNumber: "", duration: "", m: false, a: false, e: false, n: false },
     { selectedPrescription: [], dosage: "", durationNumber: "", duration: "", m: false, a: false, e: false, n: false },
     { selectedPrescription: [], dosage: "", durationNumber: "", duration: "", m: false, a: false, e: false, n: false },
   ])
-
-  const [uploadedImages, setUploadedImages] = useState([])
   const [selectedTests, setSelectedTests] = useState([])
   const [selectedDate, setSelectedDate] = useState(null)
   const [planDetails, setPlanDetails] = useState({
@@ -362,8 +449,15 @@ const PrescriptionDetails = () => {
   })
   const [branchCode, setBranchCode] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
+  const [isEditingVitals, setIsEditingVitals] = useState(false)
+  const [editableVitals, setEditableVitals] = useState({
+    height: "",
+    weight: "",
+    pulseRate: "",
+    bloodPressure: "",
+  })
+  const [vitalsLoaded, setVitalsLoaded] = useState(false)
 
-  // ADD: New state to track loaded data separately
   const [loadedData, setLoadedData] = useState({
     diagnosis: [],
     complaints: [],
@@ -375,19 +469,71 @@ const PrescriptionDetails = () => {
     nextVisit: null,
   })
 
-  // ADD: New state for stock warnings
-  const [stockWarnings, setStockWarnings] = useState({})
+  // ADD: New state to track original loaded data for comparison
+  const [originalLoadedData, setOriginalLoadedData] = useState({
+    diagnosis: [],
+    complaints: [],
+    findings: [],
+    procedures: [],
+    prescriptions: [],
+    plans: { plan1: "", plan2: "", plan3: "" },
+    tests: [],
+    nextVisit: null,
+  })
 
+  // ADD: New state to track what data has been modified by user
+  const [userModifiedData, setUserModifiedData] = useState({
+    diagnosis: false,
+    complaints: false,
+    findings: false,
+    procedures: false,
+    prescriptions: false,
+    plans: false,
+    tests: false,
+    nextVisit: false,
+  })
+
+  const [stockWarnings, setStockWarnings] = useState({})
   const [loadedPrescriptionIndices, setLoadedPrescriptionIndices] = useState(new Set())
 
-  const handleSelectDiagnosis = (diagnosis) => setSelectedDiagnosis(diagnosis)
+  // ADD: Function to track user modifications
+  const markAsModified = (dataType) => {
+    setUserModifiedData((prev) => ({
+      ...prev,
+      [dataType]: true,
+    }))
+  }
+
+  const handleSelectDiagnosis = (diagnosis) => {
+    setSelectedDiagnosis(diagnosis)
+    markAsModified("diagnosis")
+  }
+
   const handleSelectComplaints = (complaints) => {
     setSelectedComplaints(complaints)
+    markAsModified("complaints")
   }
-  const handleSelectfindings = (findings) => setSelectedFindings(findings)
-  const handleSelectprocedure = (procedure) => setSelectedprocedure(procedure)
-  const handleSelectTests = (tests) => setSelectedTests(tests)
-  const handleDateChange = (date) => setSelectedDate(date)
+
+  const handleSelectfindings = (findings) => {
+    setSelectedFindings(findings)
+    markAsModified("findings")
+  }
+
+  const handleSelectprocedure = (procedure) => {
+    setSelectedProcedure(procedure)
+    markAsModified("procedures")
+  }
+
+  const handleSelectTests = (tests) => {
+    setSelectedTests(tests)
+    markAsModified("tests")
+  }
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date)
+    markAsModified("nextVisit")
+  }
+
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
   const formatDate = (date) => {
     if (!(date instanceof Date) || isNaN(date.getTime())) {
@@ -414,7 +560,6 @@ const PrescriptionDetails = () => {
     }
   }, [])
 
-  // UPDATED: Enhanced medicine fetching to include stock information
   useEffect(() => {
     if (!branchCode) return
 
@@ -426,7 +571,7 @@ const PrescriptionDetails = () => {
         const medicineData = response.data.map((medicine) => ({
           label: medicine.medicine_name,
           category: medicine.medicine_category,
-          stock: medicine.stock || 0, // ADD: Include stock information
+          stock: medicine.stock || 0,
           fullData: medicine,
         }))
         setMedicineOptions(medicineData)
@@ -436,13 +581,11 @@ const PrescriptionDetails = () => {
       })
   }, [branchCode])
 
-  // ADD: Function to get stock information for a medicine
   const getMedicineStock = (medicineName) => {
     const medicine = medicineOptions.find((option) => option.label.toLowerCase() === medicineName.toLowerCase())
     return medicine ? medicine.stock : null
   }
 
-  // ADD: Function to get stock indicator component
   const getStockIndicator = (stock) => {
     if (stock === null || stock === undefined) return null
 
@@ -462,7 +605,6 @@ const PrescriptionDetails = () => {
     const warnings = {}
 
     prescriptionInputs.forEach((input, index) => {
-      // Only show stock warnings for new prescriptions (not loaded data)
       if (
         !loadedPrescriptionIndices.has(index) &&
         input.selectedPrescription &&
@@ -490,7 +632,6 @@ const PrescriptionDetails = () => {
     setStockWarnings(warnings)
   }
 
-  // ADD: Update stock warnings when prescriptions change
   useEffect(() => {
     checkStockWarnings(prescriptionInputs)
   }, [prescriptionInputs, medicineOptions, loadedPrescriptionIndices])
@@ -510,21 +651,48 @@ const PrescriptionDetails = () => {
   }
 
   useEffect(() => {
-    if (!patientUID || !branchCode) return
-    axios
-      .get(`${Cosmetologybaseurl}vitalform/`, {
-        params: {
-          patientUID,
-          branch_code: branchCode,
-        },
+    if (vital) {
+      setEditableVitals({
+        height: vital.height || "",
+        weight: vital.weight || "",
+        pulseRate: vital.pulseRate || "",
+        bloodPressure: vital.bloodPressure || "",
       })
-      .then((response) => {
-        setVital(response.data.vital[0] || {}); // set the first item or empty object
-      })
-      .catch((error) => {
-        console.error("Error fetching vital data:", error)
-      })
-  }, [patientUID, branchCode])
+    }
+  }, [vital])
+
+  const handleVitalsEdit = () => {
+    setIsEditingVitals(true)
+  }
+
+  const handleVitalsCancel = () => {
+    setIsEditingVitals(false)
+    // Reset to original values
+    setEditableVitals({
+      height: vital.height || "",
+      weight: vital.weight || "",
+      pulseRate: vital.pulseRate || "",
+      bloodPressure: vital.bloodPressure || "",
+    })
+  }
+
+  const handleVitalsChange = (field, value) => {
+    setEditableVitals((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const handleVitalsSave = () => {
+    // Just update the local vital state and exit edit mode
+    setVital(editableVitals)
+    setIsEditingVitals(false)
+    setSuccessMessage("Vitals updated (will be saved with prescription)")
+
+    setTimeout(() => {
+      setSuccessMessage("")
+    }, 3000)
+  }
 
   const handlePrescriptionAddInput = () => {
     setPrescriptionInputs((prev) => [
@@ -540,17 +708,14 @@ const PrescriptionDetails = () => {
         duration: "",
       },
     ])
-    // New prescriptions are not from loaded data
-    // loadedPrescriptionIndices will automatically not include the new index
+    markAsModified("prescriptions")
   }
 
   const handlePrescriptionDeleteInput = (index) => {
     setPrescriptionInputs((prev) => prev.filter((_, i) => i !== index))
-    // Remove from loaded indices if it was loaded
     setLoadedPrescriptionIndices((prev) => {
       const newSet = new Set(prev)
       newSet.delete(index)
-      // Adjust indices for remaining items
       const adjustedSet = new Set()
       Array.from(newSet).forEach((loadedIndex) => {
         if (loadedIndex > index) {
@@ -561,12 +726,12 @@ const PrescriptionDetails = () => {
       })
       return adjustedSet
     })
-    // Remove stock warning for deleted input
     setStockWarnings((prev) => {
       const newWarnings = { ...prev }
       delete newWarnings[index]
       return newWarnings
     })
+    markAsModified("prescriptions")
   }
 
   const handlePrescriptionChange = (index, key, value) => {
@@ -575,6 +740,7 @@ const PrescriptionDetails = () => {
       updated[index][key] = value
       return updated
     })
+    markAsModified("prescriptions")
   }
 
   const handleCheckboxChange = (index, key) => {
@@ -583,6 +749,7 @@ const PrescriptionDetails = () => {
       updated[index][key] = !updated[index][key]
       return updated
     })
+    markAsModified("prescriptions")
   }
 
   const calculateTotalDosage = (input) => {
@@ -599,6 +766,7 @@ const PrescriptionDetails = () => {
       ...prev,
       [id]: value,
     }))
+    markAsModified("plans")
   }
 
   const [summaryData, setSummaryData] = useState(null)
@@ -653,7 +821,6 @@ const PrescriptionDetails = () => {
     if (summaryData && summaryData.prescription) {
       const parsedPrescriptions = parsePrescriptions(summaryData.prescription)
       setPrescriptionInputs(parsedPrescriptions)
-      // Track which prescriptions are from loaded data
       const loadedIndices = new Set()
       parsedPrescriptions.forEach((_, index) => {
         loadedIndices.add(index)
@@ -697,14 +864,21 @@ const PrescriptionDetails = () => {
     if (!plansString) return { plan1: "", plan2: "", plan3: "" }
 
     const lines = plansString.split("\n")
-    return {
-      plan1: lines[0]?.split(": ")[1]?.trim() || "",
-      plan2: lines[1]?.split(": ")[1]?.trim() || "",
-      plan3: lines[2]?.split(": ")[1]?.trim() || "",
-    }
+    const plans = { plan1: "", plan2: "", plan3: "" }
+
+    lines.forEach((line) => {
+      if (line.includes("Plan1:") && !plans.plan1) {
+        plans.plan1 = line.split(": ")[1]?.trim() || ""
+      } else if (line.includes("Plan2:") && !plans.plan2) {
+        plans.plan2 = line.split(": ")[1]?.trim() || ""
+      } else if (line.includes("Plan3:") && !plans.plan3) {
+        plans.plan3 = line.split(": ")[1]?.trim() || ""
+      }
+    })
+
+    return plans
   }
 
-  // UPDATED: Modified useEffect to store loaded data separately and merge with current input
   useEffect(() => {
     if (summaryData) {
       const newLoadedData = {
@@ -718,12 +892,12 @@ const PrescriptionDetails = () => {
         nextVisit: null,
       }
 
-      // Store loaded diagnosis
       if (summaryData.diagnosis) {
-        newLoadedData.diagnosis = summaryData.diagnosis.split(", ").map((d) => ({ diagnosis: d.trim() }))
+        // ADD: Remove duplicates from diagnosis
+        const uniqueDiagnosis = [...new Set(summaryData.diagnosis.split(", ").map((d) => d.trim()))]
+        newLoadedData.diagnosis = uniqueDiagnosis.map((d) => ({ diagnosis: d }))
       }
 
-      // Store loaded complaints
       if (summaryData.complaints && summaryData.complaints !== "[]") {
         try {
           const parsedComplaints = JSON.parse(summaryData.complaints)
@@ -733,12 +907,12 @@ const PrescriptionDetails = () => {
         }
       }
 
-      // Store loaded findings
       if (summaryData.findings) {
-        newLoadedData.findings = summaryData.findings.split(", ").map((f) => ({ findings: f.trim() }))
+        // ADD: Remove duplicates from findings
+        const uniqueFindings = [...new Set(summaryData.findings.split(", ").map((f) => f.trim()))]
+        newLoadedData.findings = uniqueFindings.map((f) => ({ findings: f }))
       }
 
-      // Store loaded procedures
       if (summaryData.proceduresList) {
         newLoadedData.procedures = summaryData.proceduresList.split("\n").map((line) => {
           const procedureMatch = line.match(/Procedure: (.*?) - Date:/)
@@ -750,40 +924,39 @@ const PrescriptionDetails = () => {
         })
       }
 
-      // Store loaded prescriptions
       if (summaryData.prescription) {
         newLoadedData.prescriptions = parsePrescriptions(summaryData.prescription)
       }
 
-      // Store loaded plans
       if (summaryData.plans) {
         newLoadedData.plans = parsePlans(summaryData.plans)
       }
 
-      // Store loaded tests
       if (summaryData.tests) {
-        newLoadedData.tests = summaryData.tests.split(", ").map((t) => ({ test: t.trim() }))
+        // ADD: Remove duplicates from tests
+        const uniqueTests = [...new Set(summaryData.tests.split(", ").map((t) => t.trim()))]
+        newLoadedData.tests = uniqueTests.map((t) => ({ test: t }))
       }
 
-      // Store loaded next visit
       if (summaryData.nextVisit) {
         newLoadedData.nextVisit = parseNextVisit(summaryData.nextVisit)
       }
 
       setLoadedData(newLoadedData)
+      // ADD: Store original loaded data for comparison
+      setOriginalLoadedData(JSON.parse(JSON.stringify(newLoadedData)))
 
-      // Only populate input fields if they are currently empty
       if (selectedDiagnosis.length === 0 && newLoadedData.diagnosis.length > 0) {
         setSelectedDiagnosis(newLoadedData.diagnosis)
       }
       if (selectedComplaints.length === 0 && newLoadedData.complaints.length > 0) {
         setSelectedComplaints(newLoadedData.complaints)
       }
-      if (selectedfindings.length === 0 && newLoadedData.findings.length > 0) {
+      if (selectedFindings.length === 0 && newLoadedData.findings.length > 0) {
         setSelectedFindings(newLoadedData.findings)
       }
-      if (selectedprocedure.length === 0 && newLoadedData.procedures.length > 0) {
-        setSelectedprocedure(newLoadedData.procedures)
+      if (selectedProcedure.length === 0 && newLoadedData.procedures.length > 0) {
+        setSelectedProcedure(newLoadedData.procedures)
       }
       if (selectedTests.length === 0 && newLoadedData.tests.length > 0) {
         setSelectedTests(newLoadedData.tests)
@@ -791,9 +964,104 @@ const PrescriptionDetails = () => {
     }
   }, [summaryData])
 
+// Update the useEffect that fetches vitals to check prescription data first
+useEffect(() => {
+  if (!patientUID || !branchCode) return
+
+  const fetchVitals = async () => {
+    let vitalsFound = false
+    setVitalsLoaded(false)
+
+    // First: Check if we have vitals in existing prescription/summary data
+    if (summaryData && summaryData.vital) {
+      try {
+        // Handle both string (JSON) and object formats
+        let prescriptionVitals
+        if (typeof summaryData.vital === 'string') {
+          prescriptionVitals = JSON.parse(summaryData.vital)
+        } else {
+          prescriptionVitals = summaryData.vital
+        }
+        
+        if (
+          prescriptionVitals &&
+          (prescriptionVitals.height ||
+            prescriptionVitals.weight ||
+            prescriptionVitals.pulseRate ||
+            prescriptionVitals.bloodPressure)
+        ) {
+          console.log("Loading vitals from summary data:", prescriptionVitals)
+          setVital(prescriptionVitals)
+          setEditableVitals({
+            height: prescriptionVitals.height || "",
+            weight: prescriptionVitals.weight || "",
+            pulseRate: prescriptionVitals.pulseRate || "",
+            bloodPressure: prescriptionVitals.bloodPressure || "",
+          })
+          vitalsFound = true
+          setVitalsLoaded(true)
+          return // Don't fetch from vitals API if we have prescription vitals
+        }
+      } catch (error) {
+        console.error("Error parsing prescription vitals:", error)
+      }
+    }
+
+    // Second: If no prescription vitals, try fetching from vitals API
+    if (!vitalsFound) {
+      try {
+        const response = await axios.get(`${Cosmetologybaseurl}vitalform/`, {
+          params: {
+            patientUID,
+            branch_code: branchCode,
+          },
+        })
+
+        const vitalData = response.data.vital[0] || {}
+        if (vitalData && (vitalData.height || vitalData.weight || vitalData.pulseRate || vitalData.bloodPressure)) {
+          console.log("Loading vitals from vitals API:", vitalData)
+          setVital(vitalData)
+          setEditableVitals({
+            height: vitalData.height || "",
+            weight: vitalData.weight || "",
+            pulseRate: vitalData.pulseRate || "",
+            bloodPressure: vitalData.bloodPressure || "",
+          })
+          vitalsFound = true
+        }
+      } catch (error) {
+        console.error("Error fetching vital data:", error)
+      }
+    }
+
+    // Third: If neither source has vitals, set unavailable state
+    if (!vitalsFound) {
+      console.log("No vitals found, setting as unavailable")
+      setVital({
+        height: "Unavailable",
+        weight: "Unavailable",
+        pulseRate: "Unavailable",
+        bloodPressure: "Unavailable",
+      })
+      setEditableVitals({
+        height: "",
+        weight: "",
+        pulseRate: "",
+        bloodPressure: "",
+      })
+    }
+
+    setVitalsLoaded(true)
+  }
+
+  fetchVitals()
+}, [patientUID, branchCode, summaryData])
+
+
   const handleSubmit = async () => {
     try {
       const userName = localStorage.getItem("userName") || "Unknown"
+      const userRole = localStorage.getItem("userRole") || "Doctor" // Get user role
 
       const validPrescriptions = prescriptionInputs.filter(
         (input) => input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "",
@@ -804,6 +1072,25 @@ const PrescriptionDetails = () => {
         .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
         .join("\n")
 
+      // Helper function to remove duplicates from comma-separated strings
+      const removeDuplicates = (str) => {
+        if (!str || typeof str !== "string") return str
+        return [
+          ...new Set(
+            str
+              .split(", ")
+              .map((item) => item.trim())
+              .filter(Boolean),
+          ),
+        ].join(", ")
+      }
+
+      // Helper function to clean and deduplicate array-based data
+      const cleanArrayData = (data) => {
+        if (!data || !Array.isArray(data)) return data
+        return [...new Set(data.map((item) => (typeof item === "string" ? item.trim() : item)))].filter(Boolean)
+      }
+
       const currentSummaryData = {
         patientName,
         patientUID,
@@ -811,15 +1098,21 @@ const PrescriptionDetails = () => {
         appointmentDate,
         branch_code: branchCode,
         patient_handledby: userName,
-        diagnosis: selectedDiagnosis.map((d) => d.diagnosis).join(", "),
+        diagnosis:
+          selectedDiagnosis && selectedDiagnosis.length > 0
+            ? removeDuplicates(cleanArrayData(selectedDiagnosis.map((d) => d.diagnosis)).join(", "))
+            : "",
         complaints: JSON.stringify(
           selectedComplaints.map((input) => ({
-            complaints: input.selectedComplaints.map((c) => c.complaints).join(", "),
+            complaints: removeDuplicates(input.selectedComplaints.map((c) => c.complaints).join(", ")),
             duration: input.duration,
             durationUnit: input.durationUnit,
           })),
         ),
-        findings: selectedfindings.map((f) => f.findings).join(", "),
+        findings:
+          selectedFindings && selectedFindings.length > 0
+            ? removeDuplicates(cleanArrayData(selectedFindings.map((findings) => findings.findings)).join(", "))
+            : "",
         prescription: validPrescriptions
           .map((input) => {
             const times = ["M", "A", "E", "N"]
@@ -831,18 +1124,20 @@ const PrescriptionDetails = () => {
           })
           .join("\n"),
         plans: validPlans,
-        tests: selectedTests && selectedTests.length > 0 ? selectedTests.map((test) => test.test).join(", ") : "",
-        uploadedImages: uploadedImages.map((img) => ({ src: img.src, alt: img.alt })),
+        tests:
+          selectedTests && selectedTests.length > 0
+            ? removeDuplicates(cleanArrayData(selectedTests.map((test) => test.test)).join(", "))
+            : "",
         nextVisit: selectedDate ? formatDate(selectedDate) : null,
         vital: JSON.stringify({
-          height: vital?.height,
-          weight: vital?.weight,
-          pulseRate: vital?.pulseRate,
-          bloodPressure: vital?.bloodPressure,
+          height: editableVitals.height,
+          weight: editableVitals.weight,
+          pulseRate: editableVitals.pulseRate,
+          bloodPressure: editableVitals.bloodPressure,
         }),
-        proceduresList: selectedprocedure
+        proceduresList: selectedProcedure
           .map((proc) => ({
-            procedure: proc.selectedProcedures.map((p) => p.procedure).join(", "),
+            procedure: removeDuplicates(proc.selectedProcedures.map((p) => p.procedure).join(", ")),
             date: proc.selectedDate ? formatDate(proc.selectedDate) : "",
           }))
           .map((proc) => `Procedure: ${proc.procedure} - Date: ${proc.date}`)
@@ -860,12 +1155,24 @@ const PrescriptionDetails = () => {
       if (getResponse.data && getResponse.data.length > 0) {
         const existingData = getResponse.data[0]
 
-        // Enhanced deep comparison function
+        // Enhanced deep comparison function with better normalization
         const normalizeValue = (value) => {
           if (value === null || value === undefined) return ""
-          if (typeof value === "string") return value.trim()
-          if (typeof value === "object") return JSON.stringify(value)
-          return String(value)
+          if (typeof value === "string") {
+            // Remove extra spaces and normalize comma-separated values
+            const trimmed = value.trim()
+            if (trimmed.includes(",")) {
+              return removeDuplicates(trimmed)
+            }
+            return trimmed
+          }
+          if (typeof value === "object") {
+            if (Array.isArray(value)) {
+              return JSON.stringify(value.map((item) => (typeof item === "object" ? item : String(item).trim())))
+            }
+            return JSON.stringify(value)
+          }
+          return String(value).trim()
         }
 
         const areObjectsEqual = (obj1, obj2) => {
@@ -880,7 +1187,12 @@ const PrescriptionDetails = () => {
             const val2 = normalizeValue(obj2[key])
 
             if (val1 !== val2) {
-              console.log(`Difference found in key "${key}":`, { current: val1, existing: val2 })
+              console.log(`Difference found in key "${key}":`, {
+                current: val1,
+                existing: val2,
+                currentLength: val1.length,
+                existingLength: val2.length,
+              })
               return false
             }
           }
@@ -895,13 +1207,12 @@ const PrescriptionDetails = () => {
           appointmentDate: existingData.appointmentDate || "",
           branch_code: existingData.branch_code || "",
           patient_handledby: existingData.patient_handledby || "",
-          diagnosis: existingData.diagnosis || "",
+          diagnosis: removeDuplicates(existingData.diagnosis || ""),
           complaints: existingData.complaints || "",
-          findings: existingData.findings || "",
+          findings: removeDuplicates(existingData.findings || ""),
           prescription: existingData.prescription || "",
           plans: existingData.plans || "",
-          tests: existingData.tests || "",
-          uploadedImages: existingData.uploadedImages || [],
+          tests: removeDuplicates(existingData.tests || ""),
           nextVisit: existingData.nextVisit || null,
           vital: existingData.vital || "",
           proceduresList: existingData.proceduresList || "",
@@ -913,17 +1224,50 @@ const PrescriptionDetails = () => {
         if (!hasChanges) {
           setSuccessMessage("No changes made")
         } else {
-          // Only make PATCH request if there are actual changes
-          await axios.patch(`${Cosmetologybaseurl}summary/post/`, currentSummaryData)
+          await axios.patch(`${Cosmetologybaseurl}summary/post/`, {
+            ...currentSummaryData,
+            id: existingData.id,
+          })
           setSuccessMessage("Updated successfully")
+
+          // Show confirmation alert after 3 seconds
+          setTimeout(() => {
+            Swal.fire({
+              title: 'Go Back?',
+              text: 'Do you want to go back to the appointments page?',
+              icon: 'question',
+              showCancelButton: true,
+              confirmButtonText: 'Yes, take me there',
+              cancelButtonText: 'No, stay here',
+              confirmButtonColor: '#3085d6',
+              cancelButtonColor: '#d33',
+            }).then((result) => {
+              if (result.isConfirmed) {
+                const navigationPath = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
+                window.location.href = navigationPath
+              }
+              setSuccessMessage("")
+            })
+          }, 3000)
+          return // Exit early to prevent clearing message immediately
         }
       } else {
-        // No existing data, so this is a new entry
         await axios.post(`${Cosmetologybaseurl}summary/post/`, currentSummaryData)
         setSuccessMessage("Saved successfully")
+
+        // Show confirmation alert after 3 seconds
+        setTimeout(() => {
+          const shouldNavigate = window.confirm("Do you want to go back to appointments page?")
+          if (shouldNavigate) {
+            const navigationPath = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
+            window.location.href = navigationPath
+          }
+          setSuccessMessage("")
+        }, 3000)
+        return // Exit early to prevent clearing message immediately
       }
 
-      // Clear message after 3 seconds
+      // Clear message after 3 seconds (only for "No changes made")
       setTimeout(() => {
         setSuccessMessage("")
       }, 3000)
@@ -937,16 +1281,13 @@ const PrescriptionDetails = () => {
   }
   const summaryRef = useRef(null)
 
-  // UPDATED: Helper function to merge loaded data with current input data
   const getMergedData = () => {
-    // Start with the loaded data
     const mergedDiagnosis = [...loadedData.diagnosis]
     const mergedComplaints = [...loadedData.complaints]
     const mergedFindings = [...loadedData.findings]
     const mergedProcedures = [...loadedData.procedures]
     const mergedTests = [...loadedData.tests]
 
-    // Add new (not previously loaded) items from current state
     selectedDiagnosis.forEach((item) => {
       if (!loadedData.diagnosis.some((loaded) => loaded.diagnosis === item.diagnosis)) {
         mergedDiagnosis.push(item)
@@ -959,13 +1300,13 @@ const PrescriptionDetails = () => {
       }
     })
 
-    selectedfindings.forEach((item) => {
+    selectedFindings.forEach((item) => {
       if (!loadedData.findings.some((loaded) => loaded.findings === item.findings)) {
         mergedFindings.push(item)
       }
     })
 
-    selectedprocedure.forEach((item) => {
+    selectedProcedure.forEach((item) => {
       if (!loadedData.procedures.some((loaded) => JSON.stringify(loaded) === JSON.stringify(item))) {
         mergedProcedures.push(item)
       }
@@ -977,12 +1318,7 @@ const PrescriptionDetails = () => {
       }
     })
 
-    // Handle Prescriptions: Prioritize current prescriptionInputs
-    // If a prescription from loadedData is also present in prescriptionInputs (by name),
-    // use the one from prescriptionInputs. Otherwise, add both.
     const mergedPrescriptions = []
-    // eslint-disable-next-line no-unused-vars
-    const processedLoadedPrescriptions = new Set() // To avoid duplicates
 
     prescriptionInputs.forEach((input) => {
       if (input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "") {
@@ -1001,14 +1337,12 @@ const PrescriptionDetails = () => {
       }
     })
 
-    // Handle Plans: Current planDetails override loadedData.plans
     const mergedPlans = {
       plan1: planDetails.plan1 || loadedData.plans.plan1,
       plan2: planDetails.plan2 || loadedData.plans.plan2,
       plan3: planDetails.plan3 || loadedData.plans.plan3,
     }
 
-    // Handle Next Visit: Current selectedDate overrides loadedData.nextVisit
     const mergedNextVisit = selectedDate || loadedData.nextVisit
 
     return {
@@ -1023,60 +1357,146 @@ const PrescriptionDetails = () => {
     }
   }
 
-  // UPDATED: Modified getSummaryDetails function to use merged data and include stock information
   const getSummaryDetails = () => {
     const mergedData = getMergedData()
 
-    const diagnosissummary = mergedData.diagnosis.map((diagnosis, index) => {
-      const cleanDiagnosis = diagnosis.diagnosis?.replace(/^[.\s\n]+/, "").trim() // remove leading dot/newlines
-      return <li key={index}>{cleanDiagnosis}</li>
-    })
+    // Helper function to safely handle both array and string data
+    const safeJoin = (data, field) => {
+      if (!data || data.length === 0) return ""
 
-    const complaintssummary = mergedData.complaints.map((input, index) => {
-      const complaintText = input.selectedComplaints
-        ? input.selectedComplaints.map((complaint) => complaint.complaints).join(", ")
-        : "No complaint provided"
-      const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || "N/A"}` : ""
-      return (
-        <li key={index}>
-          {complaintText}
-          {duration}
-        </li>
-      )
-    })
+      // If it's already a string (from database), return as is
+      if (typeof data === "string") {
+        return data.trim()
+      }
 
-    const findingssummary = mergedData.findings.map((findings, index) => <li key={index}>{findings.findings}</li>)
-
-    const proceduresummary = mergedData.procedures.map((procedure, index) => (
-      <li key={index}>
-        {procedure.selectedProcedures.map((p) => p.procedure).join(", ")} - Date:{" "}
-        {procedure.selectedDate ? formatDate(new Date(procedure.selectedDate)) : "None"}
-      </li>
-    ))
-
-    // UPDATED: Enhanced prescription summary with stock information
-    const prescriptionSummary = mergedData.prescriptions
-      .map((input, index) => {
-        const times = ["M", "A", "E", "N"]
-          .map((time) => (input[time.toLowerCase()] ? time : ""))
+      // If it's an array, extract the field and join
+      if (Array.isArray(data)) {
+        return data
+          .map((item) => {
+            if (typeof item === "string") return item
+            return item[field] || ""
+          })
           .filter(Boolean)
-          .join(" ")
-        const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ")
-        // Only show stock info for new prescriptions (not loaded data)
-        const isLoadedPrescription = loadedData.prescriptions.some(
-          (loaded) => loaded.selectedPrescription[0]?.label === medicineName,
+          .join(", ")
+      }
+
+      return ""
+    }
+
+    // Helper function to remove duplicates and clean comma-separated strings
+    const cleanString = (str) => {
+      if (!str || typeof str !== "string") return ""
+      return [
+        ...new Set(
+          str
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+        ),
+      ].join(", ")
+    }
+
+    const diagnosissummary = cleanString(safeJoin(mergedData.diagnosis, "diagnosis"))
+
+    const complaintssummary = (() => {
+      if (!mergedData.complaints || mergedData.complaints.length === 0) return []
+
+      // Handle case where complaints is a string (from database)
+      if (typeof mergedData.complaints === "string") {
+        try {
+          const parsedComplaints = JSON.parse(mergedData.complaints)
+          return parsedComplaints.map((complaint, index) => (
+            <SummaryListItem key={index}>
+              {complaint.complaints}
+              {complaint.duration ? ` - Duration: ${complaint.duration} ${complaint.durationUnit || "N/A"}` : ""}
+            </SummaryListItem>
+          ))
+        } catch (e) {
+          // If parsing fails, treat as simple string
+          return [<SummaryListItem key={0}>{cleanString(mergedData.complaints)}</SummaryListItem>]
+        }
+      }
+
+      // Handle array format (new data)
+      return mergedData.complaints.map((input, index) => {
+        const complaintText = input.selectedComplaints
+          ? input.selectedComplaints.map((complaint) => complaint.complaints).join(", ")
+          : "No complaint provided"
+        const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || "N/A"}` : ""
+        return (
+          <SummaryListItem key={index}>
+            {complaintText}
+            {duration}
+          </SummaryListItem>
         )
-        const stock = !isLoadedPrescription ? getMedicineStock(medicineName) : null
-        const stockInfo = stock !== null ? ` [Stock: ${stock}]` : ""
-        return `${index + 1}. ${medicineName}${stockInfo} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration}`
       })
-      .join("\n")
+    })()
 
-    const validPlans = Object.entries(mergedData.plans)
-      .filter(([key, value]) => value && value.trim() !== "")
-      .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
+    const findingssummary = cleanString(safeJoin(mergedData.findings, "findings"))
 
-    const testsSummary = mergedData.tests.map((test) => test.test).join(", ")
+    const proceduresummary = (() => {
+      if (!mergedData.procedures || mergedData.procedures.length === 0) return []
+
+      // Handle string format (from database)
+      if (typeof mergedData.procedures === "string") {
+        const procedureLines = mergedData.procedures.split("\n").filter(Boolean)
+        return procedureLines.map((line, index) => (
+          <SummaryListItem key={index}>
+            {line.replace("Procedure: ", "").replace(" - Date: ", " - Date: ")}
+          </SummaryListItem>
+        ))
+      }
+
+      // Handle array format (new data)
+      return mergedData.procedures.map((procedure, index) => (
+        <SummaryListItem key={index}>
+          {procedure.selectedProcedures.map((p) => p.procedure).join(", ")} - Date:{" "}
+          {procedure.selectedDate ? formatDate(new Date(procedure.selectedDate)) : "None"}
+        </SummaryListItem>
+      ))
+    })()
+
+    const prescriptionSummary = (() => {
+      if (!mergedData.prescriptions || mergedData.prescriptions.length === 0) return ""
+
+      // Handle string format (from database)
+      if (typeof mergedData.prescriptions === "string") {
+        return mergedData.prescriptions
+      }
+
+      // Handle array format (new data)
+      return mergedData.prescriptions
+        .map((input, index) => {
+          const times = ["M", "A", "E", "N"]
+            .map((time) => (input[time.toLowerCase()] ? time : ""))
+            .filter(Boolean)
+            .join(" ")
+          const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ")
+          const isLoadedPrescription = loadedData.prescriptions.some(
+            (loaded) => loaded.selectedPrescription[0]?.label === medicineName,
+          )
+          const stock = !isLoadedPrescription ? getMedicineStock(medicineName) : null
+          const stockInfo = stock !== null ? ` [Stock: ${stock}]` : ""
+          return `${index + 1}. ${medicineName}${stockInfo} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration}`
+        })
+        .join("\n")
+    })()
+
+    const validPlans = (() => {
+      if (!mergedData.plans) return []
+
+      // Handle string format (from database)
+      if (typeof mergedData.plans === "string") {
+        return mergedData.plans.split("\n").filter(Boolean)
+      }
+
+      // Handle object format (new data)
+      return Object.entries(mergedData.plans)
+        .filter(([key, value]) => value && value.trim() !== "")
+        .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
+    })()
+
+    const testsSummary = cleanString(safeJoin(mergedData.tests, "test"))
     const nextVisitSummary = mergedData.nextVisit ? formatDate(mergedData.nextVisit) : " "
 
     const summaryContent = (
@@ -1103,44 +1523,44 @@ const PrescriptionDetails = () => {
         </PatientDetailsRow>
         <Divider />
 
-        {mergedData.diagnosis.length > 0 && (
+        {diagnosissummary && (
           <>
             <SummaryItemTitle>Diagnosis</SummaryItemTitle>
-            <ul>{diagnosissummary}</ul>
+            <SummaryList>{diagnosissummary}</SummaryList>
             <Divider />
           </>
         )}
 
-        {mergedData.complaints.length > 0 && (
+        {complaintssummary.length > 0 && (
           <>
             <SummaryItemTitle>Complaints</SummaryItemTitle>
-            <ul>{complaintssummary}</ul>
+            <SummaryList>{complaintssummary}</SummaryList>
             <Divider />
           </>
         )}
 
-        {mergedData.findings.length > 0 && (
+        {findingssummary && (
           <>
             <SummaryItemTitle>Findings</SummaryItemTitle>
-            <ul>{findingssummary}</ul>
+            <SummaryList>{findingssummary}</SummaryList>
             <Divider />
           </>
         )}
 
-        {mergedData.procedures.length > 0 && (
+        {proceduresummary.length > 0 && (
           <>
             <SummaryItemTitle>Procedures</SummaryItemTitle>
-            <ul>{proceduresummary}</ul>
+            <SummaryList>{proceduresummary}</SummaryList>
             <Divider />
           </>
         )}
 
-        {mergedData.prescriptions.length > 0 && (
+        {prescriptionSummary && (
           <>
             <SummaryItemTitle>Prescription</SummaryItemTitle>
-            <ul>
-              <li style={{ whiteSpace: "pre-line" }}>{prescriptionSummary}</li>
-            </ul>
+            <SummaryList>
+              <SummaryListItem style={{ whiteSpace: "pre-line" }}>{prescriptionSummary}</SummaryListItem>
+            </SummaryList>
             <Divider />
           </>
         )}
@@ -1148,21 +1568,21 @@ const PrescriptionDetails = () => {
         {validPlans.length > 0 && (
           <>
             <SummaryItemTitle>Plans</SummaryItemTitle>
-            <ul>
+            <SummaryList>
               {validPlans.map((plan, index) => (
-                <li key={index}>{plan}</li>
+                <SummaryListItem key={index}>{plan}</SummaryListItem>
               ))}
-            </ul>
+            </SummaryList>
             <Divider />
           </>
         )}
 
-        {mergedData.tests.length > 0 && (
+        {testsSummary && (
           <>
             <SummaryItemTitle>Tests</SummaryItemTitle>
-            <ul>
-              <li>{testsSummary}</li>
-            </ul>
+            <SummaryList>
+              <SummaryListItem>{testsSummary}</SummaryListItem>
+            </SummaryList>
             <Divider />
           </>
         )}
@@ -1170,9 +1590,9 @@ const PrescriptionDetails = () => {
         {mergedData.nextVisit && (
           <>
             <SummaryItemTitle>Next Visit</SummaryItemTitle>
-            <ul>
-              <li>{nextVisitSummary}</li>
-            </ul>
+            <SummaryList>
+              <SummaryListItem>{nextVisitSummary}</SummaryListItem>
+            </SummaryList>
             <Divider />
           </>
         )}
@@ -1195,13 +1615,11 @@ const PrescriptionDetails = () => {
       img.onerror = (error) => console.error("Error converting image to Base64:", error)
     }
 
-    // Enhanced exportToPDF function with better patient details presentation
     const exportToPDF = () => {
       const pdf = new jsPDF("p", "mm", "a4")
       const pageWidth = pdf.internal.pageSize.getWidth()
       const pageHeight = pdf.internal.pageSize.getHeight()
 
-      // Select PDF background based on branch code
       const backgroundImageMap = {
         SCC001: PDFMain1,
         SCC002: PDFMain2,
@@ -1209,30 +1627,22 @@ const PrescriptionDetails = () => {
 
       const PDFMain = backgroundImageMap[branchCode] || PDFMain1
 
-      // Determine startY based on branch code
-      let startY = 50 // Default
+      let startY = 50
 
       if (branchCode === "SCC002") {
         startY = 80
       }
 
       convertToBase64(PDFMain, (mainImage) => {
-        // Add full background image
         pdf.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-        // Enhanced patient details styling
         pdf.setFont("helvetica", "bold")
         pdf.setFontSize(16)
         pdf.setTextColor(40, 40, 40)
         pdf.text(`Patient: ${appointment.patientName.toUpperCase()}`, 16, startY)
 
-        // Patient details with improved formatting
         pdf.setFont("helvetica", "normal")
         pdf.setFontSize(11)
         pdf.text(`Patient UID: ${appointment.patientUID}`, 16, startY + 10)
-        pdf.text(`Mobile: ${appointment.mobileNumber}`, 16, startY + 20)
-
-        pdf.text(`Date: ${appointmentDate}`, 140, startY)
-        pdf.text(`Gender: ${appointment.gender}`, 140, startY + 10)
 
         startY += 15
 
@@ -1245,17 +1655,14 @@ const PrescriptionDetails = () => {
 
         let data = []
 
-        // Filter out empty prescriptions for display
         const validPrescriptions = prescriptionInputs.filter(
           (input) => input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "",
         )
 
-        // Filter out empty plans for display
         const validPlans = Object.entries(planDetails)
           .filter(([key, value]) => value && value.trim() !== "")
           .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
 
-        // UPDATED: Enhanced prescription summary for PDF with stock information
         const prescriptionSummary = validPrescriptions
           .map((input, index) => {
             const times = ["M", "A", "E", "N"]
@@ -1263,7 +1670,6 @@ const PrescriptionDetails = () => {
               .filter(Boolean)
               .join(" ")
             const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ")
-            // Only show stock info for new prescriptions (not loaded data)
             const isLoadedPrescription = loadedData.prescriptions.some(
               (loaded) => loaded.selectedPrescription[0]?.label === medicineName,
             )
@@ -1273,12 +1679,11 @@ const PrescriptionDetails = () => {
           })
           .join("\n")
 
-        // Only add sections with data
         if (selectedDiagnosis.length > 0) {
           data = data.concat(
             createSubTableRows(
               "Diagnosis",
-              selectedDiagnosis.map((d) => d.diagnosis),
+              selectedDiagnosis.map((diagnosis) => diagnosis.diagnosis),
             ),
           )
         }
@@ -1298,20 +1703,20 @@ const PrescriptionDetails = () => {
           )
         }
 
-        if (selectedfindings.length > 0) {
+        if (selectedFindings.length > 0) {
           data = data.concat(
             createSubTableRows(
               "Findings",
-              selectedfindings.map((f) => f.findings),
+              selectedFindings.map((findings) => findings.findings),
             ),
           )
         }
 
-        if (selectedprocedure.length > 0) {
+        if (selectedProcedure.length > 0) {
           data = data.concat(
             createSubTableRows(
               "Procedures",
-              selectedprocedure.map(
+              selectedProcedure.map(
                 (p) =>
                   `${p.selectedProcedures.map((proc) => proc.procedure).join(", ")} - Date: ${p.selectedDate ? formatDate(new Date(p.selectedDate)) : "None"}`,
               ),
@@ -1319,15 +1724,11 @@ const PrescriptionDetails = () => {
           )
         }
 
-        // Only add prescription if there are valid prescriptions
         if (validPrescriptions.length > 0) {
           data.push(["Prescription", prescriptionSummary])
         }
 
-        // Only add plans if there are valid plans
-        if (validPlans.length > 0) {
-          data.push(["Plans", validPlans.join(", ")])
-        }
+        data.push(["Plans", validPlans.map((plan) => plan.split(":")[1]?.trim()).join("\n")])
 
         if (selectedTests.length > 0) {
           data = data.concat(
@@ -1342,7 +1743,6 @@ const PrescriptionDetails = () => {
           data.push(["Next Visit Date", selectedDate.toLocaleDateString()])
         }
 
-        // Create table only if there's data
         if (data.length > 0) {
           pdf.autoTable({
             startY,
@@ -1374,37 +1774,11 @@ const PrescriptionDetails = () => {
           })
         }
 
-        // Handle images section
         let currentY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 10 : startY
         pdf.setFontSize(14)
         pdf.setTextColor(0, 0, 0)
         currentY += 10
 
-        const imageWidth = 25
-        const imageHeight = 30
-        const imagesPerRow = Math.floor((pageWidth - 20) / (imageWidth + 5))
-
-        uploadedImages.forEach((img, index) => {
-          const x = 10 + (index % imagesPerRow) * (imageWidth + 5)
-
-          // Check if we need a new page
-          if (currentY + imageHeight + 20 > pageHeight - 20) {
-            pdf.addPage()
-            // Add background to new page
-            pdf.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-            currentY = 85 // Reset Y position for new page
-          }
-
-          pdf.addImage(img.src, "JPEG", x, currentY, imageWidth, imageHeight)
-          pdf.setFontSize(10)
-          pdf.text(`Image ${index + 1}`, x + imageWidth / 4, currentY + imageHeight + 5)
-
-          if ((index + 1) % imagesPerRow === 0) {
-            currentY += imageHeight + 20
-          }
-        })
-
-        // Save the PDF
         pdf.save(`${branchCode}_${appointment.patientName}_${appointment.patientUID}_${appointmentDate}`)
       })
     }
@@ -1453,14 +1827,96 @@ const PrescriptionDetails = () => {
           <Tab.Pane eventKey="consulting-room">
             <RightContent>
               <PatientDetailsContainer>
-                <ProfileImage src={appointment.gender === "Male" ? male : female} alt="Profile" />
-                <PatientName className="mt-1">Name: {patientName}</PatientName>
-                <PatientText className="mt-1">Phone: {mobileNumber}</PatientText>
-                <PatientText className="mt-1">Height: {vital?.height}</PatientText>
-                <PatientText className="mt-1">Weight: {vital?.weight}</PatientText>
-                <PatientText className="mt-1">Pulse Rate: {vital?.pulseRate}</PatientText>
-                <PatientText className="mt-1">Blood Pressure: {vital?.bloodPressure}</PatientText>
-                <PatientText className="mt-1">Purpose Of Visit: {appointment.purposeOfVisit}</PatientText>
+                {vitalsLoaded ? (
+                  <>
+                    {!isEditingVitals ? (
+                      <EditIcon onClick={handleVitalsEdit} title="Edit Vitals" />
+                    ) : (
+                      <VitalsEditContainer>
+                        <EditButton onClick={handleVitalsSave} title="Save Vitals">
+                          <FaSave />
+                        </EditButton>
+                        <EditButton onClick={handleVitalsCancel} title="Cancel">
+                          <FaTimes />
+                        </EditButton>
+                      </VitalsEditContainer>
+                    )}
+
+                    <ProfileImage src={appointment.gender === "Male" ? male : female} alt="Profile" />
+                    <PatientName className="mt-1">Name: {patientName}</PatientName>
+                    <PatientText className="mt-1">Phone: {mobileNumber}</PatientText>
+
+                    <PatientText className="mt-1">
+                      Height:{" "}
+                      {isEditingVitals ? (
+                        <VitalInput
+                          type="text"
+                          value={editableVitals.height}
+                          onChange={(e) => handleVitalsChange("height", e.target.value)}
+                          placeholder="Height"
+                        />
+                      ) : (
+                        <span style={{ color: vital?.height === "Unavailable" ? "#ffcccc" : "white" }}>
+                          {vital?.height || "Unavailable"}
+                        </span>
+                      )}
+                    </PatientText>
+
+                    <PatientText className="mt-1">
+                      Weight:{" "}
+                      {isEditingVitals ? (
+                        <VitalInput
+                          type="text"
+                          value={editableVitals.weight}
+                          onChange={(e) => handleVitalsChange("weight", e.target.value)}
+                          placeholder="Weight"
+                        />
+                      ) : (
+                        <span style={{ color: vital?.weight === "Unavailable" ? "#ffcccc" : "white" }}>
+                          {vital?.weight || "Unavailable"}
+                        </span>
+                      )}
+                    </PatientText>
+
+                    <PatientText className="mt-1">
+                      Pulse Rate:{" "}
+                      {isEditingVitals ? (
+                        <VitalInput
+                          type="text"
+                          value={editableVitals.pulseRate}
+                          onChange={(e) => handleVitalsChange("pulseRate", e.target.value)}
+                          placeholder="Pulse Rate"
+                        />
+                      ) : (
+                        <span style={{ color: vital?.pulseRate === "Unavailable" ? "#ffcccc" : "white" }}>
+                          {vital?.pulseRate || "Unavailable"}
+                        </span>
+                      )}
+                    </PatientText>
+
+                    <PatientText className="mt-1">
+                      Blood Pressure:{" "}
+                      {isEditingVitals ? (
+                        <VitalInput
+                          type="text"
+                          value={editableVitals.bloodPressure}
+                          onChange={(e) => handleVitalsChange("bloodPressure", e.target.value)}
+                          placeholder="Blood Pressure"
+                        />
+                      ) : (
+                        <span style={{ color: vital?.bloodPressure === "Unavailable" ? "#ffcccc" : "white" }}>
+                          {vital?.bloodPressure || "Unavailable"}
+                        </span>
+                      )}
+                    </PatientText>
+
+                    <PatientText className="mt-1">Purpose Of Visit: {appointment.purposeOfVisit}</PatientText>
+                  </>
+                ) : (
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                    <PatientText style={{ textAlign: "center" }}>Loading vitals...</PatientText>
+                  </div>
+                )}
               </PatientDetailsContainer>
 
               <ContainerRow>
@@ -1468,6 +1924,7 @@ const PrescriptionDetails = () => {
                   onSelectDiagnosis={handleSelectDiagnosis}
                   preSelectedDiagnosis={summaryData?.diagnosis || ""}
                 />
+
                 <Findings onSelectFindings={handleSelectfindings} preSelectedFindings={summaryData?.findings || ""} />
               </ContainerRow>
 
@@ -1506,7 +1963,6 @@ const PrescriptionDetails = () => {
                           }}
                           selected={input.selectedPrescription || []}
                           allowNew={true}
-                          // Only show stock information for new prescriptions
                           renderMenuItemChildren={
                             !loadedPrescriptionIndices.has(index)
                               ? (option) => (
@@ -1518,7 +1974,6 @@ const PrescriptionDetails = () => {
                               : undefined
                           }
                         />
-                        {/* Only display stock indicator for new prescriptions */}
                         {!loadedPrescriptionIndices.has(index) &&
                           input.selectedPrescription &&
                           input.selectedPrescription.length > 0 && (
@@ -1601,7 +2056,6 @@ const PrescriptionDetails = () => {
                       </Col>
                     </Form.Group>
 
-                    {/* ADD: Display stock warning if exists */}
                     {stockWarnings[index] && <StockWarning>{stockWarnings[index].message}</StockWarning>}
                   </div>
                 ))}

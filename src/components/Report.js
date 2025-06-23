@@ -181,16 +181,22 @@ const Report = () => {
       ],
       Doctor: [
         {
+          id: "BillingReport",
+          icon: FaFileInvoiceDollar,
+          label: "Billing Report",
+          description: "View billing and payment reports",
+        },
+        {
           id: "ProcedureReport",
           icon: HiDocumentDuplicate,
           label: "Procedure Report",
-          description: "View your procedure reports",
+          description: "View procedure and treatment reports",
         },
         {
           id: "SummaryReport",
           icon: HiDocumentText,
           label: "Summary Report",
-          description: "View patient summary reports",
+          description: "View comprehensive summary reports",
         },
       ],
       Receptionist: [
@@ -198,13 +204,19 @@ const Report = () => {
           id: "BillingReport",
           icon: FaFileInvoiceDollar,
           label: "Billing Report",
-          description: "View billing reports",
+          description: "View billing and payment reports",
+        },
+        {
+          id: "ProcedureReport",
+          icon: HiDocumentDuplicate,
+          label: "Procedure Report",
+          description: "View procedure and treatment reports",
         },
         {
           id: "SummaryReport",
           icon: HiDocumentText,
           label: "Summary Report",
-          description: "View daily summary reports",
+          description: "View comprehensive summary reports",
         },
       ],
       Manager: [

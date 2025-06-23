@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Typeahead } from 'react-bootstrap-typeahead';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { Col, Row, Form, Button, Alert } from 'react-bootstrap';
+import { Col, Row, Form, Button } from 'react-bootstrap';
 import styled from 'styled-components';
 
 const FindingsContainer = styled.div`
 flex: 1;
-margin: 0 15px; // Adjusted margin for balanced spacing
+margin: 0 15px;
 padding: 20px;
-background-color: #b798c0; // Light brown background
+background-color: #b798c0;
 border-radius: 10px;
 text-align: center;
 `;
@@ -27,22 +25,47 @@ const FlexContainer = styled.div`
   align-items: center;
 `;
 
+const MessageContainer = styled.div`
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+  z-index: 1000;
+  ${(props) => {
+    if (props.type === "error") {
+      return `
+        background-color: white;
+        color: #ff4444;
+        border: 1px solid #cc0000;
+      `
+    } else {
+      return `
+        background-color: white;
+        color: #28a745;
+        border: 1px solid #45a049;
+      `
+    }
+  }}
+`;
+
 const Findings = ({ preSelectedFindings, onSelectFindings}) => {
   const [findingsList, setFindingsList] = useState([]);
   const [findingsInputs, setFindingsInputs] = useState([{ selectedFindings: [] }]);
-  const [selectedFindings, setSelectedFindings] = useState([]);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newFinding, setNewFinding] = useState('');
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
-    useEffect(() => {
-      // Ensure preSelectedFindings is a valid string (or array, depending on your expected type)
-      if (preSelectedFindings) {
-        // If preSelectedFindings is a comma-separated string, split it into an array
-        setFindingsInputs([{ selectedFindings: preSelectedFindings.split(', ') }]);
-      } else {
-        setFindingsInputs([{ selectedFindings: [] }]); // Default to an empty array if preSelectedFindings is null/undefined
-      }
-    }, [preSelectedFindings]);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('success');
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
+  useEffect(() => {
+    if (preSelectedFindings) {
+      setFindingsInputs([{ selectedFindings: preSelectedFindings.split(', ') }]);
+    } else {
+      setFindingsInputs([{ selectedFindings: [] }]);
+    }
+  }, [preSelectedFindings]);
 
   useEffect(() => {
     axios.get(`${Cosmetologybaseurl}Findings/`)
@@ -54,37 +77,48 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
       });
   }, []);
 
-  const handleAddInput = () => {
-    setFindingsInputs([...findingsInputs, { selectedFindings: [] }]);
-  };
-
-  const handleDeleteInput = (index) => {
-    const newInputs = findingsInputs.filter((_, i) => i !== index);
-    setFindingsInputs(newInputs);
+  const showMessage = (msg, type = 'success') => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => {
+      setMessage('');
+    }, 3000);
   };
 
   const handleAddNewFinding = () => {
+    if (!newFinding.trim()) {
+      showMessage('Finding name cannot be empty.', 'error');
+      return;
+    }
+
     axios.post(`${Cosmetologybaseurl}Findings/`, { findings: newFinding })
       .then(response => {
         setFindingsList([...findingsList, response.data]);
         setShowAddInput(false);
         setNewFinding('');
-        toast.success('New finding stored successfully!');
+        showMessage('New finding stored successfully!');
       })
-      .catch(error => console.error('Error adding new finding:', error));
-      
+      .catch(error => {
+        console.error('Error adding new finding:', error);
+        showMessage('Error adding new finding.', 'error');
+      });
   };
 
   const handleFindingChange = (selected, index) => {
     const newFindingsInputs = [...findingsInputs];
     newFindingsInputs[index].selectedFindings = selected;
-    setFindingsInputs(newFindingsInputs); // Update the diagnosis selection in the state
-    onSelectFindings(selected); // Pass the selected data to the parent component
+    setFindingsInputs(newFindingsInputs);
+    onSelectFindings(selected);
   };
 
   return (
     <FindingsContainer>
-      <ToastContainer position="top-right" autoClose={5000}/> {/* Toast container */}
+      {message && (
+        <MessageContainer type={messageType}>
+          {message}
+        </MessageContainer>
+      )}
+      
       {findingsInputs.map((input, index) => (
         <Row className="justify-content-center mb-3" key={index}>
           <CenteredFormGroup as={Col} md="4" controlId={`findings-${index}`}>
@@ -97,7 +131,7 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
                 onChange={(selected) => handleFindingChange(selected, index)}
                 options={findingsList}
                 placeholder="Select Findings"
-                selected={input.selectedFindings}  // This ensures the selected diagnoses are shown in the input field
+                selected={input.selectedFindings}
                 multiple
               />
             </FlexContainer>
@@ -105,7 +139,6 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
         </Row>
       ))}
 
-      {/* New Finding Input Section */}
       {showAddInput && (
         <Row className="justify-content-center mb-3">
           <CenteredFormGroup as={Col} md="4">
@@ -123,11 +156,9 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
         </Row>
       )}
 
-      {/* Button to show/hide the new finding input field */}
       <button onClick={() => setShowAddInput(!showAddInput)}>
         {showAddInput ? 'Close' : 'Add New Finding'}
       </button>
-
     </FindingsContainer>
   );
 };

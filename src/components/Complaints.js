@@ -1,24 +1,50 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Typeahead } from "react-bootstrap-typeahead";
-import { Col, Row, Form, Button, Alert } from "react-bootstrap";
+import { Col, Row, Form, Button } from "react-bootstrap";
 import styled from "styled-components";
 import { BsPatchPlusFill } from "react-icons/bs";
 import { MdDelete } from "react-icons/md";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+
 const ComplaintsContainer = styled.div`
 flex: 1;
-margin: 0 15px; // Adjusted margin for balanced spacing
-padding: 20px;
-background-color: #b798c0; // Light brown background
+margin: 0 15px;
+padding: 10px;
+background-color: #b798c0;
 border-radius: 10px;
 text-align: center;
 `;
+
 const FlexContainer = styled.div`
   display: flex;
   align-items: center;
 `;
+
+const MessageContainer = styled.div`
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+  z-index: 1000;
+  ${(props) => {
+    if (props.type === "error") {
+      return `
+        background-color: white;
+        color: #ff4444;
+        border: 1px solid #cc0000;
+      `
+    } else {
+      return `
+        background-color: white;
+        color: #28a745;
+        border: 1px solid #45a049;
+      `
+    }
+  }}
+`;
+
 const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
   const [complaintsList, setComplaintsList] = useState([]);
   const [complaintsInputs, setComplaintsInputs] = useState([
@@ -26,8 +52,10 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
   ]);
   const [newComplaint, setNewComplaint] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
-  // Fetch complaints from the API
-   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('success');
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
   useEffect(() => {
     axios
       .get(`${Cosmetologybaseurl}complaints/`)
@@ -38,11 +66,10 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
         console.error("Error fetching complaints data:", error);
       });
   }, []);
-  // Parse preSelectedComplaints and set it to the complaintsInputs state
+
   useEffect(() => {
     if (preSelectedComplaints && complaintsList.length > 0) {
       try {
-        // If preSelectedComplaints is a string, parse it; if not, use it directly
         const parsedComplaints = typeof preSelectedComplaints === 'string'
           ? JSON.parse(preSelectedComplaints)
           : preSelectedComplaints;
@@ -56,33 +83,41 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
         setComplaintsInputs(updatedInputs);
       } catch (error) {
         console.error("Error parsing preSelectedComplaints:", error);
-        toast.error("Error parsing preSelectedComplaints")
+        showMessage("Error parsing preSelectedComplaints", 'error');
       }
     }
   }, [preSelectedComplaints, complaintsList]);
-  // Synchronize with parent component
+
   useEffect(() => {
     onSelectComplaints(complaintsInputs);
   }, [complaintsInputs, onSelectComplaints]);
-  // Handle complaint selection
+
+  const showMessage = (msg, type = 'success') => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => {
+      setMessage('');
+    }, 3000);
+  };
+
   const handleComplaintChange = (selected, index) => {
     const newInputs = [...complaintsInputs];
     newInputs[index].selectedComplaints = selected;
     setComplaintsInputs(newInputs);
   };
-  // Handle duration input
+
   const handleDurationChange = (e, index) => {
     const newInputs = [...complaintsInputs];
     newInputs[index].duration = e.target.value;
     setComplaintsInputs(newInputs);
   };
-  // Handle duration unit selection
+
   const handleDurationUnitChange = (e, index) => {
     const newInputs = [...complaintsInputs];
     newInputs[index].durationUnit = e.target.value;
     setComplaintsInputs(newInputs);
   };
-  // Add a new complaint section
+
   const handleAddNewSection = () => {
     const newInputs = [
       ...complaintsInputs,
@@ -90,15 +125,15 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
     ];
     setComplaintsInputs(newInputs);
   };
-  // Remove a complaint section
+
   const handleRemoveSection = (index) => {
     const updatedInputs = complaintsInputs.filter((_, i) => i !== index);
     setComplaintsInputs(updatedInputs);
   };
-  // Add a new complaint to the list
+
   const handleAddNewComplaint = () => {
     if (newComplaint.trim() === "") {
-      toast.error("Please enter a valid complaint.");
+      showMessage("Please enter a valid complaint.", 'error');
       return;
     }
     axios
@@ -109,16 +144,22 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
         setComplaintsList([...complaintsList, response.data]);
         setShowAddInput(false);
         setNewComplaint("");
-        toast.success("New complaint added successfully!");
+        showMessage("New complaint added successfully!");
       })
       .catch((error) => {
         console.error("Error adding new complaint:", error);
-        toast.error("Failed to add complaint. Please try again.");
+        showMessage("Failed to add complaint. Please try again.", 'error');
       });
   };
+
   return (
     <ComplaintsContainer>
-      <ToastContainer position="top-right" autoClose={5000}/> {/* Toast container */}
+      {message && (
+        <MessageContainer type={messageType}>
+          {message}
+        </MessageContainer>
+      )}
+
       {complaintsInputs.map((input, index) => (
         <Row className="justify-content-center mb-3" key={index}>
           <Col md="3">
@@ -165,10 +206,13 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
             </Form.Group>
           </Col>
           <Col sm="1" className="text-end">
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <BsPatchPlusFill size={24} onClick={handleAddNewSection} style={{ cursor: 'pointer', marginLeft: '10px' }} />
-              {index !== 0 && ( <MdDelete size={24} onClick={() => handleRemoveSection(index)} style={{ cursor: 'pointer', marginLeft: '10px' }} /> )}
-            </div>
+            <Form.Group>
+              <Form.Label>&nbsp;</Form.Label>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <BsPatchPlusFill size={24} onClick={handleAddNewSection} style={{ cursor: 'pointer', marginLeft: '10px' }} />
+                {index !== 0 && ( <MdDelete size={24} onClick={() => handleRemoveSection(index)} style={{ cursor: 'pointer', marginLeft: '10px' }} /> )}
+              </div>
+            </Form.Group>
           </Col>          
         </Row>
       ))}
@@ -201,4 +245,5 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
     </ComplaintsContainer>
   );
 };
+
 export default Complaints;

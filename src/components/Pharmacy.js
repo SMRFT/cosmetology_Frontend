@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from "react"
 import styled from "styled-components"
 import { FaDownload, FaArrowAltCircleRight, FaSave, FaPlus, FaSearch, FaTimes } from "react-icons/fa"
 import { RiDeleteBin5Line } from "react-icons/ri"
-import { toast, ToastContainer } from "react-toastify"
+import { toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
 const PharmacyComponent = () => {
+  const [successMessage, setSuccessMessage] = useState("")
   const [formData, setFormData] = useState([
     {
       medicineName: "",
@@ -166,12 +167,18 @@ const PharmacyComponent = () => {
     const newStockValue = Number.parseInt(item.newStock, 10) || 0
 
     if (newStockValue <= 0) {
-      toast.warning("Please enter a valid stock quantity")
+      setSuccessMessage("Please enter a valid stock quantity")
+      setTimeout(() => {
+        setSuccessMessage("")
+      }, 3000)
       return
     }
 
     if (!item._id) {
-      toast.warning("Please save the item first before updating stock")
+      setSuccessMessage("Please save the item first before updating stock")
+      setTimeout(() => {
+        setSuccessMessage("")
+      }, 3000)
       return
     }
 
@@ -191,9 +198,6 @@ const PharmacyComponent = () => {
       ...pendingStockUpdates,
       [updateKey]: true,
     })
-
-    // Show optimistic UI update
-    toast.info("Updating stock...", { autoClose: 2000 })
 
     try {
       const updateData = {
@@ -228,7 +232,7 @@ const PharmacyComponent = () => {
           updatedFormData[originalIndex].stock = serverStock.toString()
           setFormData(updatedFormData)
 
-          toast.success("Stock updated successfully!")
+          setSuccessMessage("Updated successfully")
         }
       } else {
         // If update failed, revert the optimistic update
@@ -242,7 +246,7 @@ const PharmacyComponent = () => {
         delete newPendingUpdates[updateKey]
         setPendingStockUpdates(newPendingUpdates)
 
-        toast.error("Failed to update stock")
+        setSuccessMessage("Failed to update stock")
       }
     } catch (error) {
       console.error("Error updating stock:", error)
@@ -258,8 +262,13 @@ const PharmacyComponent = () => {
       delete newPendingUpdates[updateKey]
       setPendingStockUpdates(newPendingUpdates)
 
-      toast.error("Error updating stock")
+      setSuccessMessage("Error updating stock")
     }
+
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage("")
+    }, 3000)
   }
 
   const handleSubmit = async (e) => {
@@ -274,7 +283,7 @@ const PharmacyComponent = () => {
         if (!item.medicineName.trim()) return
 
         const formattedItem = {
-          medicine_name: item.medicineName.toLowerCase(),
+          medicine_name: item.medicineName,
           medicine_category: item.medicineCategory,
           company_name: item.companyName,
           price: Number.parseFloat(item.price) || 0,
@@ -310,9 +319,10 @@ const PharmacyComponent = () => {
         )
 
         if (response.ok) {
-          toast.success("New entries saved successfully!")
+          setSuccessMessage("Added successfully")
         } else {
-          toast.error("Error saving new entries!")
+          setSuccessMessage("Error saving new entries")
+          // Don't refresh data on error
         }
       }
 
@@ -331,25 +341,30 @@ const PharmacyComponent = () => {
         )
 
         if (response.ok) {
-          toast.success("Updates saved successfully!")
+          setSuccessMessage("Updated successfully")
           setEditedRows({})
+
         } else {
-          toast.error("Error updating entries!")
+          setSuccessMessage("Error updating entries")
+          // Don't refresh data on error
         }
       }
 
       if (newEntries.length === 0 && updatedEntries.length === 0) {
-        toast.info("No changes to save.")
+        setSuccessMessage("No changes to save")
+        // Don't refresh data when no changes
       }
-
-      // Refresh data
-      await fetchPharmacyData(branchCode)
     } catch (error) {
       console.error("Error submitting data:", error)
-      toast.error("Error submitting data!")
+      setSuccessMessage("Error submitting data")
     } finally {
       setLoading(false)
     }
+
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage("")
+    }, 3000)
   }
 
   const formatDate = (dateString) => {
@@ -393,7 +408,17 @@ const PharmacyComponent = () => {
   }
 
   const removeRow = async (originalIndex) => {
+    
     const itemToRemove = formData[originalIndex]
+
+    // Check if batch number is required for deletion
+    if (itemToRemove._id && itemToRemove.medicineName && !itemToRemove.batchNumber) {
+      setSuccessMessage("Batch number required to delete")
+      setTimeout(() => {
+        setSuccessMessage("")
+      }, 3000)
+      return
+    }
 
     if (itemToRemove._id && itemToRemove.medicineName && itemToRemove.batchNumber) {
       try {
@@ -403,7 +428,7 @@ const PharmacyComponent = () => {
         })
 
         if (response.ok) {
-          toast.success("Record deleted successfully.")
+          setSuccessMessage("Deleted successfully")
           const newFormData = [...formData]
           newFormData.splice(originalIndex, 1)
           setFormData(newFormData)
@@ -411,12 +436,15 @@ const PharmacyComponent = () => {
           const newEditedRows = { ...editedRows }
           delete newEditedRows[originalIndex]
           setEditedRows(newEditedRows)
+
         } else {
-          toast.error("Failed to delete record from database.")
+          setSuccessMessage("Failed to delete record from database")
+          // Don't refresh data on error
         }
       } catch (error) {
         console.error("Error deleting record:", error)
-        toast.error("Failed to delete record from database.")
+        setSuccessMessage("Failed to delete record from database")
+        // Don't refresh data on error
       }
     } else {
       const newFormData = [...formData]
@@ -427,8 +455,14 @@ const PharmacyComponent = () => {
       delete newEditedRows[originalIndex]
       setEditedRows(newEditedRows)
 
-      toast.info("Row removed.")
+      setSuccessMessage("Row removed")
+      // No need to refresh data for local row removal
     }
+
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage("")
+    }, 3000)
   }
 
   const downloadExcel = () => {
@@ -471,7 +505,10 @@ const PharmacyComponent = () => {
     link.click()
     document.body.removeChild(link)
 
-    toast.success("CSV file downloaded successfully!")
+    setSuccessMessage("CSV file downloaded successfully")
+    setTimeout(() => {
+      setSuccessMessage("")
+    }, 3000)
   }
 
   // Function to check if a row has a pending stock update
@@ -518,7 +555,19 @@ const PharmacyComponent = () => {
 
   return (
     <StyledContainer>
-      <ToastContainer position="top-right" autoClose={5000} />
+      {successMessage && (
+        <SuccessMessage
+          type={
+            successMessage.includes("Error") || successMessage.includes("Failed")
+              ? "error"
+              : successMessage.includes("required") || successMessage.includes("Please")
+                ? "warning"
+                : "success"
+          }
+        >
+          {successMessage}
+        </SuccessMessage>
+      )}
       <Header>
         <Title>Pharmacy Stock Management</Title>
       </Header>
@@ -1171,4 +1220,35 @@ const LoadingSpinner = styled.div`
       transform: rotate(360deg);
     }
   }
+`
+
+const SuccessMessage = styled.div`
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 5px;
+  font-weight: bold;
+  z-index: 1000;
+  ${(props) => {
+    if (props.type === "error") {
+      return `
+        background-color: white;
+        color: #ff4444;
+        border: 1px solid #cc0000;
+      `
+    } else if (props.type === "warning") {
+      return `
+        background-color: white;
+        color: #ffa500;
+        border: 1px solid #cc8400;
+      `
+    } else {
+      return `
+        background-color: white;
+        color: #ffa500;
+        border: 1px solid #45a049;
+      `
+    }
+  }}
 `
