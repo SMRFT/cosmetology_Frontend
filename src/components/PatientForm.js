@@ -28,7 +28,13 @@ const PatientForm = ({ patientData, onClose }) => {
   const [showModal, setShowModal] = useState(false)
   const [patientUID, setPatientUID] = useState("")
   const [branchCode, setBranchCode] = useState("") // Added state for branch code
+  
+  // Validation states
+  const [errors, setErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
   useEffect(() => {
     // Get branch_code from localStorage when component mounts
     const code = localStorage.getItem("selectedBranch")
@@ -39,29 +45,203 @@ const PatientForm = ({ patientData, onClose }) => {
     }
   }, [])
 
+  // Validation functions
+  const validatePhoneNumber = (phone) => {
+    // Remove all non-digit characters
+    const cleanPhone = phone.replace(/\D/g, '')
+    
+    // Check if it's empty
+    if (!cleanPhone) {
+      return "Mobile number is required"
+    }
+    
+    // Check if it's exactly 10 digits (Indian mobile number format)
+    if (cleanPhone.length !== 10) {
+      return "Mobile number must be exactly 10 digits"
+    }
+    
+    // Check if it starts with valid digits (Indian mobile numbers start with 6, 7, 8, or 9)
+    if (!/^[6-9]/.test(cleanPhone)) {
+      return "Mobile number must start with 6, 7, 8, or 9"
+    }
+    
+    // Check if all digits are the same (like 1111111111)
+    if (/^(.)\1+$/.test(cleanPhone)) {
+      return "Mobile number cannot have all same digits"
+    }
+    
+    return null
+  }
+
+  const validateEmail = (email) => {
+    if (!email) return null // Email is optional
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return "Please enter a valid email address"
+    }
+    return null
+  }
+
+  const validateName = (name) => {
+    if (!name || name.trim() === "") {
+      return "Patient name is required"
+    }
+    
+    if (name.trim().length < 2) {
+      return "Patient name must be at least 2 characters long"
+    }
+    
+    // Check for valid characters (letters, spaces, dots, hyphens)
+    if (!/^[a-zA-Z\s.-]+$/.test(name.trim())) {
+      return "Patient name can only contain letters, spaces, dots, and hyphens"
+    }
+    
+    return null
+  }
+
+  const validateAge = (age) => {
+    if (!age || age === "") {
+      return "Age is required"
+    }
+    
+    const numAge = parseInt(age)
+    if (isNaN(numAge) || numAge <= 0) {
+      return "Please enter a valid age"
+    }
+    
+    if (numAge > 150) {
+      return "Please enter a realistic age"
+    }
+    
+    return null
+  }
+
+  const validateGender = (gender) => {
+    if (!gender) {
+      return "Please select a gender"
+    }
+    return null
+  }
+
+  const validatePurposeOfVisit = (purposeOfVisit, customPurpose) => {
+    if (!purposeOfVisit && !customPurpose) {
+      return "Please select or enter a purpose of visit"
+    }
+    
+    if (customPurpose && customPurpose.trim().length < 3) {
+      return "Custom purpose must be at least 3 characters long"
+    }
+    
+    return null
+  }
+
+  // Real-time validation
+  const validateField = (name, value) => {
+    let error = null
+    
+    switch (name) {
+      case 'patientName':
+        error = validateName(value)
+        break
+      case 'mobileNumber':
+        error = validatePhoneNumber(value)
+        break
+      case 'age':
+        error = validateAge(value)
+        break
+      case 'gender':
+        error = validateGender(value)
+        break
+      case 'email':
+        error = validateEmail(value)
+        break
+      case 'purposeOfVisit':
+        error = validatePurposeOfVisit(value, formData.customPurpose)
+        break
+      case 'customPurpose':
+        error = validatePurposeOfVisit(formData.purposeOfVisit, value)
+        break
+      default:
+        break
+    }
+    
+    setErrors(prev => ({
+      ...prev,
+      [name]: error
+    }))
+    
+    return error
+  }
+
+  // Validate entire form
+  const validateForm = () => {
+    const newErrors = {}
+    
+    newErrors.patientName = validateName(formData.patientName)
+    newErrors.mobileNumber = validatePhoneNumber(formData.mobileNumber)
+    newErrors.age = validateAge(formData.age)
+    newErrors.gender = validateGender(formData.gender)
+    newErrors.email = validateEmail(formData.email)
+    newErrors.purposeOfVisit = validatePurposeOfVisit(formData.purposeOfVisit, formData.customPurpose)
+    
+    // Remove null errors
+    Object.keys(newErrors).forEach(key => {
+      if (newErrors[key] === null) {
+        delete newErrors[key]
+      }
+    })
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
+    
+    // Special handling for mobile number - allow only digits
+    if (name === 'mobileNumber') {
+      const cleanValue = value.replace(/\D/g, '').slice(0, 10) // Only digits, max 10
+      setFormData({ ...formData, [name]: cleanValue })
+      validateField(name, cleanValue)
+    } else if (name === 'patientName') {
+      // Remove extra spaces and validate name in real-time
+      const cleanValue = value.replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      setFormData({ ...formData, [name]: cleanValue })
+      validateField(name, cleanValue)
+    } else {
+      setFormData({ ...formData, [name]: value })
+      validateField(name, value)
+    }
   }
 
   const handleGenderSelect = (gender) => {
     setFormData({ ...formData, gender })
+    validateField('gender', gender)
   }
 
   const handlePurposeChange = (e) => {
-    setFormData({
+    const newData = {
       ...formData,
       purposeOfVisit: e.target.value,
       customPurpose: "", // Clear custom purpose when selecting from dropdown
-    })
+    }
+    setFormData(newData)
+    validateField('purposeOfVisit', e.target.value)
+    // Clear custom purpose error
+    setErrors(prev => ({ ...prev, customPurpose: null }))
   }
 
   const handleCustomPurposeChange = (e) => {
-    setFormData({
+    const newData = {
       ...formData,
       customPurpose: e.target.value,
       purposeOfVisit: "", // Clear dropdown selection when typing custom purpose
-    })
+    }
+    setFormData(newData)
+    validateField('customPurpose', e.target.value)
+    // Clear purpose of visit error
+    setErrors(prev => ({ ...prev, purposeOfVisit: null }))
   }
 
   // Store the custom purpose if typed, otherwise store the selected dropdown value
@@ -83,15 +263,27 @@ const PatientForm = ({ patientData, onClose }) => {
         customPurpose: isDropdownOption ? "" : patientData.purposeOfVisit, // Otherwise, set in custom field
         address: patientData.address || "",
       })
+      
+      // Clear errors when loading existing patient data
+      setErrors({})
     }
   }, [patientData])
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!formData.patientName || !formData.mobileNumber) {
-      toast.error("Patient Name and Mobile Number are required.")
+    
+    // Prevent multiple submissions
+    if (isSubmitting) return
+    
+    // Validate entire form
+    const isFormValid = validateForm()
+    
+    if (!isFormValid) {
+      toast.error("Please fix the validation errors before submitting")
       return
     }
+
+    setIsSubmitting(true)
 
     // Add branch code to request data
     const requestData = {
@@ -114,6 +306,9 @@ const PatientForm = ({ patientData, onClose }) => {
         .catch((error) => {
           console.error("Error updating patient details:", error)
         })
+        .finally(() => {
+          setIsSubmitting(false)
+        })
     } else {
       // If adding new patient, include branch code in the URL
       const url = branchCode
@@ -129,6 +324,9 @@ const PatientForm = ({ patientData, onClose }) => {
         .catch((error) => {
           console.error("Error adding patient:", error)
         })
+        .finally(() => {
+          setIsSubmitting(false)
+        })
     }
   }
 
@@ -143,7 +341,7 @@ const PatientForm = ({ patientData, onClose }) => {
       </VitalFormIcon>
       <br />
       <Form onSubmit={handleSubmit}>
-        {/* Existing form fields */}
+        {/* Existing form fields with validation */}
         <Row>
           <Col>
             <Form.Group controlId="patientName">
@@ -156,8 +354,14 @@ const PatientForm = ({ patientData, onClose }) => {
                 value={formData.patientName}
                 onChange={handleChange}
                 required
-                className="custom-input"
+                className={`custom-input ${errors.patientName ? 'is-invalid' : ''}`}
+                isInvalid={!!errors.patientName}
               />
+              {errors.patientName && (
+                <Form.Control.Feedback type="invalid">
+                  {errors.patientName}
+                </Form.Control.Feedback>
+              )}
             </Form.Group>
           </Col>
           <Col>
@@ -171,8 +375,16 @@ const PatientForm = ({ patientData, onClose }) => {
                 value={formData.mobileNumber}
                 onChange={handleChange}
                 required
-                className="custom-input"
+                placeholder="Enter 10-digit mobile number"
+                className={`custom-input ${errors.mobileNumber ? 'is-invalid' : ''}`}
+                isInvalid={!!errors.mobileNumber}
+                maxLength="10"
               />
+              {errors.mobileNumber && (
+                <Form.Control.Feedback type="invalid">
+                  {errors.mobileNumber}
+                </Form.Control.Feedback>
+              )}
             </Form.Group>
           </Col>
         </Row>
@@ -180,20 +392,28 @@ const PatientForm = ({ patientData, onClose }) => {
         <Row>
           <Col>
             <Form.Group controlId="age">
-              <Form.Label>Age</Form.Label>
+              <Form.Label>Age <span className="text-danger">*</span></Form.Label>
               <Form.Control
                 type="number"
                 name="age"
                 value={formData.age}
                 onChange={handleChange}
                 required
-                className="custom-input"
+                min="1"
+                max="150"
+                className={`custom-input ${errors.age ? 'is-invalid' : ''}`}
+                isInvalid={!!errors.age}
               />
+              {errors.age && (
+                <Form.Control.Feedback type="invalid">
+                  {errors.age}
+                </Form.Control.Feedback>
+              )}
             </Form.Group>
           </Col>
           <Col>
             <Form.Group controlId="gender">
-              <Form.Label>Select Gender</Form.Label>
+              <Form.Label>Select Gender <span className="text-danger">*</span></Form.Label>
               <div className="gender-selection">
                 <div className="gender-icons">
                   <div
@@ -219,6 +439,11 @@ const PatientForm = ({ patientData, onClose }) => {
                   </div>
                 </div>
               </div>
+              {errors.gender && (
+                <div className="text-danger small mt-1">
+                  {errors.gender}
+                </div>
+              )}
             </Form.Group>
           </Col>
         </Row>
@@ -232,8 +457,15 @@ const PatientForm = ({ patientData, onClose }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="custom-input"
+                className={`custom-input ${errors.email ? 'is-invalid' : ''}`}
+                isInvalid={!!errors.email}
+                placeholder="Enter email address (optional)"
               />
+              {errors.email && (
+                <Form.Control.Feedback type="invalid">
+                  {errors.email}
+                </Form.Control.Feedback>
+              )}
             </Form.Group>
           </Col>
         </Row>
@@ -261,15 +493,16 @@ const PatientForm = ({ patientData, onClose }) => {
           </Col>
           <Col>
             <Form.Group controlId="purposeOfVisit">
-              <Form.Label>Purpose of Visit</Form.Label>
+              <Form.Label>Purpose of Visit <span className="text-danger">*</span></Form.Label>
               <Row className="align-items-center">
                 <Col xs={5}>
                   <Form.Control
                     as="select"
                     value={formData.purposeOfVisit}
                     onChange={handlePurposeChange}
-                    className="custom-input mb-2"
+                    className={`custom-input mb-2 ${errors.purposeOfVisit ? 'is-invalid' : ''}`}
                     disabled={formData.customPurpose !== ""} // Disable dropdown if custom purpose is typed
+                    isInvalid={!!errors.purposeOfVisit}
                   >
                     <option value="">Select Purpose of Visit</option>
                     {purposeOfVisit.map((option, index) => (
@@ -289,11 +522,17 @@ const PatientForm = ({ patientData, onClose }) => {
                     placeholder="Enter Custom Purpose"
                     value={formData.customPurpose}
                     onChange={handleCustomPurposeChange}
-                    className="custom-input"
+                    className={`custom-input ${errors.customPurpose ? 'is-invalid' : ''}`}
                     disabled={formData.purposeOfVisit !== ""} // Disable text input if dropdown is selected
+                    isInvalid={!!errors.customPurpose}
                   />
                 </Col>
               </Row>
+              {(errors.purposeOfVisit || errors.customPurpose) && (
+                <div className="text-danger small mt-1">
+                  {errors.purposeOfVisit || errors.customPurpose}
+                </div>
+              )}
             </Form.Group>
           </Col>
         </Row>
@@ -309,13 +548,16 @@ const PatientForm = ({ patientData, onClose }) => {
                 value={formData.address}
                 onChange={handleChange}
                 className="custom-input"
+                placeholder="Enter patient address (optional)"
               />
             </Form.Group>
           </Col>
         </Row>
         <br />
         <div className="form-footer">
-          <button type="submit">Submit</button>
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Submit'}
+          </button>
         </div>
       </Form>
       {/* Modal for VitalForm */}
@@ -335,6 +577,7 @@ const PatientForm = ({ patientData, onClose }) => {
     </Container>
   )
 }
+
 const VitalFormIcon = styled.div`
   position: absolute;
   top: 5px;
@@ -346,4 +589,5 @@ const VitalFormIcon = styled.div`
     color: #7A1CAC;
   }
 `
+
 export default PatientForm
