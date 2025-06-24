@@ -15,8 +15,8 @@ import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
-import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
+import PDFMain1 from "./images/PDF_Summary_branch1.jpeg"
+import PDFMain2 from "./images/PDF_Summary_branch2.jpeg"
 import "./DatePicker.css"
 
 const SummaryReport = () => {

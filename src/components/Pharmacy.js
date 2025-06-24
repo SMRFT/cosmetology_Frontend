@@ -1,12 +1,26 @@
+"use client"
+
 import { useState, useEffect, useRef } from "react"
 import styled from "styled-components"
-import { FaDownload, FaArrowAltCircleRight, FaSave, FaPlus, FaSearch, FaTimes } from "react-icons/fa"
-import { RiDeleteBin5Line } from "react-icons/ri"
-import { toast } from "react-toastify"
+import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import {
+  FaDownload,
+  FaArrowRight,
+  FaSave,
+  FaPlus,
+  FaSearch,
+  FaTimes,
+  FaTrash,
+  FaBox,
+  FaExclamationTriangle,
+  FaBuilding,
+  FaPills,
+  FaRupeeSign,
+  FaSync,
+} from "react-icons/fa"
 
 const PharmacyComponent = () => {
-  const [successMessage, setSuccessMessage] = useState("")
   const [formData, setFormData] = useState([
     {
       medicineName: "",
@@ -17,8 +31,8 @@ const PharmacyComponent = () => {
       CGSTValue: "",
       SGSTPercentage: "",
       SGSTValue: "",
-      newStock: "", // Only for UI input when editing
-      stock: "", // Single stock field stored in DB
+      newStock: "",
+      stock: "",
       receivedDate: "",
       expiryDate: "",
       batchNumber: "",
@@ -30,13 +44,14 @@ const PharmacyComponent = () => {
   const [loading, setLoading] = useState(false)
   const [pendingStockUpdates, setPendingStockUpdates] = useState({})
   const [searchTerm, setSearchTerm] = useState("")
-  const [activeView, setActiveView] = useState("all") // "all", "low", "expired"
+  const [activeView, setActiveView] = useState("all")
   const [isCompactView, setIsCompactView] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isTablet, setIsTablet] = useState(false)
   const tableRef = useRef(null)
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
-    // Get branch_code from localStorage when component mounts
     const code = localStorage.getItem("selectedBranch")
     if (code) {
       setBranchCode(code)
@@ -44,28 +59,27 @@ const PharmacyComponent = () => {
       console.warn("Branch code not found in localStorage")
     }
 
-    // Fetch data only if branchCode is available
     if (code) {
       fetchPharmacyData(code)
     } else {
-      // If branch code is not available, you might want to show a message or redirect
       toast.error("Branch code not found. Please select a branch.")
     }
 
-    // Check screen size and set compact view accordingly
     const handleResize = () => {
-      setIsCompactView(window.innerWidth < 1200)
+      const width = window.innerWidth
+      setIsMobile(width < 768)
+      setIsTablet(width >= 768 && width < 1024)
+      setIsCompactView(width < 1200)
     }
 
-    handleResize() // Initial check
+    handleResize()
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
-  }, []) // Empty dependency array means it runs only once on mount
+  }, [])
 
   const fetchPharmacyData = async (code) => {
     setLoading(true)
     try {
-      // Sending branch_code as a URL parameter
       const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(code || "")}`)
       const data = await response.json()
 
@@ -97,12 +111,12 @@ const PharmacyComponent = () => {
               medicineName: item.medicine_name || "",
               medicineCategory: item.medicine_category || "",
               companyName: item.company_name || "",
-              price: item.price || "",
-              CGSTPercentage: item.CGST_percentage || "",
-              CGSTValue: item.CGST_value || "",
-              SGSTPercentage: item.SGST_percentage || "",
-              SGSTValue: item.SGST_value || "",
-              newStock: "", // Always empty for editing input
+              price: item.price ? item.price.toString() : "",
+              CGSTPercentage: item.CGST_percentage ? item.CGST_percentage.toString() : "",
+              CGSTValue: item.CGST_value ? item.CGST_value.toString() : "",
+              SGSTPercentage: item.SGST_percentage ? item.SGST_percentage.toString() : "",
+              SGSTValue: item.SGST_value ? item.SGST_value.toString() : "",
+              newStock: "",
               stock: stock.toString(),
               receivedDate: formatDate(item.received_date),
               expiryDate: formatDate(item.expiry_date),
@@ -131,13 +145,11 @@ const PharmacyComponent = () => {
     const newFormData = [...formData]
     newFormData[originalIndex][field] = value
 
-    // Mark this row as edited
     setEditedRows({
       ...editedRows,
       [originalIndex]: true,
     })
 
-    // Auto-calculate tax values
     if (field === "price" || field === "CGSTPercentage") {
       newFormData[originalIndex].CGSTValue = calculateTaxValues(
         field === "price" ? value : newFormData[originalIndex].price,
@@ -167,32 +179,23 @@ const PharmacyComponent = () => {
     const newStockValue = Number.parseInt(item.newStock, 10) || 0
 
     if (newStockValue <= 0) {
-      setSuccessMessage("Please enter a valid stock quantity")
-      setTimeout(() => {
-        setSuccessMessage("")
-      }, 3000)
+      toast.warning("Please enter a valid stock quantity")
       return
     }
 
     if (!item._id) {
-      setSuccessMessage("Please save the item first before updating stock")
-      setTimeout(() => {
-        setSuccessMessage("")
-      }, 3000)
+      toast.warning("Please save the item first before updating stock")
       return
     }
 
-    // Calculate new total stock immediately
     const currentStock = Number.parseInt(item.stock, 10) || 0
     const updatedStock = currentStock + newStockValue
 
-    // Immediately update UI with new stock values
     const newFormData = [...formData]
     newFormData[originalIndex].stock = updatedStock.toString()
-    newFormData[originalIndex].newStock = "" // Clear new stock input after adding
+    newFormData[originalIndex].newStock = ""
     setFormData(newFormData)
 
-    // Track this update as pending
     const updateKey = `${item.medicineName}-${item.batchNumber}`
     setPendingStockUpdates({
       ...pendingStockUpdates,
@@ -202,7 +205,7 @@ const PharmacyComponent = () => {
     try {
       const updateData = {
         _id: item._id,
-        new_stock: newStockValue, // Backend will add this to existing stock
+        new_stock: newStockValue,
       }
 
       const response = await fetch(
@@ -220,55 +223,43 @@ const PharmacyComponent = () => {
       if (response.ok) {
         const result = await response.json()
         if (result.length > 0) {
-          // Update was successful, remove from pending updates
           const newPendingUpdates = { ...pendingStockUpdates }
           delete newPendingUpdates[updateKey]
           setPendingStockUpdates(newPendingUpdates)
 
-          // Update with server response
           const serverStock = result[0].stock || 0
-
           const updatedFormData = [...formData]
           updatedFormData[originalIndex].stock = serverStock.toString()
           setFormData(updatedFormData)
 
-          setSuccessMessage("Updated successfully")
+          toast.success("Stock updated successfully!")
         }
       } else {
-        // If update failed, revert the optimistic update
         const revertedFormData = [...formData]
         revertedFormData[originalIndex].stock = currentStock.toString()
-        revertedFormData[originalIndex].newStock = newStockValue.toString() // Revert newStock input as well
+        revertedFormData[originalIndex].newStock = newStockValue.toString()
         setFormData(revertedFormData)
 
-        // Remove from pending updates
         const newPendingUpdates = { ...pendingStockUpdates }
         delete newPendingUpdates[updateKey]
         setPendingStockUpdates(newPendingUpdates)
 
-        setSuccessMessage("Failed to update stock")
+        toast.error("Failed to update stock")
       }
     } catch (error) {
       console.error("Error updating stock:", error)
 
-      // If update failed, revert the optimistic update
       const revertedFormData = [...formData]
       revertedFormData[originalIndex].stock = currentStock.toString()
-      revertedFormData[originalIndex].newStock = newStockValue.toString() // Revert newStock input as well
+      revertedFormData[originalIndex].newStock = newStockValue.toString()
       setFormData(revertedFormData)
 
-      // Remove from pending updates
       const newPendingUpdates = { ...pendingStockUpdates }
       delete newPendingUpdates[updateKey]
       setPendingStockUpdates(newPendingUpdates)
 
-      setSuccessMessage("Error updating stock")
+      toast.error("Error updating stock")
     }
-
-    // Clear message after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage("")
-    }, 3000)
   }
 
   const handleSubmit = async (e) => {
@@ -280,21 +271,22 @@ const PharmacyComponent = () => {
       const updatedEntries = []
 
       formData.forEach((item, index) => {
-        if (!item.medicineName.trim()) return
+        // Skip empty rows (no medicine name)
+        if (!item.medicineName || item.medicineName.toString().trim() === "") return
 
         const formattedItem = {
-          medicine_name: item.medicineName,
-          medicine_category: item.medicineCategory,
-          company_name: item.companyName,
+          medicine_name: item.medicineName.toString().trim(),
+          medicine_category: item.medicineCategory.toString().trim(),
+          company_name: item.companyName.toString().trim(),
           price: Number.parseFloat(item.price) || 0,
           CGST_percentage: Number.parseFloat(item.CGSTPercentage) || 0,
           CGST_value: Number.parseFloat(item.CGSTValue) || 0,
           SGST_percentage: Number.parseFloat(item.SGSTPercentage) || 0,
           SGST_value: Number.parseFloat(item.SGSTValue) || 0,
-          stock: Number.parseInt(item.stock, 10) || 0, // Use single stock field
-          received_date: item.receivedDate,
-          expiry_date: item.expiryDate,
-          batch_number: item.batchNumber,
+          stock: Number.parseInt(item.stock, 10) || 0,
+          received_date: item.receivedDate || "",
+          expiry_date: item.expiryDate || "",
+          batch_number: item.batchNumber.toString().trim(),
         }
 
         if (!item._id) {
@@ -304,7 +296,6 @@ const PharmacyComponent = () => {
         }
       })
 
-      // Handle new entries
       if (newEntries.length > 0) {
         const response = await fetch(
           `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
@@ -319,19 +310,17 @@ const PharmacyComponent = () => {
         )
 
         if (response.ok) {
-          setSuccessMessage("Added successfully")
+          toast.success(`${newEntries.length} medicine(s) added successfully!`)
         } else {
-          setSuccessMessage("Error saving new entries")
-          // Don't refresh data on error
+          toast.error("Error saving new entries")
         }
       }
 
-      // Handle updates (excluding stock-only updates which are handled separately)
       if (updatedEntries.length > 0) {
         const response = await fetch(
           `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
           {
-            method: "PUT", // Use PUT for complete updates
+            method: "PUT",
             headers: {
               "Content-Type": "application/json",
             },
@@ -341,30 +330,22 @@ const PharmacyComponent = () => {
         )
 
         if (response.ok) {
-          setSuccessMessage("Updated successfully")
+          toast.success(`${updatedEntries.length} medicine(s) updated successfully!`)
           setEditedRows({})
-
         } else {
-          setSuccessMessage("Error updating entries")
-          // Don't refresh data on error
+          toast.error("Error updating entries")
         }
       }
 
       if (newEntries.length === 0 && updatedEntries.length === 0) {
-        setSuccessMessage("No changes to save")
-        // Don't refresh data when no changes
+        toast.info("No changes to save")
       }
     } catch (error) {
       console.error("Error submitting data:", error)
-      setSuccessMessage("Error submitting data")
+      toast.error("Error submitting data")
     } finally {
       setLoading(false)
     }
-
-    // Clear message after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage("")
-    }, 3000)
   }
 
   const formatDate = (dateString) => {
@@ -397,30 +378,23 @@ const PharmacyComponent = () => {
       batchNumber: "",
     }
 
-    setFormData((prevData) => [...prevData, newRow])
+    // Add new row at the top instead of bottom
+    setFormData((prevData) => [newRow, ...prevData])
 
-    // Scroll to the bottom of the table to show the new row
+    // Scroll to top to show the new row
     setTimeout(() => {
       if (tableRef.current) {
-        tableRef.current.scrollTop = tableRef.current.scrollHeight
+        tableRef.current.scrollTop = 0
       }
     }, 100)
+
+    toast.info("New medicine row added at the top")
   }
 
   const removeRow = async (originalIndex) => {
-    
     const itemToRemove = formData[originalIndex]
 
-    // Check if batch number is required for deletion
-    if (itemToRemove._id && itemToRemove.medicineName && !itemToRemove.batchNumber) {
-      setSuccessMessage("Batch number required to delete")
-      setTimeout(() => {
-        setSuccessMessage("")
-      }, 3000)
-      return
-    }
-
-    if (itemToRemove._id && itemToRemove.medicineName && itemToRemove.batchNumber) {
+    if (itemToRemove._id && itemToRemove.medicineName) {
       try {
         const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?_id=${itemToRemove._id}`, {
           method: "DELETE",
@@ -428,7 +402,7 @@ const PharmacyComponent = () => {
         })
 
         if (response.ok) {
-          setSuccessMessage("Deleted successfully")
+          toast.success("Medicine deleted successfully!")
           const newFormData = [...formData]
           newFormData.splice(originalIndex, 1)
           setFormData(newFormData)
@@ -436,15 +410,12 @@ const PharmacyComponent = () => {
           const newEditedRows = { ...editedRows }
           delete newEditedRows[originalIndex]
           setEditedRows(newEditedRows)
-
         } else {
-          setSuccessMessage("Failed to delete record from database")
-          // Don't refresh data on error
+          toast.error("Failed to delete medicine from database")
         }
       } catch (error) {
         console.error("Error deleting record:", error)
-        setSuccessMessage("Failed to delete record from database")
-        // Don't refresh data on error
+        toast.error("Failed to delete medicine from database")
       }
     } else {
       const newFormData = [...formData]
@@ -455,37 +426,34 @@ const PharmacyComponent = () => {
       delete newEditedRows[originalIndex]
       setEditedRows(newEditedRows)
 
-      setSuccessMessage("Row removed")
-      // No need to refresh data for local row removal
+      toast.success("Medicine row removed")
     }
-
-    // Clear message after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage("")
-    }, 3000)
   }
 
   const downloadExcel = () => {
-    // Format data for Excel export
     const excelData = formData
-      .filter((item) => item.medicineName.trim() !== "")
+      .filter((item) => item.medicineName && item.medicineName.toString().trim() !== "")
       .map((item) => ({
         "Medicine Name": item.medicineName,
         "Medicine Category": item.medicineCategory,
         "Company Name": item.companyName,
-        Price: item.price,
+        "Price (₹)": item.price,
         "CGST %": item.CGSTPercentage,
-        "CGST Value": item.CGSTValue,
+        "CGST Value (₹)": item.CGSTValue,
         "SGST %": item.SGSTPercentage,
-        "SGST Value": item.SGSTValue,
-        Stock: item.stock, // Single stock field
+        "SGST Value (₹)": item.SGSTValue,
+        Stock: item.stock,
         "Received Date": item.receivedDate,
         "Expiry Date": item.expiryDate,
         "Batch Number": item.batchNumber,
         "Branch Code": branchCode,
       }))
 
-    // Simple CSV download implementation
+    if (excelData.length === 0) {
+      toast.warning("No data to export")
+      return
+    }
+
     const csvContent = [
       Object.keys(excelData[0] || {}).join(","),
       ...excelData.map((row) =>
@@ -505,43 +473,34 @@ const PharmacyComponent = () => {
     link.click()
     document.body.removeChild(link)
 
-    setSuccessMessage("CSV file downloaded successfully")
-    setTimeout(() => {
-      setSuccessMessage("")
-    }, 3000)
+    toast.success(`CSV file downloaded successfully! (${excelData.length} records)`)
   }
 
-  // Function to check if a row has a pending stock update
   const hasPendingUpdate = (item) => {
     if (!item.medicineName || !item.batchNumber) return false
     const updateKey = `${item.medicineName}-${item.batchNumber}`
     return pendingStockUpdates[updateKey] === true
   }
 
-  // Filter data based on search term and active view with original indices
   const getFilteredDataWithIndices = () => {
     return formData
       .map((item, originalIndex) => ({ item, originalIndex }))
       .filter(({ item }) => {
-        // Search filter
         const matchesSearch =
           searchTerm === "" ||
-          item.medicineName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.batchNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+          (item.medicineName && item.medicineName.toString().toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (item.batchNumber && item.batchNumber.toString().toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (item.companyName && item.companyName.toString().toLowerCase().includes(searchTerm.toLowerCase()))
 
-        // View filter
         if (activeView === "all") return matchesSearch
         if (activeView === "low") {
           const stock = Number.parseInt(item.stock) || 0
-          // Consider stock as low if it's less than 10 and greater than 0
           return matchesSearch && stock < 10 && stock > 0
         }
         if (activeView === "expired") {
           if (!item.expiryDate) return false
           const expiryDate = new Date(item.expiryDate)
           const today = new Date()
-          // Set time to 00:00:00 for accurate date comparison
           expiryDate.setHours(0, 0, 0, 0)
           today.setHours(0, 0, 0, 0)
           return matchesSearch && expiryDate < today
@@ -553,702 +512,975 @@ const PharmacyComponent = () => {
 
   const filteredDataWithIndices = getFilteredDataWithIndices()
 
-  return (
-    <StyledContainer>
-      {successMessage && (
-        <SuccessMessage
-          type={
-            successMessage.includes("Error") || successMessage.includes("Failed")
-              ? "error"
-              : successMessage.includes("required") || successMessage.includes("Please")
-                ? "warning"
-                : "success"
-          }
-        >
-          {successMessage}
-        </SuccessMessage>
-      )}
-      <Header>
-        <Title>Pharmacy Stock Management</Title>
-      </Header>
-      <ControlPanel>
-        <SearchContainer>
-          <SearchIcon />
-          <SearchInput
-            type="text"
-            placeholder="Search medicines..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          {searchTerm && (
-            <ClearButton onClick={() => setSearchTerm("")}>
-              <FaTimes />
-            </ClearButton>
-          )}
-        </SearchContainer>
-        <FilterButtonsContainer>
-          <FilterButton onClick={() => setActiveView("all")} $isActive={activeView === "all"} title="View All Stock">
-            All Stock
-          </FilterButton>
-          <FilterButton
-            onClick={() => setActiveView("low")}
-            $isActive={activeView === "low"}
-            title="View Low Stock (less than 10)"
-          >
-            Low Stock
-          </FilterButton>
-          <FilterButton
-            onClick={() => setActiveView("expired")}
-            $isActive={activeView === "expired"}
-            title="View Expired Stock"
-          >
-            Expired
-          </FilterButton>
-        </FilterButtonsContainer>
-        <ActionButtonsContainer>
-          <ActionButton onClick={downloadExcel} title="Download CSV">
-            <FaDownload />
-          </ActionButton>
-        </ActionButtonsContainer>
-      </ControlPanel>
+  const getStockStatus = (stock) => {
+    const stockNum = Number.parseInt(stock) || 0
+    if (stockNum === 0) return { status: "Out of Stock", variant: "destructive" }
+    if (stockNum < 10) return { status: "Low Stock", variant: "warning" }
+    return { status: "In Stock", variant: "success" }
+  }
 
-      <Form>
-        <TableScrollContainer>
-          <TableContainer ref={tableRef}>
-            <StyledTable $isCompact={isCompactView}>
-              <thead>
-                <tr>
-                  <th>Medicine Name</th>
-                  <th>Category</th>
-                  <th>Company</th>
-                  <th>Price</th>
-                  {!isCompactView && (
-                    <>
-                      <th>CGST %</th>
-                      <th>CGST Value</th>
-                      <th>SGST %</th>
-                      <th>SGST Value</th>
-                    </>
-                  )}
-                  <th>Add Stock</th>
-                  <th>Current Stock</th>
-                  {!isCompactView && (
-                    <>
-                      <th>Received Date</th>
-                      <th>Expiry Date</th>
-                    </>
-                  )}
-                  <th>Batch Number</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDataWithIndices.map(({ item: data, originalIndex }) => (
-                  <TableRow key={originalIndex} $isEdited={editedRows[originalIndex]}>
-                    <td>
+  const isExpired = (expiryDate) => {
+    if (!expiryDate) return false
+    const expiry = new Date(expiryDate)
+    const today = new Date()
+    expiry.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
+    return expiry < today
+  }
+
+  return (
+    <Container>
+      <ContentWrapper $isMobile={isMobile} $isTablet={isTablet}>
+        {/* Header */}
+        <HeaderCard>
+          <HeaderContent>
+            <HeaderTitle $isMobile={isMobile}>
+              <FaBox />
+              Pharmacy Stock Management
+            </HeaderTitle>
+          </HeaderContent>
+        </HeaderCard>
+
+        {/* Save Button - Moved to Top */}
+
+
+        {/* Controls */}
+        <ControlsCard>
+          <ControlsContent>
+            <ControlsRow $isMobile={isMobile}>
+              {/* Search */}
+              <SearchContainer $isMobile={isMobile}>
+                <SearchIcon>
+                  <FaSearch />
+                </SearchIcon>
+                <SearchInput
+                  placeholder="Search medicines, batch numbers, companies..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <ClearButton onClick={() => setSearchTerm("")}>
+                    <FaTimes />
+                  </ClearButton>
+                )}
+              </SearchContainer>
+
+              {/* Filter Tabs */}
+              <TabsContainer $isMobile={isMobile}>
+                <TabButton $active={activeView === "all"} onClick={() => setActiveView("all")}>
+                  All Stock
+                </TabButton>
+                <TabButton $active={activeView === "low"} onClick={() => setActiveView("low")}>
+                  Low Stock
+                </TabButton>
+                <TabButton $active={activeView === "expired"} onClick={() => setActiveView("expired")}>
+                  Expired
+                </TabButton>
+              </TabsContainer>
+
+
+            <SaveButtonContainer>
+              <SaveButton onClick={handleSubmit} disabled={loading}>
+                <FaSave />
+                {loading ? "Saving..." : "Save All Changes"}
+              </SaveButton>
+            </SaveButtonContainer>
+     
+   
+              {/* Actions */}
+              <ActionsContainer $isMobile={isMobile}>
+                <OutlineButton onClick={downloadExcel}>
+                  <FaDownload />
+                  {!isMobile && "Export CSV"}
+                </OutlineButton>
+                <PrimaryButton onClick={addNewRow}>
+                  <FaPlus />
+                  {!isMobile && "Add Medicine"}
+                </PrimaryButton>
+              </ActionsContainer>
+            </ControlsRow>
+          </ControlsContent>
+        </ControlsCard>
+
+        {/* Medicine Cards */}
+        <CardsContainer ref={tableRef}>
+          {filteredDataWithIndices.map(({ item: data, originalIndex }) => (
+            <MedicineCard key={originalIndex} $isEdited={editedRows[originalIndex]} $isMobile={isMobile}>
+              <CardContent $isMobile={isMobile}>
+                <CardGrid $isCompact={isCompactView} $isMobile={isMobile} $isTablet={isTablet}>
+                  {/* Medicine Info */}
+                  <MedicineInfoSection>
+                    <InputGroup>
+                      <InputIcon>
+                        <FaPills />
+                      </InputIcon>
                       <StyledInput
-                        type="text"
-                        placeholder="Enter medicine name"
-                        value={data.medicineName}
+                        placeholder="Medicine name"
+                        value={data.medicineName || ""}
                         onChange={(e) => handleChange(originalIndex, "medicineName", e.target.value)}
                         onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                        $fontWeight="medium"
                       />
-                    </td>
-                    <td>
-                      <StyledSelect
-                        value={data.medicineCategory}
-                        onChange={(e) => handleChange(originalIndex, "medicineCategory", e.target.value)}
-                        onKeyPress={(e) => handleKeyPress(originalIndex, e)}
-                      >
-                        <option value="">Select Category</option>
-                        <option value="Tablets">Tablets</option>
-                        <option value="Topicals">Topicals</option>
-                      </StyledSelect>
-                    </td>
-                    <td>
+                    </InputGroup>
+                    <StyledSelect
+                      value={data.medicineCategory || ""}
+                      onChange={(e) => handleChange(originalIndex, "medicineCategory", e.target.value)}
+                    >
+                      <option value="">Select Category</option>
+                      <option value="Tablets">Tablets</option>
+                      <option value="Topicals">Topicals</option>
+                      <option value="Capsules">Capsules</option>
+                      <option value="Syrup">Syrup</option>
+                      <option value="Injection">Injection</option>
+                      <option value="Ointment">Ointment</option>
+                    </StyledSelect>
+                  </MedicineInfoSection>
+
+                  {/* Company & Price */}
+                  <CompanyPriceSection>
+                    <InputGroup>
+                      <InputIcon>
+                        <FaBuilding />
+                      </InputIcon>
                       <StyledInput
-                        type="text"
-                        placeholder="Company name"
-                        value={data.companyName}
+                        placeholder="Company"
+                        value={data.companyName || ""}
                         onChange={(e) => handleChange(originalIndex, "companyName", e.target.value)}
                         onKeyPress={(e) => handleKeyPress(originalIndex, e)}
                       />
-                    </td>
-                    <td>
+                    </InputGroup>
+                    <InputGroup>
+                      <InputIcon>
+                        <FaRupeeSign />
+                      </InputIcon>
                       <StyledInput
-                        type="text"
-                        placeholder="Price"
-                        value={data.price}
+                        placeholder="Price (₹)"
+                        type="number"
+                        value={data.price || ""}
                         onChange={(e) => handleChange(originalIndex, "price", e.target.value)}
                         onKeyPress={(e) => handleKeyPress(originalIndex, e)}
                       />
-                    </td>
-                    {!isCompactView && (
-                      <>
-                        <td>
-                          <StyledInput
-                            type="number"
-                            placeholder="CGST %"
-                            value={data.CGSTPercentage}
-                            onChange={(e) => handleChange(originalIndex, "CGSTPercentage", e.target.value)}
-                            onKeyPress={(e) => handleKeyPress(originalIndex, e)}
-                          />
-                        </td>
-                        <td>
-                          <StyledInput type="number" value={data.CGSTValue} readOnly />
-                        </td>
-                        <td>
-                          <StyledInput
-                            type="number"
-                            placeholder="SGST %"
-                            value={data.SGSTPercentage}
-                            onChange={(e) => handleChange(originalIndex, "SGSTPercentage", e.target.value)}
-                            onKeyPress={(e) => handleKeyPress(originalIndex, e)}
-                          />
-                        </td>
-                        <td>
-                          <StyledInput type="number" value={data.SGSTValue} readOnly />
-                        </td>
-                      </>
-                    )}
-                    <td>
-                      <StockInputContainer>
+                    </InputGroup>
+                  </CompanyPriceSection>
+
+                  {/* Tax Info */}
+                  {!isCompactView && (
+                    <TaxSection>
+                      <TaxRow>
                         <StyledInput
+                          placeholder="CGST %"
                           type="number"
-                          placeholder={data._id ? "Add to stock" : "Initial stock"}
-                          value={data._id ? data.newStock : data.stock}
-                          onChange={(e) => handleChange(originalIndex, data._id ? "newStock" : "stock", e.target.value)}
+                          value={data.CGSTPercentage || ""}
+                          onChange={(e) => handleChange(originalIndex, "CGSTPercentage", e.target.value)}
                           onKeyPress={(e) => handleKeyPress(originalIndex, e)}
                         />
-                        {data._id && (
-                          <IconButton
-                            type="button"
-                            onClick={() => handleStockUpdate(originalIndex)}
-                            disabled={!data.newStock || Number.parseInt(data.newStock) <= 0}
-                            title="Add to current stock"
-                          >
-                            <FaArrowAltCircleRight />
-                          </IconButton>
-                        )}
-                      </StockInputContainer>
-                    </td>
-                    <td>
-                      <StockDisplay $isPending={hasPendingUpdate(data)}>
-                        {data.stock || "0"}
-                        {hasPendingUpdate(data) && <SyncIndicator title="Syncing with server...">⟳</SyncIndicator>}
-                      </StockDisplay>
-                    </td>
-                    {!isCompactView && (
-                      <>
-                        <td>
-                          <StyledInput
-                            type="date"
-                            value={data.receivedDate}
-                            onChange={(e) => handleChange(originalIndex, "receivedDate", e.target.value)}
-                            onKeyPress={(e) => handleKeyPress(originalIndex, e)}
-                          />
-                        </td>
-                        <td>
-                          <StyledInput
-                            type="date"
-                            value={data.expiryDate}
-                            onChange={(e) => handleChange(originalIndex, "expiryDate", e.target.value)}
-                            onKeyPress={(e) => handleKeyPress(originalIndex, e)}
-                          />
-                        </td>
-                      </>
-                    )}
-                    <td>
+                        <StyledInput value={data.CGSTValue || ""} readOnly $readOnly />
+                      </TaxRow>
+                      <TaxRow>
+                        <StyledInput
+                          placeholder="SGST %"
+                          type="number"
+                          value={data.SGSTPercentage || ""}
+                          onChange={(e) => handleChange(originalIndex, "SGSTPercentage", e.target.value)}
+                          onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                        />
+                        <StyledInput value={data.SGSTValue || ""} readOnly $readOnly />
+                      </TaxRow>
+                    </TaxSection>
+                  )}
+
+                  {/* Stock Management */}
+                  <StockSection>
+                    <StockInputRow>
                       <StyledInput
-                        type="text"
-                        placeholder="Batch number"
-                        value={data.batchNumber}
-                        onChange={(e) => handleChange(originalIndex, "batchNumber", e.target.value)}
+                        type="number"
+                        placeholder={data._id ? "Add stock" : "Initial stock"}
+                        value={data._id ? data.newStock || "" : data.stock || ""}
+                        onChange={(e) => handleChange(originalIndex, data._id ? "newStock" : "stock", e.target.value)}
                         onKeyPress={(e) => handleKeyPress(originalIndex, e)}
                       />
-                    </td>
-                    <td>
-                      <ActionButtonsCell>
-                        <RemoveButton onClick={() => removeRow(originalIndex)} title="Delete Row">
-                          <RiDeleteBin5Line />
-                        </RemoveButton>
-                      </ActionButtonsCell>
-                    </td>
-                  </TableRow>
-                ))}
-              </tbody>
-            </StyledTable>
-          </TableContainer>
-        </TableScrollContainer>
+                      {data._id && (
+                        <SmallButton
+                          onClick={() => handleStockUpdate(originalIndex)}
+                          disabled={!data.newStock || Number.parseInt(data.newStock) <= 0}
+                        >
+                          <FaArrowRight />
+                        </SmallButton>
+                      )}
+                    </StockInputRow>
+                    <StockStatusRow>
+                      <StockBadge $variant={getStockStatus(data.stock).variant}>
+                        {data.stock || "0"} in stock
+                      </StockBadge>
+                      {hasPendingUpdate(data) && (
+                        <SyncIcon>
+                          <FaSync />
+                        </SyncIcon>
+                      )}
+                    </StockStatusRow>
+                  </StockSection>
 
-        <ButtonContainer>
-          <button onClick={addNewRow} type="button" title="Add new row">
-            <FaPlus /> Add Row
-          </button>
-          <button type="submit" disabled={loading} onClick={handleSubmit}>
-            <FaSave /> {loading ? "Saving..." : "Save Changes"}
-          </button>
-        </ButtonContainer>
-      </Form>
+                  {/* Dates - Removed Icons */}
+                  {!isCompactView && (
+                    <DatesSection>
+                      <StyledInput
+                        type="date"
+                        placeholder="Received Date"
+                        value={data.receivedDate || ""}
+                        onChange={(e) => handleChange(originalIndex, "receivedDate", e.target.value)}
+                        onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                      />
+                      <DateInputRow>
+                        <StyledInput
+                          type="date"
+                          placeholder="Expiry Date"
+                          value={data.expiryDate || ""}
+                          onChange={(e) => handleChange(originalIndex, "expiryDate", e.target.value)}
+                          onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                          $isExpired={isExpired(data.expiryDate)}
+                        />
+                        {isExpired(data.expiryDate) && (
+                          <WarningIcon>
+                            <FaExclamationTriangle />
+                          </WarningIcon>
+                        )}
+                      </DateInputRow>
+                    </DatesSection>
+                  )}
 
-      {loading && (
-        <LoadingOverlay>
-          <LoadingSpinner>Loading...</LoadingSpinner>
-        </LoadingOverlay>
-      )}
-    </StyledContainer>
+                  {/* Batch & Actions */}
+                  <BatchActionsSection>
+                    <StyledInput
+                      placeholder="Batch Number"
+                      value={data.batchNumber || ""}
+                      onChange={(e) => handleChange(originalIndex, "batchNumber", e.target.value)}
+                      onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                    />
+                    <DeleteButton onClick={() => removeRow(originalIndex)}>
+                      <FaTrash />
+                    </DeleteButton>
+                  </BatchActionsSection>
+                </CardGrid>
+              </CardContent>
+            </MedicineCard>
+          ))}
+        </CardsContainer>
+
+        {/* Loading Overlay */}
+        {loading && (
+          <LoadingOverlay>
+            <LoadingCard>
+              <LoadingContent>
+                <LoadingIcon>
+                  <FaSync />
+                </LoadingIcon>
+                <LoadingText>Loading...</LoadingText>
+              </LoadingContent>
+            </LoadingCard>
+          </LoadingOverlay>
+        )}
+
+        {/* Toast Container */}
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+          toastStyle={{
+            fontSize: "14px",
+            borderRadius: "8px",
+          }}
+        />
+      </ContentWrapper>
+    </Container>
   )
 }
 
 export default PharmacyComponent
 
-// Container and Layout
-const StyledContainer = styled.div`
-  padding: 10px;
-  max-width: 100%;
+// Styled Components with Enhanced Responsiveness
+const Container = styled.div`
+  min-height: 100vh;
+  margin-top: 60px;
+  background: linear-gradient(135deg, #f3e8ff 0%, #e0e7ff 100%);
+  padding: 0.5rem;
+
+  @media (min-width: 768px) {
+    padding: 1rem;
+  }
+
+  @media (min-width: 1024px) {
+    padding: 1.5rem;
+  }
+`
+
+const ContentWrapper = styled.div`
+  max-width: ${(props) => (props.$isMobile ? "100%" : props.$isTablet ? "100%" : "1400px")};
   margin: 0 auto;
-  margin-top: 70px;
-  position: relative;
-  height: 100vh;
   display: flex;
   flex-direction: column;
+  gap: ${(props) => (props.$isMobile ? "1rem" : "1.5rem")};
+`
+
+// Header
+const HeaderCard = styled.div`
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5d3ff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 `
 
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  flex-shrink: 0;
+const HeaderContent = styled.div`
+  background: linear-gradient(135deg, #6b4a8f 0%, #6b4a8f 100%);
+  color: white;
+  padding: 1rem;
+
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+  }
 `
 
-const Title = styled.h2`
-  color: #6b4a8f;
-  margin: 0;
+const HeaderTitle = styled.h1`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: ${(props) => (props.$isMobile ? "1.25rem" : "2rem")};
   font-weight: 600;
-  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  margin: 0;
+
+  svg {
+    font-size: ${(props) => (props.$isMobile ? "1.25rem" : "2rem")};
+  }
+
+  @media (min-width: 768px) {
+    font-size: 1.75rem;
+    
+    svg {
+      font-size: 1.75rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    font-size: 2rem;
+    
+    svg {
+      font-size: 2rem;
+    }
+  }
 `
 
-const ControlPanel = styled.div`
+// Save Section - Moved to Top
+const SaveCard = styled.div`
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5d3ff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+`
+
+const SaveContent = styled.div`
+  padding: 1rem;
+
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+  }
+`
+
+const SaveButtonContainer = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+
+  @media (min-width: 768px) {
+    justify-content: flex-end;
+  }
+`
+
+const SaveButton = styled.button`
+  display: flex;
   align-items: center;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  border: none;
+  background: #6b4a8f;
+  color: white;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+
+  &:hover:not(:disabled) {
+    background: #6b4a8f;
+  }
+
+  &:disabled {
+    background: #6b4a8f;
+    cursor: not-allowed;
+  }
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    width: auto;
+  }
+`
+
+// Controls
+const ControlsCard = styled.div`
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5d3ff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+`
+
+const ControlsContent = styled.div`
+  padding: 1rem;
+
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+  }
+`
+
+const ControlsRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: stretch;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 `
 
 const SearchContainer = styled.div`
   position: relative;
+  flex: 1;
+  max-width: ${(props) => (props.$isMobile ? "100%" : "24rem")};
   display: flex;
   align-items: center;
-  flex-grow: 1;
-  max-width: 300px;
-  margin-right: 10px;
+`
+
+const SearchIcon = styled.div`
+  position: absolute;
+  left: 0.75rem;
+  color: #a855f7;
+  z-index: 1;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
 `
 
 const SearchInput = styled.input`
   width: 100%;
-  padding: 8px 10px 8px 30px;
-  border: 1px solid #ced4da;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  border: 1px solid #e5d3ff;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
 
   &:focus {
-    border-color: #6b4a8f;
-    box-shadow: 0 0 0 2px rgba(107, 74, 143, 0.2);
     outline: none;
+    border-color: #6b4a8f;
+    box-shadow: 0 0 0 3px rgba(107, 74, 143, 0.1);
   }
-`
 
-const SearchIcon = styled(FaSearch)`
-  position: absolute;
-  left: 10px;
-  color: #6b4a8f;
-  font-size: 0.9rem;
+  &::placeholder {
+    color: #9ca3af;
+  }
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+  }
 `
 
 const ClearButton = styled.button`
   position: absolute;
-  right: 10px;
+  right: 0.5rem;
   background: none;
   border: none;
-  color: #999;
+  color: #6b7280;
   cursor: pointer;
-  font-size: 0.9rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: color 0.2s ease;
+
   &:hover {
-    color: #333;
+    color: #374151;
+  }
+
+  svg {
+    width: 1rem;
+    height: 1rem;
   }
 `
 
-const FilterButtonsContainer = styled.div`
+const TabsContainer = styled.div`
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  background: #f3e8ff;
+  border-radius: 8px;
+  padding: 0.25rem;
+  gap: 0.25rem;
+  width: ${(props) => (props.$isMobile ? "100%" : "auto")};
 `
 
-const FilterButton = styled.button`
-  padding: 8px 15px;
-  border: 1px solid ${({ $isActive }) => ($isActive ? "#6b4a8f" : "#ced4da")};
-  border-radius: 20px;
-  background-color: ${({ $isActive }) => ($isActive ? "#6b4a8f" : "white")};
-  color: ${({ $isActive }) => ($isActive ? "white" : "#6b4a8f")};
-  font-size: 0.85rem;
+const TabButton = styled.button`
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background-color: ${({ $isActive }) => ($isActive ? "#5a3d7a" : "#f0f0f0")};
-    color: ${({ $isActive }) => ($isActive ? "white" : "#5a3d7a")};
-  }
-`
-
-const ActionButtonsContainer = styled.div`
-  display: flex;
-  gap: 10px;
-`
-
-const Form = styled.form`
-  width: 100%;
-  display: flex;
-  flex-direction: column;
+  transition: all 0.2s ease;
+  background: ${(props) => (props.$active ? "#6b4a8f" : "transparent")};
+  color: ${(props) => (props.$active ? "white" : "#6b4a8f")};
   flex: 1;
-  overflow: hidden;
+
+  &:hover {
+    background: ${(props) => (props.$active ? "#5a3d7a" : "rgba(107, 74, 143, 0.1)")};
+  }
+
+  @media (min-width: 768px) {
+    flex: initial;
+  }
 `
 
-const TableScrollContainer = styled.div`
-  position: relative;
+const ActionsContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  width: ${(props) => (props.$isMobile ? "100%" : "auto")};
+`
+
+const OutlineButton = styled.button`
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5d3ff;
+  background: white;
+  color: #6b4a8f;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
   flex: 1;
-  overflow: hidden;
+
+  &:hover {
+    background: #f3e8ff;
+  }
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    flex: initial;
+    padding: 0.5rem 1rem;
+  }
 `
 
-const TableContainer = styled.div`
-  flex: 1;
-  overflow-x: auto;
-  overflow-y: auto;
-  border: 1px solid #ddd;
+const PrimaryButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: #6b4a8f;
+  color: white;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  height: 100%;
-  scroll-behavior: smooth;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+
+  &:hover {
+    background: #5a3d7a;
+  }
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    flex: initial;
+    padding: 0.5rem 1rem;
+  }
+`
+
+// Cards
+const CardsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
 
   &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
   }
+
   &::-webkit-scrollbar-track {
     background: #f1f1f1;
-    border-radius: 4px;
+    border-radius: 3px;
   }
+
   &::-webkit-scrollbar-thumb {
     background: #6b4a8f;
-    border-radius: 4px;
+    border-radius: 3px;
   }
+
   &::-webkit-scrollbar-thumb:hover {
     background: #5a3d7a;
   }
-`
 
-const StyledTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  min-width: ${(props) => (props.$isCompact ? "1000px" : "1400px")};
-
-  th {
-    background-color: #6b4a8f;
-    color: white;
-    padding: 8px 6px;
-    text-align: center;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    font-weight: 600;
-    border: 1px solid #5a3d7a;
-    white-space: nowrap;
-    font-size: 0.9rem;
+  @media (min-width: 768px) {
+    max-height: 65vh;
   }
 
-  td {
-    padding: 4px;
-    border: 1px solid #ddd;
-    text-align: center;
-    vertical-align: middle;
-    font-size: 0.9rem;
+  @media (min-width: 1024px) {
+    max-height: 70vh;
   }
 `
 
-const TableRow = styled.tr`
-  background-color: ${(props) => (props.$isEdited ? "rgba(255, 245, 157, 0.3)" : "white")};
-  transition: background-color 0.2s ease;
+const MedicineCard = styled.div`
+  background: white;
+  border-radius: 12px;
+  border-left: 4px solid ${(props) => (props.$isEdited ? "#fbbf24" : "#a855f7")};
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  ${(props) => props.$isEdited && "background: #fffbeb;"}
 
   &:hover {
-    background-color: ${(props) => (props.$isEdited ? "rgba(255, 245, 157, 0.5)" : "#f8f9fa")};
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+`
+
+const CardContent = styled.div`
+  padding: ${(props) => (props.$isMobile ? "1rem" : "1.5rem")};
+`
+
+const CardGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: start;
+
+  @media (min-width: 768px) {
+    grid-template-columns: ${(props) => (props.$isTablet ? "1fr 1fr" : "1fr")};
+    gap: 1.5rem;
   }
 
-  &:nth-child(even) {
-    background-color: ${(props) => (props.$isEdited ? "rgba(255, 245, 157, 0.3)" : "#f9f9f9")};
+  @media (min-width: 1024px) {
+    grid-template-columns: ${(props) => (props.$isCompact ? "3fr 2fr 2fr 1fr" : "3fr 2fr 2fr 2fr 2fr 1fr")};
+    align-items: center;
   }
+`
+
+const MedicineInfoSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`
+
+const CompanyPriceSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`
+
+const TaxSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`
+
+const TaxRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+`
+
+const StockSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`
+
+const StockInputRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`
+
+const StockStatusRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+`
+
+const DatesSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`
+
+const DateInputRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`
+
+const BatchActionsSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 `
 
 // Form Elements
+const InputGroup = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+`
+
+const InputIcon = styled.div`
+  position: absolute;
+  left: 0.75rem;
+  color: #6b4a8f;
+  z-index: 1;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+`
+
 const StyledInput = styled.input`
   width: 100%;
-  min-width: 80px;
-  padding: 4px 6px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  padding: 0.75rem;
+  ${(props) => props.$fontWeight === "medium" && "font-weight: 500;"}
+  ${(props) => (props.children || props.placeholder?.includes("Medicine")) && "padding-left: 2.5rem;"}
+  ${(props) => (props.placeholder?.includes("Company") || props.placeholder?.includes("Price")) && "padding-left: 2.5rem;"}
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  ${(props) => props.$readOnly && "background-color: #f9fafb; color: #6b7280;"}
+  ${(props) => props.$isExpired && "border-color: #fca5a5; background-color: #fef2f2;"}
 
   &:focus {
-    border-color: #6b4a8f;
     outline: none;
-    box-shadow: 0 0 0 2px rgba(107, 74, 143, 0.2);
-  }
-
-  &:read-only {
-    background-color: #f8f9fa;
-    color: #6c757d;
-    cursor: not-allowed;
+    border-color: #6b4a8f;
+    box-shadow: 0 0 0 3px rgba(107, 74, 143, 0.1);
   }
 
   &::placeholder {
-    color: #999;
-    font-size: 0.8rem;
+    color: #9ca3af;
+  }
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 0.75rem;
+    ${(props) => (props.children || props.placeholder?.includes("Medicine")) && "padding-left: 2.5rem;"}
+    ${(props) => (props.placeholder?.includes("Company") || props.placeholder?.includes("Price")) && "padding-left: 2.5rem;"}
   }
 `
 
 const StyledSelect = styled.select`
   width: 100%;
-  min-width: 100px;
-  padding: 4px 6px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  background-color: white;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: white;
+  transition: all 0.2s ease;
 
   &:focus {
-    border-color: #6b4a8f;
     outline: none;
-    box-shadow: 0 0 0 2px rgba(107, 74, 143, 0.2);
+    border-color: #6b4a8f;
+    box-shadow: 0 0 0 3px rgba(107, 74, 143, 0.1);
   }
 
-  &:hover {
-    border-color: #adb5bd;
+  @media (min-width: 768px) {
+    padding: 0.5rem 0.75rem;
   }
 `
 
-const StockInputContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 2px;
-`
-
-const StockDisplay = styled.div`
-  padding: 4px 6px;
-  background-color: ${(props) => (props.$isPending ? "#fff8e1" : "#d4edda")};
-  border-radius: 4px;
-  font-weight: 700;
-  color: ${(props) => (props.$isPending ? "#e65100" : "#155724")};
-  min-height: 28px;
+const SmallButton = styled.button`
+  padding: 0.75rem;
+  border: none;
+  background: #6b4a8f;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid ${(props) => (props.$isPending ? "#ffb74d" : "#c3e6cb")};
-  font-size: 0.9rem;
+  min-width: 44px;
+
+  &:hover:not(:disabled) {
+    background: #5a3d7a;
+  }
+
+  &:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    padding: 0.5rem;
+  }
 `
 
-// Indicators
-const SyncIndicator = styled.span`
-  margin-left: 5px;
-  color: #ff9800;
-  font-size: 0.8rem;
+const DeleteButton = styled.button`
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #fca5a5;
+  background: white;
+  color: #dc2626;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #fef2f2;
+  }
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    padding: 0.5rem;
+  }
+`
+
+// Badges and Icons
+const StockBadge = styled.span`
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  ${(props) => {
+    switch (props.$variant) {
+      case "destructive":
+        return "background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5;"
+      case "warning":
+        return "background: #fffbeb; color: #d97706; border: 1px solid #fcd34d;"
+      default:
+        return "background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;"
+    }
+  }}
+`
+
+const SyncIcon = styled.div`
+  color: #f59e0b;
   animation: spin 1.5s linear infinite;
 
   @keyframes spin {
-    0% {
+    from {
       transform: rotate(0deg);
     }
-    100% {
+    to {
       transform: rotate(360deg);
     }
   }
-`
-
-// Buttons
-const IconButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #6b4a8f;
-  padding: 2px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background-color: rgba(107, 74, 143, 0.1);
-    transform: scale(1.1);
-  }
-
-  &:disabled {
-    color: #ccc;
-    cursor: not-allowed;
-  }
 
   svg {
-    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
   }
 `
 
-const RemoveButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #dc3545;
-  padding: 2px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: rgba(220, 53, 69, 0.1);
-    transform: scale(1.1);
-  }
+const WarningIcon = styled.div`
+  color: #dc2626;
 
   svg {
-    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
   }
 `
 
-const ActionButtonsCell = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 5px;
-`
-
-const ButtonContainer = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 15px;
-  margin-top: 15px;
-  flex-shrink: 0;
-`
-
-const SubmitButton = styled.button`
-  background-color: #28a745;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background-color 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background-color: #218838;
-  }
-
-  &:disabled {
-    background-color: #94d3a2;
-    cursor: not-allowed;
-  }
-`
-
-const ActionButton = styled.button`
-  background-color: #6c757d;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: #5a6268;
-  }
-`
-
-// Loading Overlay
+// Loading
 const LoadingOverlay = styled.div`
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   z-index: 1000;
 `
 
-const LoadingSpinner = styled.div`
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #6b4a8f;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
+const LoadingCard = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  margin: 1rem;
+`
+
+const LoadingContent = styled.div`
   display: flex;
-  justify-content: center;
   align-items: center;
+  gap: 0.75rem;
+`
+
+const LoadingIcon = styled.div`
   color: #6b4a8f;
-  font-weight: bold;
+  animation: spin 1s linear infinite;
 
   @keyframes spin {
-    0% {
+    from {
       transform: rotate(0deg);
     }
-    100% {
+    to {
       transform: rotate(360deg);
     }
   }
+
+  svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
 `
 
-const SuccessMessage = styled.div`
-  position: fixed;
-  top: 70px;
-  right: 20px;
-  padding: 12px 20px;
-  border-radius: 5px;
-  font-weight: bold;
-  z-index: 1000;
-  ${(props) => {
-    if (props.type === "error") {
-      return `
-        background-color: white;
-        color: #ff4444;
-        border: 1px solid #cc0000;
-      `
-    } else if (props.type === "warning") {
-      return `
-        background-color: white;
-        color: #ffa500;
-        border: 1px solid #cc8400;
-      `
-    } else {
-      return `
-        background-color: white;
-        color: #ffa500;
-        border: 1px solid #45a049;
-      `
-    }
-  }}
+const LoadingText = styled.span`
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #374151;
 `
