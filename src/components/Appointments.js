@@ -107,13 +107,23 @@ const Appointment = () => {
 const generateTimeSlots = (startTime, endTime, interval) => {
   const slots = []
   let current = startTime
+
   while (current < endTime) {
     const next = new Date(current.getTime() + interval * 60000)
-    slots.push(
-      `${current.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - ${next.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`
-    )
+    const formattedSlot = `${current.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })} - ${next.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })}`
+
+    slots.push(formattedSlot)
     current = next
   }
+
   return slots
 }
 
@@ -122,7 +132,6 @@ const getTimeSlotsForDate = (date, interval) => {
   const endTime = new Date(date.setHours(20, 0, 0, 0))
   return generateTimeSlots(startTime, endTime, interval)
 }
-
 
   const handleBookAppointment = (slot) => {
     setSelectedSlot(slot)

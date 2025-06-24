@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, useRef } from "react"
 import { useLocation } from "react-router-dom"
 import { Col, Row, Form, Tab, Nav } from "react-bootstrap"
@@ -114,7 +112,7 @@ const SummaryDetailsContainer = styled.div`
   padding: 25px;
   background: linear-gradient(145deg, #ffffff 0%, #f8f6fa 100%);
   border-radius: 15px;
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(183, 152, 192, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
   width: 100%;
@@ -160,12 +158,12 @@ const PatientDetailsColumn = styled.div`
   &:first-child {
     margin-right: 20px;
   }
-  
+ 
   div {
     margin-bottom: 8px;
     color: #5a4a6b;
     font-weight: 500;
-    
+   
     strong {
       color: #6b4c7a;
     }
@@ -238,7 +236,7 @@ export const RemoveButton = styled.button`
   border-radius: 5px;
   padding: 5px 10px;
   cursor: pointer;
-  
+ 
   &:hover {
     background-color: #ee5253;
   }
@@ -379,7 +377,7 @@ const SummaryListItem = styled.li`
   border-left: 3px solid #b798c0;
   color: #5a4a6b;
   line-height: 1.5;
-  
+ 
   &:hover {
     background: rgba(183, 152, 192, 0.12);
   }
@@ -982,7 +980,7 @@ useEffect(() => {
         } else {
           prescriptionVitals = summaryData.vital
         }
-        
+       
         if (
           prescriptionVitals &&
           (prescriptionVitals.height ||
@@ -1256,14 +1254,25 @@ useEffect(() => {
         setSuccessMessage("Saved successfully")
 
         // Show confirmation alert after 3 seconds
-        setTimeout(() => {
-          const shouldNavigate = window.confirm("Do you want to go back to appointments page?")
-          if (shouldNavigate) {
-            const navigationPath = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
-            window.location.href = navigationPath
-          }
-          setSuccessMessage("")
-        }, 3000)
+          // Show confirmation alert after 3 seconds
+          setTimeout(() => {
+            Swal.fire({
+              title: 'Go Back?',
+              text: 'Do you want to go back to the appointments page?',
+              icon: 'question',
+              showCancelButton: true,
+              confirmButtonText: 'Yes, take me there',
+              cancelButtonText: 'No, stay here',
+              confirmButtonColor: '#3085d6',
+              cancelButtonColor: '#d33',
+            }).then((result) => {
+              if (result.isConfirmed) {
+                const navigationPath = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
+                window.location.href = navigationPath
+              }
+              setSuccessMessage("")
+            })
+          }, 3000)
         return // Exit early to prevent clearing message immediately
       }
 
@@ -1673,9 +1682,7 @@ useEffect(() => {
             const isLoadedPrescription = loadedData.prescriptions.some(
               (loaded) => loaded.selectedPrescription[0]?.label === medicineName,
             )
-            const stock = !isLoadedPrescription ? getMedicineStock(medicineName) : null
-            const stockInfo = stock !== null ? ` [Stock: ${stock}]` : ""
-            return `${index + 1}. ${medicineName}${stockInfo} - Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration}`
+            return `${index + 1}. ${medicineName}- Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration}`
           })
           .join("\n")
 

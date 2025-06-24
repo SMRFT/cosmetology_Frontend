@@ -121,15 +121,15 @@ const generateTimeSlots = () => {
   while (startTime < endTime) {
     const endTimeSlot = new Date(startTime.getTime() + 30 * 60000)
     const timeSlot = {
-      start: startTime.toLocaleTimeString('en-US', {
+      start: startTime.toLocaleTimeString('en-GB', {
         hour: "2-digit",
         minute: "2-digit",
-        hour12: true
+        hour12: false
       }),
-      end: endTimeSlot.toLocaleTimeString('en-US', {
+      end: endTimeSlot.toLocaleTimeString('en-GB', {
         hour: "2-digit",
         minute: "2-digit",
-        hour12: true
+        hour12: false
       }),
     }
     timeSlots.push(timeSlot)
@@ -138,6 +138,7 @@ const generateTimeSlots = () => {
 
   return timeSlots
 }
+
 
 const timeSlots = generateTimeSlots()
 
