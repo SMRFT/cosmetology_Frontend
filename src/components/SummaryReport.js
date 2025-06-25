@@ -15,8 +15,8 @@ import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
-import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
+import PDFMain1 from "./images/PDF_Summary_branch1.jpeg"
+import PDFMain2 from "./images/PDF_Summary_branch2.jpeg"
 import "./DatePicker.css"
 
 const SummaryReport = () => {
@@ -24,6 +24,7 @@ const SummaryReport = () => {
   const [selectedInterval, setSelectedInterval] = useState("day")
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [branchCode, setBranchCode] = useState("")
+  const [userRole, setUserRole] = useState("")
   const [loading, setLoading] = useState(false) // Add loading state
   const [error, setError] = useState(null) // Add error state
   const navigate = useNavigate()
@@ -43,6 +44,7 @@ const SummaryReport = () => {
   // Effect to get branch_code from localStorage
   useEffect(() => {
     const code = localStorage.getItem("selectedBranch")
+    const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
 
     if (code) {
       setBranchCode(code)
@@ -51,6 +53,11 @@ const SummaryReport = () => {
       setError("Branch code not found. Please ensure you are logged in.") // Set error if branch code is missing
       toast.error("Branch code not found. Please log in again.") // Toast for missing branch code
     }
+     if (role) {
+      setUserRole(role)
+      } else {
+      console.warn("User role not found")
+      }
   }, []) // Run only once on component mount
 
   // Effect to fetch data whenever relevant dependencies change
@@ -116,189 +123,293 @@ const SummaryReport = () => {
     setSelectedDate(date)
   }
 
-  // New PDF export function for individual patients
-  const exportPatientToPDF = (patientData) => {
-    const pdf = new jsPDF("p", "mm", "a4")
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
+// Robust PDF export function to handle current data structure issues
+const exportPatientToPDF = (patientData) => {
+  const pdf = new jsPDF("p", "mm", "a4")
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
 
-    const backgroundImageMap = {
-      SCC001: PDFMain1,
-      SCC002: PDFMain2,
-    }
-
-    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
-
-    let startY = 50
-
-    if (branchCode === "SCC002") {
-      startY = 80
-    }
-
-    const convertToBase64 = (url, callback) => {
-      const img = new Image()
-      img.crossOrigin = "Anonymous"
-      img.src = url
-      img.onload = () => {
-        const canvas = document.createElement("canvas")
-        canvas.width = img.width
-        canvas.height = img.height
-        const ctx = canvas.getContext("2d")
-        ctx.drawImage(img, 0, 0)
-        const dataURL = canvas.toDataURL("image/png")
-        callback(dataURL)
-      }
-      img.onerror = (error) => console.error("Error converting image to Base64:", error)
-    }
-
-    convertToBase64(PDFMain, (mainImage) => {
-      pdf.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-      pdf.setFont("helvetica", "bold")
-      pdf.setFontSize(16)
-      pdf.setTextColor(40, 40, 40)
-      pdf.text(`Patient: ${patientData.patientName.toUpperCase()}`, 16, startY)
-
-      pdf.setFont("helvetica", "normal")
-      pdf.setFontSize(11)
-      pdf.text(`Patient UID: ${patientData.patientUID || "N/A"}`, 16, startY + 10)
-
-      startY += 35
-
-      const createSubTableRows = (label, entries) => {
-        if (!entries || entries.length === 0) {
-          return []
-        }
-        return entries.map((entry, index) => [index === 0 ? label : "", entry])
-      }
-
-      let data = []
-
-      // Parse and format complaints
-      const formatComplaints = (complaintsData) => {
-        try {
-          if (!complaintsData || complaintsData === "[]" || complaintsData === "{}" || complaintsData === '""')
-            return []
-
-          let complaints = null
-
-          if (Array.isArray(complaintsData)) {
-            complaints = complaintsData
-          } else if (typeof complaintsData === "object" && complaintsData !== null) {
-            complaints = [complaintsData]
-          } else if (typeof complaintsData === "string") {
-            let cleanedStr = complaintsData.trim()
-
-            while (cleanedStr.startsWith('"') && cleanedStr.endsWith('"')) {
-              cleanedStr = cleanedStr.slice(1, -1)
-              cleanedStr = cleanedStr.replace(/\\"/g, '"')
-            }
-
-            cleanedStr = cleanedStr.replace(/\\\\/g, "\\")
-
-            if (cleanedStr.startsWith("[") || cleanedStr.startsWith("{")) {
-              complaints = JSON.parse(cleanedStr)
-            }
-          }
-
-          if (!Array.isArray(complaints)) {
-            if (complaints && typeof complaints === "object") {
-              complaints = [complaints]
-            } else {
-              return []
-            }
-          }
-
-          return complaints
-            .map((complaint) => {
-              if (!complaint || typeof complaint !== "object" || !complaint.complaints) return ""
-
-              let formatted = `${complaint.complaints}`
-              if (complaint.duration && complaint.durationUnit) {
-                formatted += ` - Duration: ${complaint.duration} ${complaint.durationUnit}`
-              }
-              return formatted
-            })
-            .filter((item) => item !== "")
-        } catch (e) {
-          console.log("Error parsing complaints:", e)
-          return []
-        }
-      }
-
-      // Add data sections
-      if (patientData.diagnosis && patientData.diagnosis.trim() !== "") {
-        data.push(["Diagnosis", patientData.diagnosis])
-      }
-
-      const complaintsFormatted = formatComplaints(patientData.complaints)
-      if (complaintsFormatted.length > 0) {
-        data = data.concat(createSubTableRows("Complaints", complaintsFormatted))
-      }
-
-      if (patientData.findings && patientData.findings.trim() !== "") {
-        data.push(["Findings", patientData.findings])
-      }
-
-      if (patientData.proceduresList && patientData.proceduresList.trim() !== "") {
-        data.push(["Procedures", patientData.proceduresList])
-      }
-
-      if (patientData.prescription && patientData.prescription.trim() !== "") {
-        data.push(["Prescription", patientData.prescription])
-      }
-
-      if (patientData.plans && patientData.plans.trim() !== "") {
-        // Format plans by removing "Plan1:", "Plan2:" etc.
-        const formattedPlans = patientData.plans.replace(/Plan\d+:\s*/g, "").replace(/,\s*$/, "")
-        data.push(["Plans", formattedPlans])
-      }
-
-      if (patientData.tests && patientData.tests.trim() !== "") {
-        data.push(["Tests", patientData.tests])
-      }
-
-      if (data.length > 0) {
-        pdf.autoTable({
-          startY,
-          head: [["Section", "Details"]],
-          body: data,
-          theme: "grid",
-          headStyles: {
-            fillColor: [116, 180, 155],
-            textColor: [255, 255, 255],
-            fontStyle: "bold",
-            fontSize: 10,
-          },
-          bodyStyles: {
-            fontSize: 9,
-            textColor: [40, 40, 40],
-            font: "helvetica",
-          },
-          styles: {
-            cellWidth: "wrap",
-            minCellHeight: 10,
-            overflow: "linebreak",
-            tableWidth: "auto",
-          },
-          columnStyles: {
-            0: { cellWidth: 60 },
-            1: { cellWidth: pageWidth - 80 },
-          },
-          margin: { left: 14, right: 14 },
-        })
-      }
-
-      let currentY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 10 : startY
-      pdf.setFontSize(14)
-      pdf.setTextColor(0, 0, 0)
-      currentY += 10
-
-      pdf.save(
-        `${branchCode}_${patientData.patientName}_${patientData.patientUID || "NoUID"}_${patientData.appointmentDate}`,
-      )
-      toast.success(`PDF downloaded for ${patientData.patientName}`)
-    })
+  const backgroundImageMap = {
+    SCC001: PDFMain1,
+    SCC002: PDFMain2,
   }
+
+  const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+
+  let startY = 50
+
+  if (branchCode === "SCC002") {
+    startY = 80
+  }
+
+  const convertToBase64 = (url, callback) => {
+    const img = new Image()
+    img.crossOrigin = "Anonymous"
+    img.src = url
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext("2d")
+      ctx.drawImage(img, 0, 0)
+      const dataURL = canvas.toDataURL("image/png")
+      callback(dataURL)
+    }
+    img.onerror = (error) => console.error("Error converting image to Base64:", error)
+  }
+
+  // Enhanced parsing function to handle multiple levels of escaping
+  const parseComplexString = (str) => {
+    if (!str || str === 'null' || str === 'undefined') return null
+    
+    try {
+      // Handle multiple levels of JSON string wrapping
+      let parsed = str
+      
+      // Remove outer quotes if they exist
+      if (typeof parsed === 'string' && parsed.startsWith('"') && parsed.endsWith('"')) {
+        parsed = parsed.slice(1, -1)
+      }
+      
+      // Unescape JSON
+      if (typeof parsed === 'string') {
+        parsed = parsed.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+      }
+      
+      // Try to parse as JSON
+      if (typeof parsed === 'string' && (parsed.startsWith('[') || parsed.startsWith('{'))) {
+        parsed = JSON.parse(parsed)
+      }
+      
+      return parsed
+    } catch (e) {
+      console.warn('Failed to parse complex string:', str, e)
+      return str
+    }
+  }
+
+  convertToBase64(PDFMain, (mainImage) => {
+    pdf.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(16)
+    pdf.setTextColor(40, 40, 40)
+    pdf.text(`Patient: ${patientData.patientName.toUpperCase()}`, 16, startY)
+
+    pdf.setFont("helvetica", "normal")
+    pdf.setFontSize(11)
+    pdf.text(`Patient UID: ${patientData.patientUID || "N/A"}`, 16, startY + 10)
+
+    startY += 35
+
+    const createSubTableRows = (label, entries) => {
+      if (!entries || entries.length === 0) {
+        return []
+      }
+      return entries.map((entry, index) => [index === 0 ? label : "", entry])
+    }
+
+    let data = []
+
+    // Enhanced complaints formatting with better error handling
+    const formatComplaints = (complaintsData) => {
+      try {
+        if (!complaintsData || complaintsData === "[]" || complaintsData === "{}" || complaintsData === '""') {
+          return []
+        }
+
+        let complaints = parseComplexString(complaintsData)
+        
+        if (!Array.isArray(complaints)) {
+          if (complaints && typeof complaints === "object") {
+            complaints = [complaints]
+          } else {
+            return []
+          }
+        }
+
+        return complaints
+          .map((complaint) => {
+            if (!complaint || typeof complaint !== "object") return ""
+            
+            let formatted = complaint.complaints || complaint.complaint || ""
+            if (complaint.duration && complaint.durationUnit) {
+              formatted += ` - Duration: ${complaint.duration} ${complaint.durationUnit}`
+            }
+            return formatted
+          })
+          .filter((item) => item !== "")
+      } catch (e) {
+        console.warn("Error parsing complaints:", e)
+        // Fallback: treat as plain string
+        return typeof complaintsData === 'string' ? [complaintsData] : []
+      }
+    }
+
+    // Enhanced procedures formatting
+    const formatProcedures = (proceduresData) => {
+      try {
+        if (!proceduresData) return ""
+        
+        let procedures = parseComplexString(proceduresData)
+        
+        if (Array.isArray(procedures)) {
+          return procedures.map(proc => {
+            if (typeof proc === 'object') {
+              return `${proc.procedure || proc.name || ''} - ${proc.date || ''}`
+            }
+            return proc
+          }).join(', ')
+        }
+        
+        return procedures.toString()
+      } catch (e) {
+        console.warn("Error parsing procedures:", e)
+        return proceduresData.toString()
+      }
+    }
+
+    // Enhanced prescription formatting
+    const formatPrescription = (prescriptionData) => {
+      try {
+        if (!prescriptionData) return ""
+        
+        // Handle current format with newlines and structured text
+        if (typeof prescriptionData === 'string') {
+          return prescriptionData.replace(/\n/g, ' ').trim()
+        }
+        
+        let prescription = parseComplexString(prescriptionData)
+        
+        if (Array.isArray(prescription)) {
+          return prescription.map(med => {
+            if (typeof med === 'object') {
+              let parts = []
+              if (med.medication) parts.push(med.medication)
+              if (med.dosage) parts.push(`Dosage: ${med.dosage}`)
+              if (med.frequency) parts.push(`Frequency: ${med.frequency}`)
+              if (med.duration) parts.push(`Duration: ${med.duration}`)
+              return parts.join(' - ')
+            }
+            return med
+          }).join('\n')
+        }
+        
+        return prescription.toString()
+      } catch (e) {
+        console.warn("Error parsing prescription:", e)
+        return prescriptionData.toString()
+      }
+    }
+
+    // Enhanced plans formatting
+    const formatPlans = (plansData) => {
+      try {
+        if (!plansData) return ""
+        
+        if (typeof plansData === 'string') {
+          // Handle current format: "Plan1: Chemical Peel\nPlan2: Skin care routine"
+          return plansData
+            .split('\n')
+            .map(plan => plan.replace(/Plan\d+:\s*/g, '').trim())
+            .filter(plan => plan !== '')
+            .join(', ')
+        }
+        
+        let plans = parseComplexString(plansData)
+        
+        if (Array.isArray(plans)) {
+          return plans.join(', ')
+        }
+        
+        return plans.toString()
+      } catch (e) {
+        console.warn("Error parsing plans:", e)
+        return plansData.toString()
+      }
+    }
+
+    // Add data sections with enhanced parsing
+    if (patientData.diagnosis && patientData.diagnosis.trim() !== "") {
+      data.push(["Diagnosis", patientData.diagnosis])
+    }
+
+    const complaintsFormatted = formatComplaints(patientData.complaints)
+    if (complaintsFormatted.length > 0) {
+      data = data.concat(createSubTableRows("Complaints", complaintsFormatted))
+    }
+
+    if (patientData.findings && patientData.findings.trim() !== "") {
+      data.push(["Findings", patientData.findings])
+    }
+
+    const proceduresFormatted = formatProcedures(patientData.proceduresList)
+    if (proceduresFormatted && proceduresFormatted.trim() !== "") {
+      data.push(["Procedures", proceduresFormatted])
+    }
+
+    const prescriptionFormatted = formatPrescription(patientData.prescription)
+    if (prescriptionFormatted && prescriptionFormatted.trim() !== "") {
+      data.push(["Prescription", prescriptionFormatted])
+    }
+
+    const plansFormatted = formatPlans(patientData.plans)
+    if (plansFormatted && plansFormatted.trim() !== "") {
+      data.push(["Plans", plansFormatted])
+    }
+
+    if (patientData.tests && patientData.tests.trim() !== "") {
+      data.push(["Tests", patientData.tests])
+    }
+
+    if (data.length > 0) {
+      pdf.autoTable({
+        startY,
+        head: [["Section", "Details"]],
+        body: data,
+        theme: "grid",
+        headStyles: {
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+          font: "helvetica",
+        },
+styles: {
+  cellWidth: "wrap",
+  overflow: "linebreak",
+  tableWidth: "wrap",
+},
+
+
+        margin: { left: 12, right: 12 },
+        tableWidth: 'auto',
+        showHead: 'everyPage',
+        pageBreak: 'auto',
+      })
+    }
+
+    let currentY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 10 : startY
+    pdf.setFontSize(14)
+    pdf.setTextColor(0, 0, 0)
+    currentY += 10
+
+    // Create safe filename
+    const safePatientName = patientData.patientName.replace(/[^a-zA-Z0-9]/g, '_')
+    const filename = `${branchCode}_${safePatientName}_${patientData.patientUID || "NoUID"}_${patientData.appointmentDate}.pdf`
+    
+    try {
+      pdf.save(filename)
+      toast.success(`PDF downloaded for ${patientData.patientName}`)
+    } catch (error) {
+      console.error('Error saving PDF:', error)
+      toast.error('Failed to download PDF')
+    }
+  })
+}
 
   const downloadCSV = () => {
     if (!summaryData || summaryData.length === 0) return
@@ -547,7 +658,9 @@ const SummaryReport = () => {
                   <th>Plans</th>
                   <th>Tests</th>
                   <th>Procedure</th>
+                 {userRole !== "Manager" && userRole !== "Receptionist" && (
                   <th>Actions</th>
+                 )}
                 </tr>
               </MDBTableHead>
               <MDBTableBody>
@@ -563,9 +676,11 @@ const SummaryReport = () => {
                     <td>{item.tests}</td>
                     <td>{item.proceduresList}</td>
                     <td>
+                       {userRole !== "Manager" && userRole !== "Receptionist" && (
                       <button title="Generate PDF" className="btn btn-primary me-2" onClick={() => exportPatientToPDF(item)}>
                         <FaFilePdf />
                       </button>
+                       )}
                     </td>
                   </StyledRow>
                 ))}

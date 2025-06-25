@@ -90,7 +90,7 @@ const PatientCard = styled.div`
     margin-top: 4px;
     padding: 2px 6px;
     border-radius: 4px;
-    background-color: ${(props) => (props.dataSource === "stored" ? "#28a745" : "#007bff")};
+    background-color: ${(props) => (props.dataSource === "Billed" ? "#28a745" : "#007bff")};
   }
 `
 
@@ -154,6 +154,16 @@ const PatientInfo = styled.div`
       margin-right: 8px;
     }
   }
+`
+
+const DataSourceBadge = styled.span`
+ background-color: ${(props) => (props.dataSource === "Billed" ? "#28a745" : "#007bff")};
+ color: white;
+ padding: 4px 8px;
+ border-radius: 4px;
+ font-size: 12px;
+ font-weight: 500;
+ margin-left: 10px;
 `
 
 const DoctorInfo = styled.div`
@@ -314,29 +324,6 @@ const NoDataMessage = styled.div`
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 `
 
-const StockWarning = styled.div`
-  background-color: ${(props) => {
-    if (props.stock === 0) return "#ffebee"
-    if (props.stock < 10) return "#fff3e0"
-    return "#e8f5e8"
-  }};
-  border: 1px solid ${(props) => {
-    if (props.stock === 0) return "#f44336"
-    if (props.stock < 10) return "#ff9800"
-    return "#4caf50"
-  }};
-  color: ${(props) => {
-    if (props.stock === 0) return "#c62828"
-    if (props.stock < 10) return "#ef6c00"
-    return "#2e7d32"
-  }};
-  padding: 4px 8px;
-  border-radius: 4px;
-  margin: 2px 0;
-  font-size: 11px;
-  font-weight: 500;
-`
-
 const EditableInput = styled.input`
   width: 80px;
   padding: 4px;
@@ -391,6 +378,7 @@ const Bill = () => {
   const [editablePrices, setEditablePrices] = useState({})
   const [editableTotals, setEditableTotals] = useState({})
   const [branchCode, setBranchCode] = useState("")
+ const [dataSource, setDataSource] = useState("")
   const [medicineErrors, setMedicineErrors] = useState({})
   const [isDataFromStored, setIsDataFromStored] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -417,192 +405,135 @@ const Bill = () => {
     if (branchCode) {
       const currentDate = new Date()
       setStartDate(currentDate)
-      fetchDataWithPriority(currentDate)
+      fetchInitialPatientData(currentDate)
     }
   }, [branchCode])
 
-  // Fetch saved billing data when patient is selected
-  useEffect(() => {
-    if (selectedPatient && branchCode) {
-      fetchSavedBillingData()
+  // Helper function to check if prescription data is present and valid
+  const hasPrescriptionData = (prescription) => {
+    if (!prescription) return false
+    if (typeof prescription === "string") {
+      const cleanPrescription = prescription.trim().toLowerCase()
+      return cleanPrescription !== "" && cleanPrescription !== "n/a" && cleanPrescription !== "null"
     }
-  }, [selectedPatient, branchCode, startDate])
+    if (Array.isArray(prescription)) {
+      return prescription.length > 0 && prescription.some(item => 
+        item && typeof item === "object" && item.particulars && item.particulars.trim() !== ""
+      )
+    }
+    return false
+  }
 
-  // ENHANCED: Improved function to handle stored data fetching with better error handling
-  const fetchDataWithPriority = async (date) => {
+  // Fetch initial patient data from summary API - only patients with prescription data
+  const fetchInitialPatientData = async (date) => {
     if (!branchCode || !date) return
 
     setIsLoading(true)
     const formattedDate = format(date, "yyyy-MM-dd")
 
     try {
-      // Step 1: Try to fetch stored data without patientUID first
-      console.log("Checking for stored bill data...")
+      const response = await fetch(
+        `${Cosmetologybaseurl}summary/post/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
+      )
 
-      // First attempt: Try to get stored data for the date and branch only
-      let storedResponse
-      try {
-        storedResponse = await fetch(
-          `${Cosmetologybaseurl}get/stored/bill/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
-        )
-      } catch (error) {
-        console.log("Initial stored data fetch failed, trying alternative approach...")
-        storedResponse = null
-      }
-
-      let hasStoredData = false
-      let storedPatients = []
-
-      if (storedResponse && storedResponse.ok) {
-        try {
-          const storedData = await storedResponse.json()
-          if (storedData && Array.isArray(storedData) && storedData.length > 0) {
-            // Transform stored data to match expected format
-            storedPatients = transformStoredDataToPatientFormat(storedData)
-            hasStoredData = true
-            setIsDataFromStored(true)
-            console.log("Found stored data:", storedPatients.length, "patients")
-          }
-        } catch (parseError) {
-          console.error("Error parsing stored data:", parseError)
-        }
-      }
-
-      // Step 2: If we have stored data, use it exclusively
-      if (hasStoredData && storedPatients.length > 0) {
-        setPatientData(storedPatients.map((patient) => ({ ...patient, dataSource: "stored" })))
-        setBillingData(storedPatients.map((patient) => ({ ...patient, dataSource: "stored" })))
-        setHasData(true)
-        setIsDataFromStored(true) // Add this line
-        console.log("Using stored data exclusively")
-        return // Exit early - don't fetch fresh data
-      }
-
-      // Step 3: No stored data found, fetch fresh data
-      console.log("No stored data found, fetching fresh data...")
-      setIsDataFromStored(false)
-
-      try {
-        const [patientResponse, billingResponse] = await Promise.all([
-          fetch(
-            `${Cosmetologybaseurl}summary/post/patient_details/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
-          ),
-          fetch(`${Cosmetologybaseurl}summary/post/?appointmentDate=${formattedDate}&branch_code=${branchCode}`),
-        ])
-
-        if (patientResponse.ok && billingResponse.ok) {
-          const patientData = await patientResponse.json()
-          const billingData = await billingResponse.json()
-
-          if (patientData && Array.isArray(patientData) && patientData.length > 0) {
-            // Use fresh data
-            setPatientData(patientData.map((patient) => ({ ...patient, dataSource: "fresh" })))
-            setBillingData(billingData.map((bill) => ({ ...bill, dataSource: "fresh" })))
+      if (response.ok) {
+        const summaryData = await response.json()
+        if (summaryData && Array.isArray(summaryData) && summaryData.length > 0) {
+          // Filter patients to only include those with prescription data
+          const patientsWithPrescriptions = summaryData.filter(patient => 
+            hasPrescriptionData(patient.prescription)
+          )
+          
+          if (patientsWithPrescriptions.length > 0) {
+            // Transform summary data to patient format
+            const transformedPatients = patientsWithPrescriptions.map((patient) => ({
+              ...patient,
+              dataSource: "summary",
+            }))
+            setPatientData(transformedPatients)
             setHasData(true)
-            console.log("Found fresh data:", patientData.length, "patients")
           } else {
-            // No data found at all
             setPatientData([])
-            setBillingData([])
             setHasData(false)
-            toast.info("No billing data found for the selected date")
+            toast.info("No patients with prescription data found for the selected date")
           }
         } else {
-          throw new Error("Failed to fetch fresh data")
+          setPatientData([])
+          setHasData(false)
+          toast.info("No patient data found for the selected date")
         }
-      } catch (freshError) {
-        console.error("Error fetching fresh data:", freshError)
-        setPatientData([])
-        setBillingData([])
-        setHasData(false)
-        toast.warning("No data available for the selected date")
+      } else {
+        throw new Error("Failed to fetch summary data")
       }
     } catch (error) {
-      console.error("Error in fetchDataWithPriority:", error)
+      console.error("Error fetching initial patient data:", error)
       setPatientData([])
-      setBillingData([])
       setHasData(false)
-      toast.error("Error fetching data. Please try again.")
+      toast.error("Error fetching patient data. Please try again.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Transform stored data format to match expected patient format
-  const transformStoredDataToPatientFormat = (storedData) => {
-    return storedData.map((record) => {
-      let tableData = []
+  // Fetch patient billing data from unified API
+  const fetchPatientBillingData = async (patient) => {
+    if (!branchCode || !startDate) return
 
-      // Parse table_data JSON string
-      try {
-        if (record.table_data && typeof record.table_data === "string") {
-          tableData = JSON.parse(record.table_data)
-        } else if (Array.isArray(record.table_data)) {
-          tableData = record.table_data
-        }
-      } catch (error) {
-        console.error("Error parsing table_data JSON:", error)
-        tableData = []
-      }
-
-      // Convert table data to prescription format - but don't duplicate
-      const prescription = "N/A" // Set to N/A since we'll load this as saved billing data instead
-
-      return {
-        patientUID: record.patientUID,
-        patientName: record.patientName,
-        patient_handledby: record.patient_handledby,
-        appointmentDate: record.appointmentDate,
-        mobileNumber: record.mobileNumber || "N/A",
-        prescription: prescription || "N/A",
-        paymentType: record.paymentType,
-        netAmount: record.netAmount,
-        discount: record.discount,
-        consultationFee: record.consultationFee,
-        isStored: true,
-      }
-    })
-  }
-
-  // ENHANCED: Fetch saved billing data from database with better error handling
-  const fetchSavedBillingData = async () => {
-    if (!selectedPatient || !branchCode || !startDate) return
+    setIsLoading(true)
+    const formattedDate = format(startDate, "yyyy-MM-dd")
 
     try {
       const response = await fetch(
-        `${Cosmetologybaseurl}get/stored/bill/?patientUID=${selectedPatient.patientUID}&appointmentDate=${format(startDate, "yyyy-MM-dd")}&branch_code=${branchCode}`,
+        `${Cosmetologybaseurl}get_patientbilling_data/?patientUID=${patient.patientUID}&appointmentDate=${formattedDate}&branch_code=${branchCode}`,
       )
 
       if (response.ok) {
-        const storedData = await response.json()
-        if (storedData && storedData.table_data && storedData.table_data.length > 0) {
-          setSavedBillingData(storedData.table_data)
-          loadSavedBillingDetails(storedData)
-        } else {
-          setSavedBillingData([])
+        const result = await response.json()
+
+        if (result.data) {
+          // Data from billing table
+          setIsDataFromStored(true)
+          setDataSource("Billed")
+          loadStoredBillingData(result.data)
+        } else if (result.data) {
+          // Data from summary table - only load if prescription data is present
+          if (hasPrescriptionData(result.data.prescription)) {
+            setIsDataFromStored(false)
+            setDataSource("Summary")
+            loadSummaryBillingData(result.data)
+          } else {
+            setIsDataFromStored(false)
+            setDataSource("Summary")
+            setBillingData([])
+            setAdditionalRows([])
+            toast.info("No prescription data found for this patient")
+          }
         }
       } else if (response.status === 204) {
-        // No content found - this is expected when no saved data exists
-        setSavedBillingData([])
-        console.log("No saved billing data found for this patient")
+        // No data found
+        setIsDataFromStored(false)
+        setDataSource("Summary")
+        setBillingData([])
+        setAdditionalRows([])
+        toast.info("No billing data found for this patient")
       } else {
-        console.error("Error fetching saved billing data:", response.status)
-        setSavedBillingData([])
+        throw new Error("Failed to fetch billing data")
       }
     } catch (error) {
-      console.error("Error fetching saved billing data:", error)
-      setSavedBillingData([])
+      console.error("Error fetching patient billing data:", error)
+      toast.error("Error fetching billing data. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  // Load saved billing details into form
-  const loadSavedBillingDetails = (storedData) => {
+  // Load stored billing data
+  const loadStoredBillingData = (storedData) => {
     setDiscount(Number.parseFloat(storedData.discount?.replace("%", "")) || 0)
     setPaymentType(storedData.paymentType || "Card")
-    setConsultationFee(storedData.consultationFee || 0)
     setNetAmount(storedData.netAmount || "0.00")
 
-    // Parse table_data if it's a string
+    // Parse table_data
     let tableData = []
     try {
       if (typeof storedData.table_data === "string") {
@@ -615,7 +546,13 @@ const Bill = () => {
       tableData = []
     }
 
-    // Load all items as additional rows (including consultation fee separately)
+    // Load consultation fee
+    const consultationItem = tableData.find((item) => item.particulars === "Consultation Fee")
+    if (consultationItem) {
+      setConsultationFee(Number.parseFloat(consultationItem.price) || 0)
+    }
+
+    // Load all items as additional rows (excluding consultation fee)
     const savedRows = tableData
       .filter((item) => item.particulars !== "Consultation Fee")
       .map((item, index) => ({
@@ -634,13 +571,23 @@ const Bill = () => {
       }))
 
     setAdditionalRows(savedRows)
-
-    // Clear any existing prescription selections since we're using saved data
+    setBillingData([])
     setSelectedPrescriptions({})
     setQuantity({})
   }
 
-  // Fetch medicine options for dropdown with better data type handling
+  // Load summary billing data
+  const loadSummaryBillingData = (summaryData) => {
+    setBillingData([summaryData])
+    setAdditionalRows([])
+    setConsultationFee(0)
+    setDiscount(0)
+    setNetAmount("")
+    setSelectedPrescriptions({})
+    setQuantity({})
+  }
+
+  // Fetch medicine options for dropdown
   useEffect(() => {
     if (!branchCode) return
 
@@ -757,7 +704,7 @@ const Bill = () => {
     }))
   }
 
-  // UPDATED: Enhanced fetchMedicineDetails to use get_medicine_price endpoint
+  // Fetch medicine details using get_medicine_price endpoint
   const fetchMedicineDetails = async (medicine_name, batch_number = null) => {
     try {
       let url = `${Cosmetologybaseurl}get_medicine_price/?medicine_name=${encodeURIComponent(medicine_name)}&branch_code=${branchCode}`
@@ -774,18 +721,15 @@ const Bill = () => {
 
       const data = await response.json()
 
-      // Handle the array response from your backend API
       if (Array.isArray(data) && data.length > 0) {
-        const medicineData = data[0] // Take the first result
+        const medicineData = data[0]
 
-        // Clear any previous errors for this medicine
         setMedicineErrors((prev) => {
           const newErrors = { ...prev }
           delete newErrors[medicine_name]
           return newErrors
         })
 
-        // Normalize the data from your backend response
         const normalizeValue = (value, defaultValue = 0) => {
           if (value === null || value === undefined || value === "") return defaultValue
           if (typeof value === "string") {
@@ -859,8 +803,9 @@ const Bill = () => {
 
   const handleDateChange = (date) => {
     setStartDate(date)
-    setSelectedPatient(null) // Reset selected patient when date changes
-    fetchDataWithPriority(date)
+    setSelectedPatient(null)
+    setDataSource("")
+    fetchInitialPatientData(date)
   }
 
   // Add new row functionality
@@ -885,7 +830,7 @@ const Bill = () => {
     ])
   }
 
-  // Delete row functionality - only allow deletion of non-saved rows
+  // Delete row functionality
   const handleDeleteRow = (rowId) => {
     const rowToDelete = additionalRows.find((row) => row.id === rowId)
     if (rowToDelete && !rowToDelete.isSaved) {
@@ -934,7 +879,6 @@ const Bill = () => {
         if (row.id === rowId) {
           const updatedRow = { ...row, [field]: value }
 
-          // Auto-calculate GST values when price changes
           if (field === "price") {
             const { cgstValue, sgstValue } = calculateGSTValues(value, row.CGST_percentage, row.SGST_percentage)
             updatedRow.CGST_value = cgstValue
@@ -948,30 +892,39 @@ const Bill = () => {
     )
   }
 
+  // Enhanced prescription extraction to handle various formats
   const extractPrescriptionDetails = (prescription) => {
     if (typeof prescription === "string") {
       if (prescription.trim().toUpperCase() === "N/A" || prescription.trim() === "") {
         return []
       }
 
-      const prescriptions = prescription
-        .split("Prescription:")
+      // Handle various formats with different separators and spaces
+      const cleanPrescription = prescription
+        .replace(/\\+/g, "\n") // Replace multiple backslashes with newlines
+        .replace(/\\\\/g, "\n") // Replace double backslashes
+        .replace(/\\n/g, "\n") // Replace literal \n
+        .replace(/\n+/g, "\n") // Replace multiple newlines with single
+        .trim()
+
+      const prescriptions = cleanPrescription
+        .split(/Prescription:|prescription:/i)
         .filter(Boolean)
         .map((item) => item.trim())
         .filter((item) => item.length > 0)
 
       return prescriptions
         .map((prescriptionItem) => {
-          const index = prescriptionItem.indexOf("Dosage")
-          const totalDosageIndex = prescriptionItem.indexOf("Total Dosage:")
+          const dosageIndex = prescriptionItem.search(/dosage:/i)
+          const totalDosageIndex = prescriptionItem.search(/total dosage:/i)
           let totalDosage = "N/A"
 
           if (totalDosageIndex !== -1) {
             const totalDosageSubstring = prescriptionItem.substring(totalDosageIndex + "Total Dosage:".length).trim()
-            totalDosage = totalDosageSubstring.split(" ")[0] || "N/A"
+            totalDosage = totalDosageSubstring.split(/\s+/)[0] || "N/A"
           }
 
-          let particulars = index !== -1 ? prescriptionItem.substring(0, index).trim() : prescriptionItem
+          let particulars = dosageIndex !== -1 ? prescriptionItem.substring(0, dosageIndex).trim() : prescriptionItem
 
           if (particulars.endsWith("-")) {
             particulars = particulars.slice(0, -1).trim()
@@ -999,9 +952,10 @@ const Bill = () => {
     }
   }
 
-  const handlePatientCardClick = (patient) => {
+  const handlePatientCardClick = async (patient) => {
     setSelectedPatient(patient)
     setIsBillingDisplayed(true)
+
     // Reset states when selecting a new patient
     setAdditionalRows([])
     setConsultationFee(0)
@@ -1012,13 +966,8 @@ const Bill = () => {
     setEditablePrices({})
     setEditableTotals({})
 
-    // If this is stored data, don't show prescription rows since we'll load saved billing data
-    if (patient.dataSource === "stored" || patient.isStored) {
-      // The saved billing data will be loaded by the useEffect hook
-      console.log("Loading stored billing data for patient:", patient.patientName)
-    }
-
-    calculateNetAmount()
+    // Fetch billing data for the selected patient
+    await fetchPatientBillingData(patient)
   }
 
   const handleBackClick = () => {
@@ -1028,6 +977,7 @@ const Bill = () => {
     setConsultationFee(0)
     setSavedBillingData([])
     setDiscount(0)
+    setDataSource("")
     setNetAmount("")
     setSelectedPrescriptions({})
     setQuantity({})
@@ -1073,7 +1023,6 @@ const Bill = () => {
   }
 
   const calculateTotal = (price, qty, rowId = null) => {
-    // Check if there's an editable total for this row
     if (rowId && editableTotals[rowId]) {
       return editableTotals[rowId]
     }
@@ -1225,7 +1174,7 @@ const Bill = () => {
         })
       })
 
-    // Add additional rows to table_data (only non-saved rows that are selected)
+    // Add additional rows to table_data
     const additionalRowsData = additionalRows
       .filter((row) => row.selected && !row.isSaved)
       .map((row) => ({
@@ -1461,7 +1410,6 @@ const Bill = () => {
         editableTotals[row.id] || (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
       ])
 
-    // Generate main table *without* consultation fee
     const allPDFRows = [...procedureTable, ...additionalRowsForPDF]
 
     if (allPDFRows.length === 0 && consultationFee <= 0) {
@@ -1482,7 +1430,6 @@ const Bill = () => {
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
-      // Updated Patient Details UI
       let startY = 85
       doc.setFont("helvetica", "bold")
       doc.setFontSize(14)
@@ -1501,7 +1448,6 @@ const Bill = () => {
 
       startY += 20
 
-      // Main Table
       if (allPDFRows.length > 0) {
         doc.autoTable({
           head: [
@@ -1529,7 +1475,6 @@ const Bill = () => {
 
       let finalY = startY
 
-      // Consultation Fee Separately
       if (consultationFee > 0) {
         finalY += 10
         doc.setFont("helvetica", "bold")
@@ -1540,7 +1485,6 @@ const Bill = () => {
         doc.text(`Rs. ${consultationFee.toFixed(2)}`, 170, finalY, { align: "right" })
       }
 
-      // Net Amount Below Consultation Fee
       finalY += 12
       doc.setDrawColor(150)
       doc.setLineWidth(0.5)
@@ -1603,7 +1547,7 @@ const Bill = () => {
                 ))}
               </ul>
             )}
-            {!hasData && !isLoading && <NoDataMessage>No data available for the selected date</NoDataMessage>}
+            {!hasData && !isLoading && <NoDataMessage>No patients with prescription data available for the selected date</NoDataMessage>}
           </Patientcardcontainer>
         )}
       </center>
@@ -1624,6 +1568,7 @@ const Bill = () => {
                 <div>
                   <strong>Doctor Name:</strong> {selectedPatient.patient_handledby || "N/A"}
                 </div>
+                {dataSource && <DataSourceBadge source={dataSource}>{dataSource}</DataSourceBadge>}
               </DoctorInfo>
             </InfoText>
           </InfoContainer>
@@ -1762,10 +1707,6 @@ const Bill = () => {
                             </option>
                           )}
                         </MedicineSelect>
-                        {row.particulars &&
-                          (() => {
-                            const selectedMed = medicineOptions.find((med) => med.label === row.particulars)
-                          })()}
                       </td>
                       <td style={{ textAlign: "center" }}>
                         <input
