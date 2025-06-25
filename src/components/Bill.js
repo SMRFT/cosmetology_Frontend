@@ -90,7 +90,7 @@ const PatientCard = styled.div`
     margin-top: 4px;
     padding: 2px 6px;
     border-radius: 4px;
-    background-color: ${(props) => (props.dataSource === "Billed" ? "#28a745" : "#007bff")};
+    background-color: ${(props) => (props.dataSource === "billing" ? "#28a745" : "#007bff")};
   }
 `
 
@@ -154,16 +154,6 @@ const PatientInfo = styled.div`
       margin-right: 8px;
     }
   }
-`
-
-const DataSourceBadge = styled.span`
- background-color: ${(props) => (props.dataSource === "Billed" ? "#28a745" : "#007bff")};
- color: white;
- padding: 4px 8px;
- border-radius: 4px;
- font-size: 12px;
- font-weight: 500;
- margin-left: 10px;
 `
 
 const DoctorInfo = styled.div`
@@ -378,7 +368,6 @@ const Bill = () => {
   const [editablePrices, setEditablePrices] = useState({})
   const [editableTotals, setEditableTotals] = useState({})
   const [branchCode, setBranchCode] = useState("")
- const [dataSource, setDataSource] = useState("")
   const [medicineErrors, setMedicineErrors] = useState({})
   const [isDataFromStored, setIsDataFromStored] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -490,20 +479,17 @@ const Bill = () => {
       if (response.ok) {
         const result = await response.json()
 
-        if (result.data) {
+        if (result.source === "billing") {
           // Data from billing table
           setIsDataFromStored(true)
-          setDataSource("Billed")
           loadStoredBillingData(result.data)
-        } else if (result.data) {
+        } else if (result.source === "summary") {
           // Data from summary table - only load if prescription data is present
           if (hasPrescriptionData(result.data.prescription)) {
             setIsDataFromStored(false)
-            setDataSource("Summary")
             loadSummaryBillingData(result.data)
           } else {
             setIsDataFromStored(false)
-            setDataSource("Summary")
             setBillingData([])
             setAdditionalRows([])
             toast.info("No prescription data found for this patient")
@@ -512,7 +498,6 @@ const Bill = () => {
       } else if (response.status === 204) {
         // No data found
         setIsDataFromStored(false)
-        setDataSource("Summary")
         setBillingData([])
         setAdditionalRows([])
         toast.info("No billing data found for this patient")
@@ -804,7 +789,6 @@ const Bill = () => {
   const handleDateChange = (date) => {
     setStartDate(date)
     setSelectedPatient(null)
-    setDataSource("")
     fetchInitialPatientData(date)
   }
 
@@ -977,7 +961,6 @@ const Bill = () => {
     setConsultationFee(0)
     setSavedBillingData([])
     setDiscount(0)
-    setDataSource("")
     setNetAmount("")
     setSelectedPrescriptions({})
     setQuantity({})
@@ -1568,7 +1551,6 @@ const Bill = () => {
                 <div>
                   <strong>Doctor Name:</strong> {selectedPatient.patient_handledby || "N/A"}
                 </div>
-                {dataSource && <DataSourceBadge source={dataSource}>{dataSource}</DataSourceBadge>}
               </DoctorInfo>
             </InfoText>
           </InfoContainer>
