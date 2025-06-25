@@ -361,7 +361,7 @@ const BackButton = styled.button`
 `
 
 const ActionButton = styled.button`
- background-color: #007bff;
+ background-color:rgb(183, 129, 208);
  color: white;
  border: none;
  padding: 8px 16px;
@@ -371,7 +371,7 @@ const ActionButton = styled.button`
  transition: all 0.2s ease;
 
  &:hover {
- background-color: #0056b3;
+ background-color:rgb(161, 54, 197);
  }
 
  &:disabled {
@@ -1163,10 +1163,10 @@ const ProcedureComponent = () => {
  const procedureTable = selectedProcedures.map((procedure) => [
  procedure.procedure,
  procedure.procedureDate,
- `₹${procedure.price}`,
+ `${procedure.price}`,
  `${procedure.gstRate}%`,
- `₹${procedure.gst}`,
- `₹${procedure.total}`,
+ `${procedure.gst}`,
+ `${procedure.total}`,
  ])
 
  doc.autoTable({
@@ -1175,8 +1175,9 @@ const ProcedureComponent = () => {
  startY: yOffset,
  theme: "grid",
  headStyles: {
- fillColor: [155, 133, 168],
- textColor: [255, 255, 255],
+fillColor: [200, 230, 201], // Mild pastel green
+textColor: [40, 40, 40],    // Dark gray for readability
+
  fontStyle: "bold",
  fontSize: 10,
  },
@@ -1225,7 +1226,7 @@ const ProcedureComponent = () => {
  if (consultationFee > 0) {
  doc.setFont("helvetica", "bold")
  doc.setFontSize(11)
- doc.text(`Consultation Fee: ₹${consultationFee.toFixed(2)}`, 14, yOffset)
+ doc.text(`Consultation Fee: ${consultationFee.toFixed(2)}`, 14, yOffset)
  yOffset += 10
  }
 
@@ -1233,7 +1234,7 @@ const ProcedureComponent = () => {
  doc.setFont("helvetica", "bold")
  doc.setFontSize(14)
  doc.setTextColor(0, 100, 0)
- doc.text(`Net Total: ₹${totalAmount}`, 14, yOffset + 5)
+ doc.text(`Net Total: ${totalAmount}`, 14, yOffset + 5)
  doc.text(`Payment Type: ${PaymentType}`, 14, yOffset + 15)
 
  doc.save(`${selectedPatient.patientName}_Procedure_Bill.pdf`)
