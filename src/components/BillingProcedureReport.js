@@ -307,16 +307,36 @@ const downloadProcedureCSV = () => {
 
  convertToBase64(PDFMain, (mainImage) => {
  doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
- let startY = 85
+ // Header
+      let startY = 110
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Patient Name:`, 16, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.patientName.toUpperCase()}`, 50, startY)
 
- doc.setFont("helvetica", "bold")
- doc.setFontSize(14)
- doc.setTextColor(40, 40, 40)
- doc.text(`Patient: ${patientData.patientName.toUpperCase()}`, 16, startY)
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Patient UID:`, 16, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.patientUID}`, 50, startY + 8)
 
- doc.setFont("helvetica", "normal")
- doc.setFontSize(11)
- doc.text(`Patient UID: ${patientData.patientUID}`, 16, startY + 8)
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Date:`, 130, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.appointmentDate}`, 170, startY)
+      
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(14)
+      doc.text(`Bill Number :`, 130, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.procedureBillNumber}`, 170, startY + 8)
 
  startY += 30
 
@@ -356,11 +376,12 @@ const downloadProcedureCSV = () => {
  let currentY = doc.previousAutoTable.finalY + 15
 
   // Calculate and display net total
-
+if (patientData.consultationFee > 0) {
  doc.setFont("helvetica", "bold")
  doc.setFontSize(12)
  doc.setTextColor(0, 100, 0)
- doc.text(`Consultation Fee: ${patientData.consultationFee}`, 14, currentY)
+ doc.text(`Consultation Fee : ${patientData.consultationFee}`, 150, currentY)
+}
 
 
  // Calculate and display net total
@@ -368,7 +389,7 @@ const downloadProcedureCSV = () => {
  doc.setFont("helvetica", "bold")
  doc.setFontSize(12)
  doc.setTextColor(0, 100, 0)
- doc.text(`Net Amount: ${netTotal.toFixed(2)}`, 14, currentY + 10)
+ doc.text(`Net Amount : ${netTotal.toFixed(2)}`, 150, currentY + 10)
 
  const pdfBlob = doc.output("blob")
  const pdfUrl = URL.createObjectURL(pdfBlob)
@@ -398,21 +419,37 @@ const downloadProcedureCSV = () => {
 
  convertToBase64(PDFMain, (mainImage) => {
  doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
- let startY = 85
 
  // Set font style for patient name - make it more prominent
- doc.setFont("helvetica", "bold")
- doc.setFontSize(14)
- doc.setTextColor(40, 40, 40)
- doc.text(`Patient: ${patientData.patientName.toUpperCase()}`, 16, startY)
+      let startY = 110
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Patient Name:`, 16, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.patientName.toUpperCase()}`, 50, startY)
 
- // Patient details with better formatting
- doc.setFont("helvetica", "normal")
- doc.setFontSize(11)
- doc.text(`Patient UID: ${patientData.patientUID}`, 16, startY + 8)
- doc.text(`Bill Number: ${patientData.consumerBillNumber}`, 16, startY + 16)
- doc.text(`Date: ${patientData.appointmentDate}`, 140, startY + 8)
- doc.text(`Branch: ${branchCode}`, 140, startY + 16)
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Patient UID:`, 16, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.patientUID}`, 50, startY + 8)
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Date:`, 130, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.appointmentDate}`, 170, startY)
+      
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(14)
+      doc.text(`Bill Number :`, 130, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.procedureBillNumber}`, 170, startY + 8)
 
  startY += 30
 
@@ -442,7 +479,7 @@ const downloadProcedureCSV = () => {
  doc.setFont("helvetica", "bold")
  doc.setFontSize(12)
  doc.setTextColor(0, 100, 0)
- doc.text(`Total Amount: ${total.toFixed(2)}`, 14, doc.previousAutoTable.finalY + 15)
+ doc.text(`Total Amount: ${total.toFixed(2)}`, 150, doc.previousAutoTable.finalY + 15)
 
  // Open in new window instead of auto-print
  const pdfBlob = doc.output("blob")

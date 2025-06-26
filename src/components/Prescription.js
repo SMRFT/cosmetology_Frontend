@@ -1645,13 +1645,21 @@ useEffect(() => {
       convertToBase64(PDFMain, (mainImage) => {
         pdf.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
         pdf.setFont("helvetica", "bold")
-        pdf.setFontSize(16)
+        pdf.setFontSize(12)
         pdf.setTextColor(40, 40, 40)
-        pdf.text(`Patient: ${appointment.patientName.toUpperCase()}`, 16, startY)
+        pdf.text(`Patient: ${appointment.patientName}`, 16, startY)
 
-        pdf.setFont("helvetica", "normal")
-        pdf.setFontSize(11)
-        pdf.text(`Patient UID: ${appointment.patientUID}`, 16, startY + 10)
+        pdf.setFont("helvetica", "bold")
+        pdf.setFontSize(12)
+        pdf.setTextColor(40, 40, 40)
+        pdf.text(`Patient UID: ${appointment.patientUID}`, 16, startY + 8)
+
+
+        pdf.setFont("helvetica", "bold")
+        pdf.setFontSize(12)
+        pdf.setTextColor(40, 40, 40)
+        pdf.text(`Date: ${appointment.appointmentDate}`, 160, startY)
+
 
         startY += 15
 

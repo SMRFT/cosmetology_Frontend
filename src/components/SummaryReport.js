@@ -24,7 +24,6 @@ const SummaryReport = () => {
   const [selectedInterval, setSelectedInterval] = useState("day")
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [branchCode, setBranchCode] = useState("")
-  const [userRole, setUserRole] = useState("")
   const [loading, setLoading] = useState(false) // Add loading state
   const [error, setError] = useState(null) // Add error state
   const navigate = useNavigate()
@@ -44,7 +43,6 @@ const SummaryReport = () => {
   // Effect to get branch_code from localStorage
   useEffect(() => {
     const code = localStorage.getItem("selectedBranch")
-    const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
 
     if (code) {
       setBranchCode(code)
@@ -53,11 +51,6 @@ const SummaryReport = () => {
       setError("Branch code not found. Please ensure you are logged in.") // Set error if branch code is missing
       toast.error("Branch code not found. Please log in again.") // Toast for missing branch code
     }
-     if (role) {
-      setUserRole(role)
-      } else {
-      console.warn("User role not found")
-      }
   }, []) // Run only once on component mount
 
   // Effect to fetch data whenever relevant dependencies change
@@ -123,6 +116,7 @@ const SummaryReport = () => {
     setSelectedDate(date)
   }
 
+
 // Robust PDF export function to handle current data structure issues
 const exportPatientToPDF = (patientData) => {
   const pdf = new jsPDF("p", "mm", "a4")
@@ -142,7 +136,9 @@ const exportPatientToPDF = (patientData) => {
     startY = 80
   }
 
-  const convertToBase64 = (url, callback) => {
+
+  
+    const convertToBase64 = (url, callback) => {
     const img = new Image()
     img.crossOrigin = "Anonymous"
     img.src = url
@@ -157,49 +153,26 @@ const exportPatientToPDF = (patientData) => {
     }
     img.onerror = (error) => console.error("Error converting image to Base64:", error)
   }
-
-  // Enhanced parsing function to handle multiple levels of escaping
-  const parseComplexString = (str) => {
-    if (!str || str === 'null' || str === 'undefined') return null
-    
-    try {
-      // Handle multiple levels of JSON string wrapping
-      let parsed = str
-      
-      // Remove outer quotes if they exist
-      if (typeof parsed === 'string' && parsed.startsWith('"') && parsed.endsWith('"')) {
-        parsed = parsed.slice(1, -1)
-      }
-      
-      // Unescape JSON
-      if (typeof parsed === 'string') {
-        parsed = parsed.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
-      }
-      
-      // Try to parse as JSON
-      if (typeof parsed === 'string' && (parsed.startsWith('[') || parsed.startsWith('{'))) {
-        parsed = JSON.parse(parsed)
-      }
-      
-      return parsed
-    } catch (e) {
-      console.warn('Failed to parse complex string:', str, e)
-      return str
-    }
-  }
-
   convertToBase64(PDFMain, (mainImage) => {
     pdf.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+
+    // Match the exact styling from exportToPDF
     pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(16)
+    pdf.setFontSize(12)
     pdf.setTextColor(40, 40, 40)
-    pdf.text(`Patient: ${patientData.patientName.toUpperCase()}`, 16, startY)
+    pdf.text(`Patient: ${patientData.patientName}`, 16, startY)
 
-    pdf.setFont("helvetica", "normal")
-    pdf.setFontSize(11)
-    pdf.text(`Patient UID: ${patientData.patientUID || "N/A"}`, 16, startY + 10)
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(12)
+    pdf.setTextColor(40, 40, 40)
+    pdf.text(`Patient UID: ${patientData.patientUID || "N/A"}`, 16, startY + 8)
 
-    startY += 35
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(12)
+    pdf.setTextColor(40, 40, 40)
+    pdf.text(`Date: ${patientData.appointmentDate || new Date().toLocaleDateString()}`, 160, startY)
+
+    startY += 15
 
     const createSubTableRows = (label, entries) => {
       if (!entries || entries.length === 0) {
@@ -208,9 +181,35 @@ const exportPatientToPDF = (patientData) => {
       return entries.map((entry, index) => [index === 0 ? label : "", entry])
     }
 
+    // Enhanced parsing function to handle multiple levels of escaping
+    const parseComplexString = (str) => {
+      if (!str || str === "null" || str === "undefined") return null
+
+      try {
+        let parsed = str
+
+        if (typeof parsed === "string" && parsed.startsWith('"') && parsed.endsWith('"')) {
+          parsed = parsed.slice(1, -1)
+        }
+
+        if (typeof parsed === "string") {
+          parsed = parsed.replace(/\\"/g, '"').replace(/\\\\/g, "\\")
+        }
+
+        if (typeof parsed === "string" && (parsed.startsWith("[") || parsed.startsWith("{"))) {
+          parsed = JSON.parse(parsed)
+        }
+
+        return parsed
+      } catch (e) {
+        console.warn("Failed to parse complex string:", str, e)
+        return str
+      }
+    }
+
     let data = []
 
-    // Enhanced complaints formatting with better error handling
+    // Enhanced complaints formatting
     const formatComplaints = (complaintsData) => {
       try {
         if (!complaintsData || complaintsData === "[]" || complaintsData === "{}" || complaintsData === '""') {
@@ -218,7 +217,7 @@ const exportPatientToPDF = (patientData) => {
         }
 
         let complaints = parseComplexString(complaintsData)
-        
+
         if (!Array.isArray(complaints)) {
           if (complaints && typeof complaints === "object") {
             complaints = [complaints]
@@ -230,7 +229,7 @@ const exportPatientToPDF = (patientData) => {
         return complaints
           .map((complaint) => {
             if (!complaint || typeof complaint !== "object") return ""
-            
+
             let formatted = complaint.complaints || complaint.complaint || ""
             if (complaint.duration && complaint.durationUnit) {
               formatted += ` - Duration: ${complaint.duration} ${complaint.durationUnit}`
@@ -240,8 +239,7 @@ const exportPatientToPDF = (patientData) => {
           .filter((item) => item !== "")
       } catch (e) {
         console.warn("Error parsing complaints:", e)
-        // Fallback: treat as plain string
-        return typeof complaintsData === 'string' ? [complaintsData] : []
+        return typeof complaintsData === "string" ? [complaintsData] : []
       }
     }
 
@@ -249,18 +247,20 @@ const exportPatientToPDF = (patientData) => {
     const formatProcedures = (proceduresData) => {
       try {
         if (!proceduresData) return ""
-        
-        let procedures = parseComplexString(proceduresData)
-        
+
+        const procedures = parseComplexString(proceduresData)
+
         if (Array.isArray(procedures)) {
-          return procedures.map(proc => {
-            if (typeof proc === 'object') {
-              return `${proc.procedure || proc.name || ''} - ${proc.date || ''}`
-            }
-            return proc
-          }).join(', ')
+          return procedures
+            .map((proc) => {
+              if (typeof proc === "object") {
+                return `${proc.procedure || proc.name || ""} - Date: ${proc.date || "None"}`
+              }
+              return proc
+            })
+            .join("\n")
         }
-        
+
         return procedures.toString()
       } catch (e) {
         console.warn("Error parsing procedures:", e)
@@ -272,28 +272,29 @@ const exportPatientToPDF = (patientData) => {
     const formatPrescription = (prescriptionData) => {
       try {
         if (!prescriptionData) return ""
-        
-        // Handle current format with newlines and structured text
-        if (typeof prescriptionData === 'string') {
-          return prescriptionData.replace(/\n/g, ' ').trim()
+
+        if (typeof prescriptionData === "string") {
+          return prescriptionData.replace(/\n/g, "\n").trim()
         }
-        
-        let prescription = parseComplexString(prescriptionData)
-        
+
+        const prescription = parseComplexString(prescriptionData)
+
         if (Array.isArray(prescription)) {
-          return prescription.map(med => {
-            if (typeof med === 'object') {
-              let parts = []
-              if (med.medication) parts.push(med.medication)
-              if (med.dosage) parts.push(`Dosage: ${med.dosage}`)
-              if (med.frequency) parts.push(`Frequency: ${med.frequency}`)
-              if (med.duration) parts.push(`Duration: ${med.duration}`)
-              return parts.join(' - ')
-            }
-            return med
-          }).join('\n')
+          return prescription
+            .map((med, index) => {
+              if (typeof med === "object") {
+                const parts = []
+                if (med.medication) parts.push(med.medication)
+                if (med.dosage) parts.push(`Dosage: ${med.dosage}`)
+                if (med.frequency) parts.push(med.frequency)
+                if (med.duration) parts.push(`Duration: ${med.duration}`)
+                return `${index + 1}. ${parts.join(" - ")}`
+              }
+              return `${index + 1}. ${med}`
+            })
+            .join("\n")
         }
-        
+
         return prescription.toString()
       } catch (e) {
         console.warn("Error parsing prescription:", e)
@@ -305,22 +306,21 @@ const exportPatientToPDF = (patientData) => {
     const formatPlans = (plansData) => {
       try {
         if (!plansData) return ""
-        
-        if (typeof plansData === 'string') {
-          // Handle current format: "Plan1: Chemical Peel\nPlan2: Skin care routine"
+
+        if (typeof plansData === "string") {
           return plansData
-            .split('\n')
-            .map(plan => plan.replace(/Plan\d+:\s*/g, '').trim())
-            .filter(plan => plan !== '')
-            .join(', ')
+            .split("\n")
+            .map((plan) => plan.replace(/Plan\d+:\s*/g, "").trim())
+            .filter((plan) => plan !== "")
+            .join("\n")
         }
-        
-        let plans = parseComplexString(plansData)
-        
+
+        const plans = parseComplexString(plansData)
+
         if (Array.isArray(plans)) {
-          return plans.join(', ')
+          return plans.join("\n")
         }
-        
+
         return plans.toString()
       } catch (e) {
         console.warn("Error parsing plans:", e)
@@ -328,9 +328,9 @@ const exportPatientToPDF = (patientData) => {
       }
     }
 
-    // Add data sections with enhanced parsing
+    // Add data sections with enhanced parsing - matching exportToPDF order
     if (patientData.diagnosis && patientData.diagnosis.trim() !== "") {
-      data.push(["Diagnosis", patientData.diagnosis])
+      data = data.concat(createSubTableRows("Diagnosis", [patientData.diagnosis]))
     }
 
     const complaintsFormatted = formatComplaints(patientData.complaints)
@@ -339,12 +339,12 @@ const exportPatientToPDF = (patientData) => {
     }
 
     if (patientData.findings && patientData.findings.trim() !== "") {
-      data.push(["Findings", patientData.findings])
+      data = data.concat(createSubTableRows("Findings", [patientData.findings]))
     }
 
     const proceduresFormatted = formatProcedures(patientData.proceduresList)
     if (proceduresFormatted && proceduresFormatted.trim() !== "") {
-      data.push(["Procedures", proceduresFormatted])
+      data = data.concat(createSubTableRows("Procedures", [proceduresFormatted]))
     }
 
     const prescriptionFormatted = formatPrescription(patientData.prescription)
@@ -358,7 +358,7 @@ const exportPatientToPDF = (patientData) => {
     }
 
     if (patientData.tests && patientData.tests.trim() !== "") {
-      data.push(["Tests", patientData.tests])
+      data = data.concat(createSubTableRows("Tests", [patientData.tests]))
     }
 
     if (data.length > 0) {
@@ -378,17 +378,17 @@ const exportPatientToPDF = (patientData) => {
           textColor: [40, 40, 40],
           font: "helvetica",
         },
-styles: {
-  cellWidth: "wrap",
-  overflow: "linebreak",
-  tableWidth: "wrap",
-},
-
-
-        margin: { left: 12, right: 12 },
-        tableWidth: 'auto',
-        showHead: 'everyPage',
-        pageBreak: 'auto',
+        styles: {
+          cellWidth: "wrap",
+          minCellHeight: 10,
+          overflow: "linebreak",
+          tableWidth: "auto",
+        },
+        columnStyles: {
+          0: { cellWidth: 60 },
+          1: { cellWidth: pageWidth - 80 },
+        },
+        margin: { left: 14, right: 14 },
       })
     }
 
@@ -397,19 +397,24 @@ styles: {
     pdf.setTextColor(0, 0, 0)
     currentY += 10
 
-    // Create safe filename
-    const safePatientName = patientData.patientName.replace(/[^a-zA-Z0-9]/g, '_')
-    const filename = `${branchCode}_${safePatientName}_${patientData.patientUID || "NoUID"}_${patientData.appointmentDate}.pdf`
-    
+    // Create safe filename matching the exportToPDF format
+    const safePatientName = patientData.patientName.replace(/[^a-zA-Z0-9]/g, "_")
+    const appointmentDate = patientData.appointmentDate || new Date().toISOString().split("T")[0]
+
     try {
-      pdf.save(filename)
-      toast.success(`PDF downloaded for ${patientData.patientName}`)
+      pdf.save(`${branchCode}_${safePatientName}_${patientData.patientUID || "NoUID"}_${appointmentDate}.pdf`)
+      if (typeof toast !== "undefined") {
+        toast.success(`PDF downloaded for ${patientData.patientName}`)
+      }
     } catch (error) {
-      console.error('Error saving PDF:', error)
-      toast.error('Failed to download PDF')
+      console.error("Error saving PDF:", error)
+      if (typeof toast !== "undefined") {
+        toast.error("Failed to download PDF")
+      }
     }
   })
 }
+
 
   const downloadCSV = () => {
     if (!summaryData || summaryData.length === 0) return
@@ -658,9 +663,8 @@ styles: {
                   <th>Plans</th>
                   <th>Tests</th>
                   <th>Procedure</th>
-                 {userRole !== "Manager" && userRole !== "Receptionist" && (
                   <th>Actions</th>
-                 )}
+          
                 </tr>
               </MDBTableHead>
               <MDBTableBody>
@@ -676,11 +680,11 @@ styles: {
                     <td>{item.tests}</td>
                     <td>{item.proceduresList}</td>
                     <td>
-                       {userRole !== "Manager" && userRole !== "Receptionist" && (
+                
                       <button title="Generate PDF" className="btn btn-primary me-2" onClick={() => exportPatientToPDF(item)}>
                         <FaFilePdf />
                       </button>
-                       )}
+                  
                     </td>
                   </StyledRow>
                 ))}

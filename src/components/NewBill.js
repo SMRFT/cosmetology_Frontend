@@ -522,6 +522,10 @@ const NewBill = () => {
 
       toast.success(`Billing was generated successfully for ${selectedPatient.patientName}`)
       fetchExistingBills()
+    // Navigate back to patient list after successful save
+    setTimeout(() => {
+      handleBackClick()
+    }, 3000) // Wait 2 seconds to show success message
     } catch (error) {
       console.error("Error submitting data:", error)
       toast.error("Error submitting data.")
@@ -618,21 +622,28 @@ const generatePDF = (billData, isExisting) => {
     doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
     // ======= Patient Details (Minimal) =======
-    let startY = 85
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(14)
-    doc.setTextColor(30, 30, 30)
-    doc.text(`Patient Name:`, 16, startY)
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(13)
-    doc.text(`${billData.patientName.toUpperCase()}`, 60, startY)
+      let startY = 110
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Patient Name:`, 16, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
 
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(14)
-    doc.text(`Patient UID:`, 16, startY + 8)
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(13)
-    doc.text(`${billData.patientUID}`, 60, startY + 8)
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Patient UID:`, 16, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Date:`, 140, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${selectedDate}`, 170, startY)
 
     startY += 25
 
@@ -677,25 +688,36 @@ const generatePDF = (billData, isExisting) => {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(60, 60, 60)
-      doc.text("Consultation Fee:", 16, finalY)
+      doc.text("Consultation Fee:", 130, finalY)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(12)
-      doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, pageWidth - 16, finalY, { align: "right" })
+      doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, 180, finalY)
       finalY += 10
     }
 
+
+    if (discount > 0) {
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(60, 60, 60)
+      doc.text("Discount %", 130, finalY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(12)
+      doc.text(`${discount}`, 180, finalY)
+      finalY += 8
+    }
     // ======= Net Amount - Displayed Separately =======
     // Add separator line
     doc.setDrawColor(150)
     doc.setLineWidth(0.5)
     doc.line(14, finalY, pageWidth - 14, finalY)
-    finalY += 8
+    finalY += 6
 
     doc.setFont("helvetica", "bold")
     doc.setFontSize(14)
     doc.setTextColor(0, 100, 0)
-    doc.text("Net Amount:", 16, finalY)
-    doc.text(`Rs. ${billData.netAmount || "N/A"}`, pageWidth - 16, finalY, { align: "right" })
+    doc.text("Net Amount:", 130, finalY)
+    doc.text(`Rs. ${billData.netAmount || "N/A"}`, 170, finalY)
 
     doc.save(`${billData.patientName}_Bill_${selectedDate}.pdf`)
   })

@@ -253,7 +253,7 @@ const DiscountLabel = styled.label`
 `
 
 const DiscountInput = styled.input`
-  padding: 8px;
+  padding: 4px;
   font-size: 16px;
   margin-right: 10px;
   border: 1px solid #ddd;
@@ -289,7 +289,7 @@ const NetLabel = styled.label`
   font-size: 16px;
   font-weight: 500;
 `
-
+  
 const NetInput = styled.input`
   padding: 8px;
   font-size: 16px;
@@ -351,6 +351,38 @@ const LoadingSpinner = styled.div`
   }
 `
 
+const DataSourceBadge = styled.span`
+  background-color: ${(props) =>
+    props.children === "Billed" ? "#28a745" : "#007bff"};
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 10px;
+`
+
+
+const ActionButton = styled.button`
+ background-color:rgb(183, 129, 208);
+ color: white;
+ border: none;
+ padding: 8px 16px;
+ border-radius: 4px;
+ cursor: pointer;
+ margin: 0 5px;
+ transition: all 0.2s ease;
+
+ &:hover {
+ background-color:rgb(161, 54, 197);
+ }
+
+ &:disabled {
+ background-color:rgb(166, 149, 184);
+ cursor: not-allowed;
+ }
+`
+
 const Bill = () => {
   const [startDate, setStartDate] = useState(new Date())
   const [patientData, setPatientData] = useState([])
@@ -371,6 +403,8 @@ const Bill = () => {
   const [medicineErrors, setMedicineErrors] = useState({})
   const [isDataFromStored, setIsDataFromStored] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [tempDiscount, setTempDiscount] = useState(0) // For temporary discount input
+  const [appliedDiscount, setAppliedDiscount] = useState(0) // For applied discount
 
   // New states for pharmacy dropdown and additional rows
   const [medicineOptions, setMedicineOptions] = useState([])
@@ -513,10 +547,14 @@ const Bill = () => {
   }
 
   // Load stored billing data
-  const loadStoredBillingData = (storedData) => {
-    setDiscount(Number.parseFloat(storedData.discount?.replace("%", "")) || 0)
-    setPaymentType(storedData.paymentType || "Card")
-    setNetAmount(storedData.netAmount || "0.00")
+// Update the loadStoredBillingData function to set applied discount
+const loadStoredBillingData = (storedData) => {
+  const discountValue = parseFloat(storedData.discount?.replace("%", "")) || 0
+  setDiscount(discountValue)
+  setTempDiscount(discountValue) // Add this line
+  setAppliedDiscount(discountValue) // Add this line
+  setPaymentType(storedData.paymentType || "Card")
+  setNetAmount(storedData.netAmount || "0.00")
 
     // Parse table_data
     let tableData = []
@@ -936,37 +974,43 @@ const Bill = () => {
     }
   }
 
-  const handlePatientCardClick = async (patient) => {
-    setSelectedPatient(patient)
-    setIsBillingDisplayed(true)
+// Reset discount states when selecting new patient in handlePatientCardClick
+const handlePatientCardClick = async (patient) => {
+  setSelectedPatient(patient)
+  setIsBillingDisplayed(true)
 
-    // Reset states when selecting a new patient
-    setAdditionalRows([])
-    setConsultationFee(0)
-    setDiscount(0)
-    setNetAmount("")
-    setSelectedPrescriptions({})
-    setQuantity({})
-    setEditablePrices({})
-    setEditableTotals({})
+  // Reset states when selecting a new patient
+  setAdditionalRows([])
+  setConsultationFee(0)
+  setDiscount(0)
+  setTempDiscount(0) // Add this line
+  setAppliedDiscount(0) // Add this line
+  setNetAmount("")
+  setSelectedPrescriptions({})
+  setQuantity({})
+  setEditablePrices({})
+  setEditableTotals({})
 
-    // Fetch billing data for the selected patient
-    await fetchPatientBillingData(patient)
-  }
+  // Fetch billing data for the selected patient
+  await fetchPatientBillingData(patient)
+}
 
-  const handleBackClick = () => {
-    setSelectedPatient(null)
-    setIsBillingDisplayed(false)
-    setAdditionalRows([])
-    setConsultationFee(0)
-    setSavedBillingData([])
-    setDiscount(0)
-    setNetAmount("")
-    setSelectedPrescriptions({})
-    setQuantity({})
-    setEditablePrices({})
-    setEditableTotals({})
-  }
+// Reset discount states in handleBackClick
+const handleBackClick = () => {
+  setSelectedPatient(null)
+  setIsBillingDisplayed(false)
+  setAdditionalRows([])
+  setConsultationFee(0)
+  setSavedBillingData([])
+  setDiscount(0)
+  setTempDiscount(0) // Add this line
+  setAppliedDiscount(0) // Add this line
+  setNetAmount("")
+  setSelectedPrescriptions({})
+  setQuantity({})
+  setEditablePrices({})
+  setEditableTotals({})
+}
 
   useEffect(() => {
     const fetchMedicineDetailsForPrescriptions = async () => {
@@ -1021,86 +1065,107 @@ const Bill = () => {
     return total
   }
 
-  const handleDiscountChange = (e) => {
-    const discountValue = Number.parseFloat(e.target.value)
-    setDiscount(discountValue)
+const handleDiscountChange = (e) => {
+  const value = e.target.value
+  // Allow empty string or valid numbers
+  if (value === '' || (!isNaN(value) && !isNaN(parseFloat(value)))) {
+    setTempDiscount(value === '' ? 0 : parseFloat(value))
+  }
+}
+
+// Updated function to apply discount and recalculate net amount
+const handleApplyDiscount = () => {
+  const discountValue = parseFloat(tempDiscount) || 0
+  setAppliedDiscount(discountValue)
+  setDiscount(discountValue)
+
+  // Pass directly to avoid waiting for state update
+  calculateNetAmount(discountValue)
+}
+
+
+// Update the applyDiscountToTotal function to use appliedDiscount
+const applyDiscountToTotal = (total, discountValue) => {
+  const discount = parseFloat(discountValue) || 0
+  const discountAmount = (total * discount) / 100
+  return total - discountAmount
+}
+
+
+const calculateNetAmount = (customDiscount = null) => {
+  if (!selectedPatient) {
+    console.error("No patient selected")
+    return
   }
 
-  const calculateNetAmount = () => {
-    if (!selectedPatient) {
-      console.error("No patient selected")
-      return
-    }
+  let total = 0
 
-    let total = 0
+  const patientBillingData = billingData.filter(
+    (item) => item.patientUID === selectedPatient.patientUID
+  )
 
-    // Calculate total from existing prescriptions
-    const patientBillingData = billingData.filter((item) => item.patientUID === selectedPatient.patientUID)
+  patientBillingData.forEach((item, itemIndex) => {
+    const prescriptions = extractPrescriptionDetails(item.prescription)
 
-    patientBillingData.forEach((item, itemIndex) => {
-      const prescriptions = extractPrescriptionDetails(item.prescription)
+    prescriptions.forEach((prescription, prescriptionIndex) => {
+      const key = `${itemIndex}-${prescriptionIndex}`
 
-      prescriptions.forEach((prescription, prescriptionIndex) => {
-        const key = `${itemIndex}-${prescriptionIndex}`
+      if (selectedPrescriptions[key]) {
+        const { particulars } = prescription
+        const qty =
+          quantity[key] !== undefined
+            ? Number.parseFloat(quantity[key])
+            : Number.parseFloat(prescription.totalDosage)
 
-        if (selectedPrescriptions[key]) {
-          const { particulars } = prescription
-          const qty =
-            quantity[key] !== undefined ? Number.parseFloat(quantity[key]) : Number.parseFloat(prescription.totalDosage)
-
-          if (isNaN(qty) || qty <= 0) {
-            console.warn("Invalid quantity:", qty)
-            return
-          }
-
-          const medicineDetail = medicineDetails[particulars] || {}
-          let price = editablePrices[key] || medicineDetail.price
-
-          if (price === "N/A" || isNaN(Number.parseFloat(price))) {
-            console.warn(`Price is not available or invalid for medicine: ${particulars}`)
-            return
-          }
-
-          price = Number.parseFloat(price)
-          const totalForMedicine = calculateTotal(price, qty, key)
-
-          total += Number.parseFloat(totalForMedicine) || 0
+        if (isNaN(qty) || qty <= 0) {
+          console.warn("Invalid quantity:", qty)
+          return
         }
-      })
-    })
 
-    // Add total from additional rows
-    additionalRows.forEach((row) => {
-      if (row.selected) {
-        const rowTotal = editableTotals[row.id] || Number.parseFloat(row.price) * Number.parseFloat(row.quantity)
-        total += rowTotal || 0
+        const medicineDetail = medicineDetails[particulars] || {}
+        let price = editablePrices[key] || medicineDetail.price
+
+        if (price === "N/A" || isNaN(Number.parseFloat(price))) {
+          console.warn(`Price is not available or invalid for medicine: ${particulars}`)
+          return
+        }
+
+        price = Number.parseFloat(price)
+        const totalForMedicine = calculateTotal(price, qty, key)
+
+        total += Number.parseFloat(totalForMedicine) || 0
       }
     })
+  })
 
-    // Add consultation fee
-    total += Number.parseFloat(consultationFee) || 0
-
-    if (isNaN(total) || total <= 0) {
-      console.error("Total amount is invalid:", total)
-      setNetAmount("0.00")
-      return
+  additionalRows.forEach((row) => {
+    if (row.selected) {
+      const rowTotal =
+        editableTotals[row.id] || Number.parseFloat(row.price) * Number.parseFloat(row.quantity)
+      total += rowTotal || 0
     }
+  })
 
-    const finalAmount = applyDiscountToTotal(total)
-    if (!isNaN(finalAmount) && typeof finalAmount === "number") {
-      setNetAmount(finalAmount.toFixed(2))
-    } else {
-      console.error("Final amount is not valid:", finalAmount)
-      setNetAmount("0.00")
-    }
+  total += Number.parseFloat(consultationFee) || 0
+
+  if (isNaN(total) || total <= 0) {
+    console.error("Total amount is invalid:", total)
+    setNetAmount("0.00")
+    return
   }
 
-  const applyDiscountToTotal = (total) => {
-    const discountValue = Number.parseFloat(discount) || 0
-    const discountAmount = (total * discountValue) / 100
-    const discountedTotal = total - discountAmount
-    return discountedTotal
+  // Use the custom discount if provided, otherwise use appliedDiscount from state
+  const discountToApply = customDiscount !== null ? customDiscount : parseFloat(appliedDiscount)
+  const finalAmount = applyDiscountToTotal(total, discountToApply)
+
+  if (!isNaN(finalAmount) && typeof finalAmount === "number") {
+    setNetAmount(finalAmount.toFixed(2))
+  } else {
+    console.error("Final amount is not valid:", finalAmount)
+    setNetAmount("0.00")
   }
+}
+
 
   const handleSaveData = async () => {
     const errorMessages = []
@@ -1233,32 +1298,37 @@ const Bill = () => {
       branch_code: branchCode,
     }
 
-    try {
-      const response = await fetch(`${Cosmetologybaseurl}save/billing/data/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dataToSubmit),
-      })
+   try {
+    const response = await fetch(`${Cosmetologybaseurl}save/billing/data/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(dataToSubmit),
+    })
 
-      if (!response.ok) {
-        throw new Error("Failed to submit data")
-      }
-
-      const data = await response.json()
-      toast.success(`Billing was generated successfully for ${selectedPatient.patientName}`)
-
-      const stockUpdated = await updateStock()
-      if (!stockUpdated) {
-        console.error("Stock update failed.")
-      }
-    } catch (error) {
-      console.error("Error submitting data:", error)
-      toast.error("Error saving billing data. Please try again.")
+    if (!response.ok) {
+      throw new Error("Failed to submit data")
     }
-  }
 
+    const data = await response.json()
+    toast.success(`Billing was generated successfully for ${selectedPatient.patientName}`)
+
+    const stockUpdated = await updateStock()
+    if (!stockUpdated) {
+      console.error("Stock update failed.")
+    }
+
+    // Navigate back to patient list after successful save
+    setTimeout(() => {
+      handleBackClick()
+    }, 2000) // Wait 2 seconds to show success message
+
+  } catch (error) {
+    console.error("Error submitting data:", error)
+    toast.error("Error saving billing data. Please try again.")
+  }
+}
   const updateStock = async () => {
     const stockUpdates = billingData
       .filter((item) => item.patientUID === selectedPatient.patientUID)
@@ -1413,21 +1483,28 @@ const Bill = () => {
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
-      let startY = 85
+      let startY = 110
       doc.setFont("helvetica", "bold")
-      doc.setFontSize(14)
+      doc.setFontSize(12)
       doc.setTextColor(30, 30, 30)
       doc.text(`Patient Name:`, 16, startY)
       doc.setFont("helvetica", "normal")
-      doc.setFontSize(13)
-      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 60, startY)
+      doc.setFontSize(10)
+      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
 
       doc.setFont("helvetica", "bold")
-      doc.setFontSize(14)
+      doc.setFontSize(12)
       doc.text(`Patient UID:`, 16, startY + 8)
       doc.setFont("helvetica", "normal")
-      doc.setFontSize(13)
-      doc.text(`${selectedPatient.patientUID}`, 60, startY + 8)
+      doc.setFontSize(10)
+      doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Date:`, 140, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${selectedPatient.appointmentDate}`, 170, startY)
 
       startY += 20
 
@@ -1458,17 +1535,29 @@ const Bill = () => {
 
       let finalY = startY
 
+      if (discount > 0) {
+        finalY += 8
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(12)
+        doc.setTextColor(60, 60, 60)
+        doc.text("Discount %", 130, finalY)
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(10)
+        doc.text(`${discount}`, 180, finalY, { align: "right" })
+      }
+
       if (consultationFee > 0) {
         finalY += 10
         doc.setFont("helvetica", "bold")
-        doc.setFontSize(11)
+        doc.setFontSize(12)
         doc.setTextColor(60, 60, 60)
-        doc.text("Consultation Fee", 16, finalY)
+        doc.text("Consultation Fee", 130, finalY)
         doc.setFont("helvetica", "normal")
-        doc.text(`Rs. ${consultationFee.toFixed(2)}`, 170, finalY, { align: "right" })
+        doc.setFontSize(10)
+        doc.text(`Rs. ${consultationFee.toFixed(2)}`, 180, finalY)
       }
 
-      finalY += 12
+      finalY += 10
       doc.setDrawColor(150)
       doc.setLineWidth(0.5)
       doc.line(14, finalY, pageWidth - 14, finalY)
@@ -1477,7 +1566,10 @@ const Bill = () => {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(14)
       doc.setTextColor(0, 100, 0)
-      doc.text(`Net Amount: Rs. ${netAmount || "N/A"}`, 14, finalY)
+      doc.text("Net Amount: ", 130, finalY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`Rs. ${netAmount || "N/A"}`, 180, finalY)
 
       doc.save(`${selectedPatient.patientName}_Bill.pdf`)
     })
@@ -1550,6 +1642,9 @@ const Bill = () => {
               <DoctorInfo>
                 <div>
                   <strong>Doctor Name:</strong> {selectedPatient.patient_handledby || "N/A"}
+                </div>
+                <div>
+                  <DataSourceBadge>{isDataFromStored ? "Billed" : "Summary"}</DataSourceBadge> 
                 </div>
               </DoctorInfo>
             </InfoText>
@@ -1776,10 +1871,15 @@ const Bill = () => {
               <DiscountInput
                 type="text"
                 id="discount"
-                value={discount}
+                value={tempDiscount}
                 placeholder="Discount %"
                 onChange={handleDiscountChange}
               />
+              <button 
+                onClick={handleApplyDiscount}
+              >
+                Apply
+              </button>
             </DiscountContainer>
 
             <PaymentTypeContainer>
@@ -1800,15 +1900,17 @@ const Bill = () => {
       <br />
       {selectedPatient && (
         <center>
-          <div className="d-flex flex-column align-items-center">
-            <Row className="g-3">
-              <Col xs="auto">
-                <button onClick={handleSaveData}>Save</button>
-              </Col>
-              <Col xs="auto">
-                <button onClick={handleDownload}>Download</button>
-              </Col>
-            </Row>
+          <div className="d-flex flex-column align-items-center mt-4">
+          <Row className="g-3">
+          <Col xs="auto">
+          <ActionButton onClick={handleSaveData} disabled={isDataFromStored}>
+          Save
+          </ActionButton>
+          </Col>
+          <Col xs="auto">
+          <ActionButton onClick={handleDownload}>Download PDF</ActionButton>
+          </Col>
+          </Row>
           </div>
         </center>
       )}
