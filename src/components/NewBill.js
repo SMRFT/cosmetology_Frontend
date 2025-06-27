@@ -691,7 +691,7 @@ const generatePDF = (billData, isExisting) => {
       doc.text("Consultation Fee:", 130, finalY)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(12)
-      doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, 180, finalY)
+      doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, 170, finalY)
       finalY += 10
     }
 
@@ -703,7 +703,7 @@ const generatePDF = (billData, isExisting) => {
       doc.text("Discount %", 130, finalY)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(12)
-      doc.text(`${discount}`, 180, finalY)
+      doc.text(`${discount}`, 170, finalY)
       finalY += 8
     }
     // ======= Net Amount - Displayed Separately =======
