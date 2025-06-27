@@ -34,7 +34,6 @@ const TableContainer = styled.div`
   z-index: 1;
 `
 
-
 const StyledTable = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -443,20 +442,59 @@ const NewProcedureComponent = () => {
     }
   }
 
+  // Enhanced calculation functions for bidirectional price/total editing
+  const calculateGST = (price, gstRate) => {
+    return price && gstRate ? ((price * gstRate) / 100).toFixed(2) : "0"
+  }
+
+  const calculateTotalFromPrice = (price, gst) => {
+    const priceValue = Number.parseFloat(price) || 0
+    const gstValue = Number.parseFloat(gst) || 0
+    return (priceValue + gstValue).toFixed(2)
+  }
+
+  const calculatePriceFromTotal = (total, gstRate) => {
+    const totalValue = Number.parseFloat(total) || 0
+    const gstRateValue = Number.parseFloat(gstRate) || 0
+
+    if (gstRateValue > 0) {
+      // Calculate price from total: price = total / (1 + gstRate/100)
+      const calculatedPrice = totalValue / (1 + gstRateValue / 100)
+      return calculatedPrice.toFixed(2)
+    }
+    return totalValue.toFixed(2)
+  }
+
+  // Enhanced handleAdditionalProcedureChange with bidirectional editing
   const handleAdditionalProcedureChange = (rowId, field, value) => {
     setAdditionalProcedures((prev) =>
       prev.map((row) => {
         if (row.id === rowId) {
           const updatedRow = { ...row, [field]: value }
 
-          if (field === "price" || field === "gstRate") {
-            const price = Number.parseFloat(field === "price" ? value : row.price) || 0
-            const gstRate = Number.parseFloat(field === "gstRate" ? value : row.gstRate) || 0
+          // Handle price change - calculate GST and total
+          if (field === "price") {
+            const price = Number.parseFloat(value) || 0
+            const gstRate = Number.parseFloat(row.gstRate) || 0
             updatedRow.gst = calculateGST(price, gstRate)
-            updatedRow.total = (price + Number.parseFloat(updatedRow.gst)).toFixed(2)
-          } else if (field === "total") {
-            // Allow manual editing of total
-            updatedRow.total = value
+            updatedRow.total = calculateTotalFromPrice(price, updatedRow.gst)
+          }
+
+          // Handle total change - calculate price based on total
+          else if (field === "total") {
+            const total = Number.parseFloat(value) || 0
+            const gstRate = Number.parseFloat(row.gstRate) || 0
+            const calculatedPrice = calculatePriceFromTotal(total, gstRate)
+            updatedRow.price = calculatedPrice
+            updatedRow.gst = calculateGST(calculatedPrice, gstRate)
+          }
+
+          // Handle GST rate change - recalculate GST and total based on existing price
+          else if (field === "gstRate") {
+            const price = Number.parseFloat(row.price) || 0
+            const gstRate = Number.parseFloat(value) || 0
+            updatedRow.gst = calculateGST(price, gstRate)
+            updatedRow.total = calculateTotalFromPrice(price, updatedRow.gst)
           }
 
           return updatedRow
@@ -464,10 +502,6 @@ const NewProcedureComponent = () => {
         return row
       }),
     )
-  }
-
-  const calculateGST = (price, gstRate) => {
-    return price && gstRate ? ((price * gstRate) / 100).toFixed(2) : "0"
   }
 
   const handleShowConsumerTable = () => {
@@ -481,15 +515,31 @@ const NewProcedureComponent = () => {
     setConsumerRecords((prevRecords) => [...prevRecords, { item: "", qty: "", price: "", total: "" }])
   }
 
+  // Enhanced handleConsumerChange with bidirectional price/total editing
   const handleConsumerChange = (index, field, value) => {
     setConsumerRecords((prevRecords) => {
       const updatedRecords = [...prevRecords]
       updatedRecords[index][field] = value
 
+      // Handle quantity or price changes - calculate total
       if (field === "qty" || field === "price") {
         const qty = Number.parseFloat(updatedRecords[index].qty) || 0
         const price = Number.parseFloat(updatedRecords[index].price) || 0
         updatedRecords[index].total = (qty * price).toFixed(2)
+      }
+
+      // Handle total change - calculate price based on total and quantity
+      else if (field === "total") {
+        const total = Number.parseFloat(value) || 0
+        const qty = Number.parseFloat(updatedRecords[index].qty) || 0
+
+        if (qty > 0) {
+          // Calculate price from total: price = total / qty
+          updatedRecords[index].price = (total / qty).toFixed(2)
+        } else {
+          // If no quantity, set price equal to total
+          updatedRecords[index].price = total.toFixed(2)
+        }
       }
 
       return updatedRecords
@@ -591,7 +641,7 @@ const NewProcedureComponent = () => {
         // Navigate back to patient list after successful save
         setTimeout(() => {
           handleBackClick()
-        }, 3000) // Wait 2 seconds to show success message
+        }, 3000) // Wait 3 seconds to show success message
       } catch (error) {
         toast.error("Error generating new procedure bill")
       }
@@ -600,96 +650,96 @@ const NewProcedureComponent = () => {
     }
   }
 
-const convertToBase64 = (url, callback) => {
-  const img = new Image()
-  img.crossOrigin = "Anonymous"
-  img.src = url
-  img.onload = () => {
-    const canvas = document.createElement("canvas")
-    canvas.width = img.width
-    canvas.height = img.height
-    const ctx = canvas.getContext("2d")
-    ctx.drawImage(img, 0, 0)
-    const dataURL = canvas.toDataURL("image/png")
-    callback(dataURL)
-  }
-  img.onerror = (error) => console.error("Error converting image to Base64:", error)
-}
-
-const handleDownloadExisting = (bill) => {
-  // Reconstruct the original bill structure for PDF generation
-  let procedures = [];
-  let consumer = [];
-  let consultationFee = 0;
-
-  // Parse procedures and consumer from the original bill data
-  try {
-    procedures = typeof bill.procedures === "string" ? JSON.parse(bill.procedures) : bill.procedures || [];
-    consumer = typeof bill.consumer === "string" ? JSON.parse(bill.consumer) : bill.consumer || [];
-
-    // Extract consultation fee from procedures and remove it from the array
-    const consultationIndex = procedures.findIndex(proc => 
-      proc.procedure && proc.procedure.toLowerCase().includes('consultation fee')
-    );
-    
-    if (consultationIndex !== -1) {
-      consultationFee = parseFloat(procedures[consultationIndex].total) || 0;
-      procedures.splice(consultationIndex, 1); // Remove consultation fee from procedures
+  const convertToBase64 = (url, callback) => {
+    const img = new Image()
+    img.crossOrigin = "Anonymous"
+    img.src = url
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext("2d")
+      ctx.drawImage(img, 0, 0)
+      const dataURL = canvas.toDataURL("image/png")
+      callback(dataURL)
     }
-  } catch (e) {
-    console.error("Error parsing bill data for download:", e);
+    img.onerror = (error) => console.error("Error converting image to Base64:", error)
   }
 
-  const originalBill = {
-    patientName: bill.patientName,
-    patientUID: bill.patientUID,
-    procedures: procedures, // Procedures without consultation fee
-    consumer: consumer,
-    consultationFee: consultationFee, // Extracted consultation fee
-    procedureNetAmount: bill.procedureNetAmount,
-    consumerNetAmount: bill.consumerNetAmount,
-    totalAmount: (
-      Number.parseFloat(bill.procedureNetAmount || 0) + Number.parseFloat(bill.consumerNetAmount || 0)
-    ).toFixed(2),
-    PaymentType: bill.PaymentType,
+  const handleDownloadExisting = (bill) => {
+    // Reconstruct the original bill structure for PDF generation
+    let procedures = []
+    let consumer = []
+    let consultationFee = 0
+
+    // Parse procedures and consumer from the original bill data
+    try {
+      procedures = typeof bill.procedures === "string" ? JSON.parse(bill.procedures) : bill.procedures || []
+      consumer = typeof bill.consumer === "string" ? JSON.parse(bill.consumer) : bill.consumer || []
+
+      // Extract consultation fee from procedures and remove it from the array
+      const consultationIndex = procedures.findIndex(
+        (proc) => proc.procedure && proc.procedure.toLowerCase().includes("consultation fee"),
+      )
+
+      if (consultationIndex !== -1) {
+        consultationFee = Number.parseFloat(procedures[consultationIndex].total) || 0
+        procedures.splice(consultationIndex, 1) // Remove consultation fee from procedures
+      }
+    } catch (e) {
+      console.error("Error parsing bill data for download:", e)
+    }
+
+    const originalBill = {
+      patientName: bill.patientName,
+      patientUID: bill.patientUID,
+      procedures: procedures, // Procedures without consultation fee
+      consumer: consumer,
+      consultationFee: consultationFee, // Extracted consultation fee
+      procedureNetAmount: bill.procedureNetAmount,
+      consumerNetAmount: bill.consumerNetAmount,
+      totalAmount: (
+        Number.parseFloat(bill.procedureNetAmount || 0) + Number.parseFloat(bill.consumerNetAmount || 0)
+      ).toFixed(2),
+      PaymentType: bill.PaymentType,
+    }
+
+    generateProcedurePDF(originalBill, true)
   }
 
-  generateProcedurePDF(originalBill, true)
-}
-
-const handleDownloadNew = () => {
-  const billData = {
-    patientName: selectedPatient.patientName,
-    patientUID: selectedPatient.patientUID,
-    procedures: additionalProcedures.filter((proc) => proc.selected),
-    consumer: consumerRecords,
-    consultationFee: consultationFee,
-    procedureNetAmount: procedureNetAmount,
-    consumerNetAmount: consumerNetAmount,
-    totalAmount: totalAmount,
-    PaymentType: PaymentType,
+  const handleDownloadNew = () => {
+    const billData = {
+      patientName: selectedPatient.patientName,
+      patientUID: selectedPatient.patientUID,
+      procedures: additionalProcedures.filter((proc) => proc.selected),
+      consumer: consumerRecords,
+      consultationFee: consultationFee,
+      procedureNetAmount: procedureNetAmount,
+      consumerNetAmount: consumerNetAmount,
+      totalAmount: totalAmount,
+      PaymentType: PaymentType,
+    }
+    generateProcedurePDF(billData, false)
   }
-  generateProcedurePDF(billData, false)
-}
 
-const generateProcedurePDF = (billData, isExisting) => {
-  const doc = new jsPDF("p", "mm", "a4")
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
+  const generateProcedurePDF = (billData, isExisting) => {
+    const doc = new jsPDF("p", "mm", "a4")
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
 
-  // Select PDF background based on branch code (same as original)
-  const backgroundImageMap = {
-    SCC001: PDFMain1,
-    SCC002: PDFMain2,
-  }
-  const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+    // Select PDF background based on branch code (same as original)
+    const backgroundImageMap = {
+      SCC001: PDFMain1,
+      SCC002: PDFMain2,
+    }
+    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
 
-  convertToBase64(PDFMain, (mainImage) => {
-    // Add background image with letterhead
-    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+    convertToBase64(PDFMain, (mainImage) => {
+      // Add background image with letterhead
+      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
-    // ======= Patient Details (Same styling as original) =======
- // Header
+      // ======= Patient Details (Same styling as original) =======
+      // Header
       let startY = 110
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
@@ -706,51 +756,22 @@ const generateProcedurePDF = (billData, isExisting) => {
       doc.setFontSize(10)
       doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
 
-    startY += 25
+      startY += 25
 
-    // ======= Procedures Table =======
-    if (billData.procedures && billData.procedures.length > 0) {
-      const procedureTableData = billData.procedures.map((proc) => [
-        proc.procedure,
-        proc.procedureDate || format(new Date(), "yyyy-MM-dd"),
-        proc.price,
-        `${proc.gstRate || 0}%`,
-        proc.gst || 0,
-        proc.total || calculateTotal(proc.price, proc.gst || 0),
-      ])
+      // ======= Procedures Table =======
+      if (billData.procedures && billData.procedures.length > 0) {
+        const procedureTableData = billData.procedures.map((proc) => [
+          proc.procedure,
+          proc.procedureDate || format(new Date(), "yyyy-MM-dd"),
+          proc.price,
+          `${proc.gstRate || 0}%`,
+          proc.gst || 0,
+          proc.total || calculateTotal(proc.price, proc.gst || 0),
+        ])
 
-      doc.autoTable({
-        head: [["Procedure", "Procedure Date", "Price", "GST Rate (%)", "GST", "Total"]],
-        body: procedureTableData,
-        startY: startY,
-        theme: "grid",
-        headStyles: {
-          fillColor: [116, 180, 155],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 10,
-        },
-        bodyStyles: {
-          fontSize: 9,
-          textColor: [40, 40, 40],
-          font: "helvetica",
-        },
-        margin: { left: 14, right: 14 },
-      })
-
-      startY = doc.lastAutoTable.finalY + 10
-    }
-
-    // ======= Consumer Records Table =======
-    if (billData.consumer && billData.consumer.length > 0 && billData.consumer.some((record) => record.item)) {
-      const consumerTableData = billData.consumer
-        .filter((record) => record.item)
-        .map((record) => [record.item, record.qty, record.price, record.total])
-
-      if (consumerTableData.length > 0) {
         doc.autoTable({
-          head: [["Item", "Qty", "Price", "Total"]],
-          body: consumerTableData,
+          head: [["Procedure", "Procedure Date", "Price", "GST Rate (%)", "GST", "Total"]],
+          body: procedureTableData,
           startY: startY,
           theme: "grid",
           headStyles: {
@@ -769,65 +790,95 @@ const generateProcedurePDF = (billData, isExisting) => {
 
         startY = doc.lastAutoTable.finalY + 10
       }
-    }
 
-    let finalY = startY + 5
+      // ======= Consumer Records Table =======
+      if (billData.consumer && billData.consumer.length > 0 && billData.consumer.some((record) => record.item)) {
+        const consumerTableData = billData.consumer
+          .filter((record) => record.item)
+          .map((record) => [record.item, record.qty, record.price, record.total])
 
-    // ======= Consultation Fee - Displayed Separately =======
-    if (billData.consultationFee > 0) {
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(60, 60, 60)
-      doc.text("Consultation Fee:", 120, finalY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(12)
-      doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, 170, finalY)
-      finalY += 10
-    }
+        if (consumerTableData.length > 0) {
+          doc.autoTable({
+            head: [["Item", "Qty", "Price", "Total"]],
+            body: consumerTableData,
+            startY: startY,
+            theme: "grid",
+            headStyles: {
+              fillColor: [116, 180, 155],
+              textColor: [255, 255, 255],
+              fontStyle: "bold",
+              fontSize: 10,
+            },
+            bodyStyles: {
+              fontSize: 9,
+              textColor: [40, 40, 40],
+              font: "helvetica",
+            },
+            margin: { left: 14, right: 14 },
+          })
 
-    // ======= Net Amounts - Displayed Separately =======
-    // Add separator line
-    doc.setDrawColor(150)
-    doc.setLineWidth(0.5)
-    doc.line(14, finalY, pageWidth - 14, finalY)
-    finalY += 8
+          startY = doc.lastAutoTable.finalY + 10
+        }
+      }
 
-    // Procedure Net Amount
-    if (billData.procedureNetAmount > 0) {
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(60, 60, 60)
-      doc.text("Procedure Net Amount:", 120, finalY)
-      doc.text(`Rs. ${billData.procedureNetAmount}`, 170, finalY)
+      let finalY = startY + 5
+
+      // ======= Consultation Fee - Displayed Separately =======
+      if (billData.consultationFee > 0) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(12)
+        doc.setTextColor(60, 60, 60)
+        doc.text("Consultation Fee:", 120, finalY)
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(12)
+        doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, 170, finalY)
+        finalY += 10
+      }
+
+      // ======= Net Amounts - Displayed Separately =======
+      // Add separator line
+      doc.setDrawColor(150)
+      doc.setLineWidth(0.5)
+      doc.line(14, finalY, pageWidth - 14, finalY)
       finalY += 8
-    }
 
-    // Consumer Net Amount
-    if (billData.consumerNetAmount > 0) {
+      // Procedure Net Amount
+      if (billData.procedureNetAmount > 0) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(12)
+        doc.setTextColor(60, 60, 60)
+        doc.text("Procedure Net Amount:", 120, finalY)
+        doc.text(`Rs. ${billData.procedureNetAmount}`, 170, finalY)
+        finalY += 8
+      }
+
+      // Consumer Net Amount
+      if (billData.consumerNetAmount > 0) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(12)
+        doc.setTextColor(60, 60, 60)
+        doc.text("Consumer Net Amount:", 120, finalY)
+        doc.text(`Rs. ${billData.consumerNetAmount}`, 170, finalY)
+        finalY += 8
+      }
+
+      // Total Amount
+      finalY += 3
       doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(60, 60, 60)
-      doc.text("Consumer Net Amount:", 120, finalY)
-      doc.text(`Rs. ${billData.consumerNetAmount}`, 170, finalY)
-      finalY += 8
-    }
+      doc.setFontSize(14)
+      doc.setTextColor(0, 100, 0)
+      doc.text("Total Amount:", 120, finalY)
+      doc.text(`Rs. ${billData.totalAmount}`, 170, finalY)
 
-    // Total Amount
-    finalY += 3
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(14)
-    doc.setTextColor(0, 100, 0)
-    doc.text("Total Amount:", 120, finalY)
-    doc.text(`Rs. ${billData.totalAmount}`, 170, finalY)
+      doc.save(`${billData.patientName}_ProcedureBill_${selectedDate}.pdf`)
+    })
+  }
 
-    doc.save(`${billData.patientName}_ProcedureBill_${selectedDate}.pdf`)
-  })
-}
+  // Helper function for calculating total (if not already defined)
+  const calculateTotal = (price, gst) => {
+    return (Number.parseFloat(price) + Number.parseFloat(gst)).toFixed(2)
+  }
 
-// Helper function for calculating total (if not already defined)
-const calculateTotal = (price, gst) => {
-  return (parseFloat(price) + parseFloat(gst)).toFixed(2)
-}
   const handleBackClick = () => {
     navigate("/Reception/PatientDetails")
   }
@@ -1137,16 +1188,8 @@ const calculateTotal = (price, gst) => {
           {/* Action Buttons */}
           <center style={{ marginTop: "20px" }}>
             <div className="d-flex justify-content-center gap-3">
-              <button
-                onClick={handleSave}
-              >
-                Save Procedure Bill
-              </button>
-              <button
-                onClick={handleDownloadNew}
-              >
-                Download
-              </button>
+              <button onClick={handleSave}>Save Procedure Bill</button>
+              <button onClick={handleDownloadNew}>Download</button>
             </div>
           </center>
         </StyledContainer>

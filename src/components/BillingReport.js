@@ -368,7 +368,7 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
         doc.setTextColor(40, 40, 40);
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
-        doc.text(`Discount % : ${patientData.discount}`, 165, currentY);
+        doc.text(`Discount % : ${patientData.discount}`, 150, currentY);
         currentY += 8;
       }
 
@@ -378,7 +378,9 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
         doc.setFont("helvetica", "bold")
         doc.setFontSize(12)
         doc.setTextColor(40, 40, 40)
-        doc.text(`Consultation Fee  : ${Number.parseFloat(consultationFee.total || 0).toFixed(2)}`, 160, currentY)
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`Consultation Fee  : ${Number.parseFloat(consultationFee.total || 0).toFixed(2)}`, 150, currentY)
         currentY += 16
       }
 

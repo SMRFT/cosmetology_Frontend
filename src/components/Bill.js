@@ -1537,24 +1537,22 @@ const calculateNetAmount = (customDiscount = null) => {
 
       if (discount > 0) {
         finalY += 8
-        doc.setFont("helvetica", "bold")
         doc.setFontSize(12)
         doc.setTextColor(60, 60, 60)
         doc.text("Discount %", 130, finalY)
         doc.setFont("helvetica", "normal")
         doc.setFontSize(10)
-        doc.text(`${discount}`, 180, finalY, { align: "right" })
+        doc.text(`${discount}`, 170, finalY)
       }
 
       if (consultationFee > 0) {
         finalY += 10
-        doc.setFont("helvetica", "bold")
         doc.setFontSize(12)
         doc.setTextColor(60, 60, 60)
         doc.text("Consultation Fee", 130, finalY)
         doc.setFont("helvetica", "normal")
         doc.setFontSize(10)
-        doc.text(`Rs. ${consultationFee.toFixed(2)}`, 180, finalY)
+        doc.text(`Rs. ${consultationFee.toFixed(2)}`, 170, finalY)
       }
 
       finalY += 10
@@ -1569,7 +1567,7 @@ const calculateNetAmount = (customDiscount = null) => {
       doc.text("Net Amount: ", 130, finalY)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
-      doc.text(`Rs. ${netAmount || "N/A"}`, 180, finalY)
+      doc.text(`Rs. ${netAmount || "N/A"}`, 170, finalY)
 
       doc.save(`${selectedPatient.patientName}_Bill.pdf`)
     })
