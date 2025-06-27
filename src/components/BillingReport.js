@@ -284,21 +284,35 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
 
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-      let startY = 85
+      let startY = 110
       doc.setFont("helvetica", "bold")
-      doc.setFontSize(14)
+      doc.setFontSize(12)
       doc.setTextColor(30, 30, 30)
       doc.text(`Patient Name:`, 16, startY)
       doc.setFont("helvetica", "normal")
-      doc.setFontSize(13)
-      doc.text(`${patientData.patientName.toUpperCase()}`, 60, startY)
+      doc.setFontSize(10)
+      doc.text(`${patientData.patientName.toUpperCase()}`, 50, startY)
 
       doc.setFont("helvetica", "bold")
-      doc.setFontSize(14)
+      doc.setFontSize(12)
       doc.text(`Patient UID:`, 16, startY + 8)
       doc.setFont("helvetica", "normal")
-      doc.setFontSize(13)
-      doc.text(`${patientData.patientUID}`, 60, startY + 8)
+      doc.setFontSize(10)
+      doc.text(`${patientData.patientUID}`, 50, startY + 8)
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Date:`, 140, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.appointmentDate}`, 170, startY)
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Bill Number:`, 140, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${patientData.billNumber}`, 170, startY + 8)
 
       startY += 35
 
@@ -347,21 +361,47 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
 
       let currentY = doc.previousAutoTable.finalY + 15
 
+      // Display Discount separately if it exists
+      if (patientData.discount && patientData.discount !== 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(40, 40, 40);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`Discount % : ${patientData.discount}`, 165, currentY);
+        currentY += 8;
+      }
+
+
       // Display consultation fee separately if it exists
       if (consultationFee) {
         doc.setFont("helvetica", "bold")
-        doc.setFontSize(11)
+        doc.setFontSize(12)
         doc.setTextColor(40, 40, 40)
-        doc.text(`Consultation Fee: ${Number.parseFloat(consultationFee.total || 0).toFixed(2)}`, 14, currentY)
-        currentY += 8
+        doc.text(`Consultation Fee  : ${Number.parseFloat(consultationFee.total || 0).toFixed(2)}`, 160, currentY)
+        currentY += 16
       }
 
+      // Add spacing before the line
+      currentY += 5
+
+      // Draw a line before Net Amount
+      doc.setDrawColor(150)
+      doc.setLineWidth(0.5)
+      doc.line(14, currentY, pageWidth - 14, currentY)
+
+      currentY += 8 // Space after the line
+
       // Calculate and display net total
-      const netTotal = patientData.table_data.reduce((sum, data) => sum + Number.parseFloat(data.total || 0), 0)
+      const netTotal = patientData.table_data.reduce(
+        (sum, data) => sum + Number.parseFloat(data.total || 0),
+        0
+      )
+
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(0, 100, 0)
-      doc.text(`Net Amount: ${netTotal.toFixed(2)}`, 14, currentY)
+      doc.text(`Net Amount : ${netTotal.toFixed(2)}`, 150, currentY)
 
       const pdfBlob = doc.output("blob")
       const pdfUrl = URL.createObjectURL(pdfBlob)

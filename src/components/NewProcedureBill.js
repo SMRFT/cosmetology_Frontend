@@ -29,12 +29,11 @@ const Container = styled.div`
 `
 
 const TableContainer = styled.div`
-  overflow-y: auto;
-  scrollbar-width: thin;
-  margin-bottom: 20px;
-  border-radius: 8px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+  overflow: visible;   /* this is crucial */
+  z-index: 1;
 `
+
 
 const StyledTable = styled.table`
   width: 100%;
@@ -589,6 +588,10 @@ const NewProcedureComponent = () => {
         })
         toast.success(`New procedure bill generated successfully for ${selectedPatient.patientName}`)
         fetchExistingProcedureBills()
+        // Navigate back to patient list after successful save
+        setTimeout(() => {
+          handleBackClick()
+        }, 3000) // Wait 2 seconds to show success message
       } catch (error) {
         toast.error("Error generating new procedure bill")
       }
@@ -686,21 +689,22 @@ const generateProcedurePDF = (billData, isExisting) => {
     doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
     // ======= Patient Details (Same styling as original) =======
-    let startY = 85
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(14)
-    doc.setTextColor(30, 30, 30)
-    doc.text(`Patient Name:`, 16, startY)
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(13)
-    doc.text(`${billData.patientName.toUpperCase()}`, 60, startY)
+ // Header
+      let startY = 110
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Patient Name:`, 16, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
 
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(14)
-    doc.text(`Patient UID:`, 16, startY + 8)
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(13)
-    doc.text(`${billData.patientUID}`, 60, startY + 8)
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Patient UID:`, 16, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
 
     startY += 25
 
@@ -774,10 +778,10 @@ const generateProcedurePDF = (billData, isExisting) => {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(60, 60, 60)
-      doc.text("Consultation Fee:", 16, finalY)
+      doc.text("Consultation Fee:", 120, finalY)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(12)
-      doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, pageWidth - 16, finalY, { align: "right" })
+      doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, 170, finalY)
       finalY += 10
     }
 
@@ -793,8 +797,8 @@ const generateProcedurePDF = (billData, isExisting) => {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(60, 60, 60)
-      doc.text("Procedure Net Amount:", 16, finalY)
-      doc.text(`Rs. ${billData.procedureNetAmount}`, pageWidth - 16, finalY, { align: "right" })
+      doc.text("Procedure Net Amount:", 120, finalY)
+      doc.text(`Rs. ${billData.procedureNetAmount}`, 170, finalY)
       finalY += 8
     }
 
@@ -803,8 +807,8 @@ const generateProcedurePDF = (billData, isExisting) => {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(60, 60, 60)
-      doc.text("Consumer Net Amount:", 16, finalY)
-      doc.text(`Rs. ${billData.consumerNetAmount}`, pageWidth - 16, finalY, { align: "right" })
+      doc.text("Consumer Net Amount:", 120, finalY)
+      doc.text(`Rs. ${billData.consumerNetAmount}`, 170, finalY)
       finalY += 8
     }
 
@@ -813,17 +817,8 @@ const generateProcedurePDF = (billData, isExisting) => {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(14)
     doc.setTextColor(0, 100, 0)
-    doc.text("Total Amount:", 16, finalY)
-    doc.text(`Rs. ${billData.totalAmount}`, pageWidth - 16, finalY, { align: "right" })
-
-    // Payment Type
-    if (billData.PaymentType) {
-      finalY += 10
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(11)
-      doc.setTextColor(60, 60, 60)
-      doc.text(`Payment Type: ${billData.PaymentType}`, 16, finalY)
-    }
+    doc.text("Total Amount:", 120, finalY)
+    doc.text(`Rs. ${billData.totalAmount}`, 170, finalY)
 
     doc.save(`${billData.patientName}_ProcedureBill_${selectedDate}.pdf`)
   })
@@ -1054,7 +1049,7 @@ const calculateTotal = (price, gst) => {
           {showConsumerTable && (
             <>
               <TableContainer>
-                <StyledTable>
+                <table>
                   <thead>
                     <tr>
                       <th>Item</th>
@@ -1102,7 +1097,7 @@ const calculateTotal = (price, gst) => {
                       </tr>
                     ))}
                   </tbody>
-                </StyledTable>
+                </table>
               </TableContainer>
               <AddRowButton onClick={addConsumerRow}>
                 <FaPlus />
@@ -1144,27 +1139,11 @@ const calculateTotal = (price, gst) => {
             <div className="d-flex justify-content-center gap-3">
               <button
                 onClick={handleSave}
-                style={{
-                  backgroundColor: "#28a745",
-                  color: "white",
-                  padding: "10px 20px",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
               >
                 Save Procedure Bill
               </button>
               <button
                 onClick={handleDownloadNew}
-                style={{
-                  backgroundColor: "#17a2b8",
-                  color: "white",
-                  padding: "10px 20px",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
               >
                 Download
               </button>

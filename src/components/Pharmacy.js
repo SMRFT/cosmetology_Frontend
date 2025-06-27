@@ -627,10 +627,6 @@ const PharmacyComponent = () => {
  <option value="">Select Category</option>
  <option value="Tablets">Tablets</option>
  <option value="Topicals">Topicals</option>
- <option value="Capsules">Capsules</option>
- <option value="Syrup">Syrup</option>
- <option value="Injection">Injection</option>
- <option value="Ointment">Ointment</option>
  </StyledSelect>
  </MedicineInfoSection>
 

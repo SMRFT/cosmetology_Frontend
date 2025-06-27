@@ -85,24 +85,23 @@ const Appointment = () => {
       })
   }
 
-  const fetchDoctors = () => {
-    const url = `${Cosmetologybaseurl}get_doctors/`
-    axios
-      .get(url, {
-        withCredentials: true,
-      })
-      .then((response) => {
-        if (response.data.success) {
-          setDoctors(response.data.doctors)
-        } else {
-          setErrorMessage("Failed to fetch doctors")
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching doctors:", error)
-        setErrorMessage("Failed to fetch doctors")
-      })
-  }
+const fetchDoctors = () => {
+  const url = `${Cosmetologybaseurl}get_doctors/?branch_code=${branchCode}`;
+  axios
+    .get(url, { withCredentials: true })
+    .then((response) => {
+      if (response.data.success) {
+        setDoctors(response.data.doctors);
+      } else {
+        setErrorMessage("Failed to fetch doctors");
+      }
+    })
+    .catch((error) => {
+      console.error("Error fetching doctors:", error);
+      setErrorMessage("Failed to fetch doctors");
+    });
+};
+
 
 const generateTimeSlots = (startTime, endTime, interval) => {
   const slots = []
