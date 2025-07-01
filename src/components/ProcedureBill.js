@@ -1141,154 +1141,158 @@ const handleProcedureDataChange = (index, field, value) => {
  }
  }
 
- const handleDownload = () => {
- if (!selectedPatient) {
- toast.error("No patient selected for download")
- return
- }
+const handleDownload = () => {
+  if (!selectedPatient) {
+    toast.error("No patient selected for download");
+    return;
+  }
 
- const doc = new jsPDF("p", "mm", "a4")
- const pageWidth = doc.internal.pageSize.getWidth()
- const pageHeight = doc.internal.pageSize.getHeight()
+  const doc = new jsPDF("p", "mm", "a4");
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
- const backgroundImageMap = {
- SCC001: PDFMain1,
- SCC002: PDFMain2,
- }
- const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+  const backgroundImageMap = {
+    SCC001: PDFMain1,
+    SCC002: PDFMain2,
+  };
+  const PDFMain = backgroundImageMap[branchCode] || PDFMain1;
 
- const convertToBase64 = (url, callback) => {
- const img = new Image()
- img.crossOrigin = "Anonymous"
- img.src = url
- img.onload = () => {
- const canvas = document.createElement("canvas")
- canvas.width = img.width
- canvas.height = img.height
- const ctx = canvas.getContext("2d")
- ctx.drawImage(img, 0, 0)
- const dataURL = canvas.toDataURL("image/png")
- callback(dataURL)
- }
- img.onerror = (error) => console.error("Error converting image to Base64:", error)
- }
+  const convertToBase64 = (url, callback) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.src = url;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const dataURL = canvas.toDataURL("image/png");
+      callback(dataURL);
+    };
+    img.onerror = (error) =>
+      console.error("Error converting image to Base64:", error);
+  };
 
- convertToBase64(PDFMain, (mainImage) => {
- doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+  convertToBase64(PDFMain, (mainImage) => {
+    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight);
 
- // Header
-      let startY = 110
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(30, 30, 30)
-      doc.text(`Patient Name:`, 16, startY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
+    // Header
+    let startY = 110;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(30, 30, 30);
+    doc.text(`Patient Name:`, 16, startY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY);
 
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.text(`Patient UID:`, 16, startY + 8)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Patient UID:`, 16, startY + 8);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`${selectedPatient.patientUID}`, 50, startY + 8);
 
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.text(`Date:`, 140, startY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${selectedPatient.appointmentDate}`, 170, startY)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Date:`, 140, startY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`${selectedPatient.appointmentDate}`, 170, startY);
 
- let yOffset = startY + 20
+    let yOffset = startY + 20;
 
- // Procedure Table
- const selectedProcedures = [
- ...procedureData.filter((item) => item.selected),
- ...additionalProcedures.filter((item) => item.selected),
- ]
+    // Procedure Table
+    const selectedProcedures = [
+      ...procedureData.filter((item) => item.selected),
+      ...additionalProcedures.filter((item) => item.selected),
+    ];
 
- if (selectedProcedures.length > 0) {
- const procedureTable = selectedProcedures.map((procedure) => [
- procedure.procedure,
- procedure.procedureDate,
- `${procedure.price}`,
- `${procedure.gstRate}%`,
- `${procedure.gst}`,
- `${procedure.total}`,
- ])
+    if (selectedProcedures.length > 0) {
+      const procedureTable = selectedProcedures.map((procedure) => [
+        procedure.procedure,
+        procedure.procedureDate,
+        `${procedure.price}`,
+        `${procedure.gstRate}%`,
+        `${procedure.gst}`,
+        `${procedure.total}`,
+      ]);
 
- doc.autoTable({
- head: [["Procedure", "Date", "Price", "GST Rate", "GST", "Total"]],
- body: procedureTable,
- startY: yOffset,
- theme: "grid",
- headStyles: {
-fillColor: [116, 180, 155],
-textColor: [255, 255, 255],
+      doc.autoTable({
+        head: [["Procedure", "Date", "Price", "GST Rate", "GST", "Total"]],
+        body: procedureTable,
+        startY: yOffset,
+        theme: "grid",
+        headStyles: {
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+        },
+        margin: { left: 14, right: 14 },
+      });
 
- fontStyle: "bold",
- fontSize: 10,
- },
- bodyStyles: {
- fontSize: 9,
- textColor: [40, 40, 40],
- },
- margin: { left: 14, right: 14 },
- })
+      yOffset = doc.lastAutoTable.finalY + 10;
+    }
 
- yOffset = doc.lastAutoTable.finalY + 10
- }
+    // Consumer Table
+    const selectedConsumers = consumerData.filter(
+      (item) => item.selected && item.item
+    );
+    if (selectedConsumers.length > 0) {
+      const consumerTable = selectedConsumers.map((record) => [
+        record.item,
+        record.qty,
+        `${record.price}`,
+        `${record.total}`,
+      ]);
 
- // Consumer Table
- const selectedConsumers = consumerData.filter((item) => item.selected && item.item)
- if (selectedConsumers.length > 0) {
- const consumerTable = selectedConsumers.map((record) => [
- record.item,
- record.qty,
- `${record.price}`,
- `${record.total}`,
- ])
+      doc.autoTable({
+        head: [["Item", "Qty", "Price", "Total"]],
+        body: consumerTable,
+        startY: yOffset,
+        theme: "grid",
+        headStyles: {
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+        },
+        margin: { left: 14, right: 14 },
+      });
 
- doc.autoTable({
- head: [["Item", "Qty", "Price", "Total"]],
- body: consumerTable,
- startY: yOffset,
- theme: "grid",
- headStyles: {
- fillColor: [116, 180, 155],
- textColor: [255, 255, 255],
- fontStyle: "bold",
- fontSize: 10,
- },
- bodyStyles: {
- fontSize: 9,
- textColor: [40, 40, 40],
- },
- margin: { left: 14, right: 14 },
- })
+      yOffset = doc.lastAutoTable.finalY + 10;
+    }
 
- yOffset = doc.lastAutoTable.finalY + 10
- }
+    // Consultation Fee
+    if (consultationFee > 0) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(`Consultation Fee: ${consultationFee.toFixed(2)}`, 150, yOffset);
+      yOffset += 10;
+    }
 
- // Consultation Fee
- if (consultationFee > 0) {
- doc.setFont("helvetica", "bold")
- doc.setFontSize(11)
- doc.text(`Consultation Fee: ${consultationFee.toFixed(2)}`, 150, yOffset)
- yOffset += 10
- }
+    // Net Total
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(0, 100, 0);
+    doc.text(`Net Total: ${totalAmount}`, 150, yOffset + 5);
 
- // Final Total
- doc.setFont("helvetica", "bold")
- doc.setFontSize(14)
- doc.setTextColor(0, 100, 0)
- doc.text(`Net Total: ${totalAmount}`, 150, yOffset + 5)
+    // Save the PDF
+    doc.save(`${selectedPatient.patientName}_Final_Bill.pdf`);
+    toast.success(`PDF downloaded for ${selectedPatient.patientName}`);
+  });
+};
 
- doc.save(`${selectedPatient.patientName}_Procedure_Bill.pdf`)
- toast.success(`PDF downloaded for ${selectedPatient.patientName}`)
- })
- }
 
  const consumerOptions = consumerItems.map((item) => ({
  value: item,
