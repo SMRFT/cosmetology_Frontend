@@ -77,63 +77,65 @@ const BillingReport = () => {
     }
   }, [branchCode, selectedInterval, selectedDate, selectedWeek]);
 
-  const fetchData = async (interval) => {
-    if (!branchCode) {
-      console.warn("Branch code is not available, skipping data fetch.");
-      setBillingData(null); // Clear data if branch code is missing
-      setLoading(false); // Ensure loading is false
-      return;
-    }
+const fetchData = async (interval) => {
+  if (!branchCode) {
+    console.warn("Branch code is not available, skipping data fetch.");
+    setBillingData(null); // Clear data if branch code is missing
+    setLoading(false); // Ensure loading is false
+    return;
+  }
 
-    setLoading(true); // Set loading to true before API call
-    setError(null); // Clear previous errors
+  setLoading(true); // Set loading to true before API call
+  setError(null); // Clear previous errors
 
-    let dateParam = "";
-    let currentSelectedDateForParam = selectedDate;
+  let dateParam = "";
+  let currentSelectedDateForParam = selectedDate; // Use selectedDate for day and month
 
-    if (interval === "week" && !selectedWeek) {
-      currentSelectedDateForParam = startOfWeek(selectedDate, { weekStartsOn: 1 });
-    } else if (interval === "week" && selectedWeek) {
-      currentSelectedDateForParam = selectedWeek;
-    }
+  // For week interval, if selectedWeek is null (e.g., on initial load or interval change),
+  // calculate it from selectedDate, defaulting to Monday of that week.
+  if (interval === "week" && !selectedWeek) {
+    currentSelectedDateForParam = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Ensure Monday
+  } else if (interval === "week" && selectedWeek) {
+    currentSelectedDateForParam = selectedWeek; // Use the explicitly selected week's start
+  }
 
-    if (interval === "day") {
-      dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
-    } else if (interval === "week") {
-      dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
-    } else if (interval === "month") {
-      dateParam = format(startOfMonth(currentSelectedDateForParam), "yyyy-MM-dd");
-    }
+  if (interval === "day") {
+    dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
+  } else if (interval === "week") {
+    dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
+  } else if (interval === "month") {
+    dateParam = format(startOfMonth(currentSelectedDateForParam), "yyyy-MM-dd");
+  }
 
-    try {
-      const response = await axios.get(
-        `${Cosmetologybaseurl}billing/${interval}/`,
-        {
-          params: {
-            appointmentDate: dateParam,
-            branch_code: branchCode,
-          },
-          withCredentials: true,
-        }
-      );
-
-      setBillingData(response.data.billing_data);
-
-      // --- ADDED TOAST NOTIFICATION HERE ---
-      if (!response.data.billing_data || Object.keys(response.data.billing_data).length === 0) {
-        toast.info("No data found for the selected criteria.");
+  try {
+    const response = await axios.get(
+      `${Cosmetologybaseurl}billing/${interval}/`,
+      {
+        params: {
+          appointmentDate: dateParam,
+          branch_code: branchCode,
+        },
+        withCredentials: true,
       }
-      // --- END ADDED TOAST NOTIFICATION ---
+    );
 
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setError("Failed to fetch billing data. Please try again."); // Set error message
-      setBillingData(null);
-      toast.error("Failed to fetch data."); // Show error toast
-    } finally {
-      setLoading(false); // Set loading to false after API call
+    setBillingData(response.data.billing_data);
+
+    // --- ADDED TOAST NOTIFICATION HERE ---
+    if (!response.data.billing_data || Object.keys(response.data.billing_data).length === 0) {
+      toast.info("No data found for the selected criteria.");
     }
-  };
+    // --- END ADDED TOAST NOTIFICATION ---
+
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    setError("Failed to fetch billing data. Please try again."); // Set error message
+    setBillingData(null);
+    toast.error("Failed to fetch data."); // Show error toast
+  } finally {
+    setLoading(false); // Set loading to false after API call
+  }
+};
 
   const handleIntervalChange = (interval) => {
     setSelectedInterval(interval);

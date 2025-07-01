@@ -876,49 +876,49 @@ const generatePDF = (billData, isExisting) => {
                     </td>
                     <td>
                       <input
-                        type="number"
+                        type="text"
                         value={row.quantity}
                         onChange={(e) => handleAdditionalRowChange(row.id, "quantity", e.target.value)}
                       />
                     </td>
                     <td>
                       <input
-                        type="number"
+                        type="text"
                         value={row.price}
                         onChange={(e) => handleAdditionalRowChange(row.id, "price", e.target.value)}
                       />
                     </td>
                     <td>
                       <input
-                        type="number"
+                        type="text"
                         value={row.total}
                         onChange={(e) => handleAdditionalRowChange(row.id, "total", e.target.value)}
                       />
                     </td>
                     <td>
                       <input
-                        type="number"
+                        type="text"
                         value={row.CGST_percentage}
                         onChange={(e) => handleAdditionalRowChange(row.id, "CGST_percentage", e.target.value)}
                       />
                     </td>
                     <td>
                       <input
-                        type="number"
+                        type="text"
                         value={row.CGST_value}
                         onChange={(e) => handleAdditionalRowChange(row.id, "CGST_value", e.target.value)}
                       />
                     </td>
                     <td>
                       <input
-                        type="number"
+                        type="text"
                         value={row.SGST_percentage}
                         onChange={(e) => handleAdditionalRowChange(row.id, "SGST_percentage", e.target.value)}
                       />
                     </td>
                     <td>
                       <input
-                        type="number"
+                        type="text"
                         value={row.SGST_value}
                         onChange={(e) => handleAdditionalRowChange(row.id, "SGST_value", e.target.value)}
                       />
@@ -946,7 +946,7 @@ const generatePDF = (billData, isExisting) => {
             <ConsultationRow>
               <ConsultationLabel>Consultation Fee:</ConsultationLabel>
               <ConsultationInput
-                type="number"
+                type="text"
                 value={consultationFee}
                 onChange={(e) => setConsultationFee(Number.parseFloat(e.target.value) || 0)}
                 placeholder="Enter consultation fee"
@@ -958,7 +958,7 @@ const generatePDF = (billData, isExisting) => {
             <div>
               <label htmlFor="discount">Discount % : </label>
               <input
-                type="number"
+                type="text"
                 id="discount"
                 value={discount}
                 placeholder="Discount %"

@@ -1624,180 +1624,258 @@ useEffect(() => {
       img.onerror = (error) => console.error("Error converting image to Base64:", error)
     }
 
-    const exportToPDF = () => {
-      const pdf = new jsPDF("p", "mm", "a4")
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
+// Updated exportToPDF function with clean prescription formatting
+const exportToPDF = () => {
+  const pdf = new jsPDF("p", "mm", "a4")
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
 
-      const backgroundImageMap = {
-        SCC001: PDFMain1,
-        SCC002: PDFMain2,
-      }
+  const backgroundImageMap = {
+    SCC001: PDFMain1,
+    SCC002: PDFMain2,
+  }
 
-      const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+  const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+  let startY = branchCode === "SCC002" ? 80 : 50
 
-      let startY = 50
+  convertToBase64(PDFMain, (mainImage) => {
+    pdf.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+    
+    // Header information
+    pdf.setFont("helvetica", "bold")
+    pdf.setFontSize(12)
+    pdf.setTextColor(40, 40, 40)
+    pdf.text(`Patient: ${appointment.patientName}`, 16, startY)
+    pdf.text(`Patient UID: ${appointment.patientUID}`, 16, startY + 8)
+    pdf.text(`Date: ${appointment.appointmentDate}`, 160, startY)
 
-      if (branchCode === "SCC002") {
-        startY = 80
-      }
+    startY += 15
 
-      convertToBase64(PDFMain, (mainImage) => {
-        pdf.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-        pdf.setFont("helvetica", "bold")
-        pdf.setFontSize(12)
-        pdf.setTextColor(40, 40, 40)
-        pdf.text(`Patient: ${appointment.patientName}`, 16, startY)
+    const createSubTableRows = (label, entries) => {
+      if (!entries || entries.length === 0) return []
+      return entries.map((entry, index) => [index === 0 ? label : "", entry])
+    }
 
-        pdf.setFont("helvetica", "bold")
-        pdf.setFontSize(12)
-        pdf.setTextColor(40, 40, 40)
-        pdf.text(`Patient UID: ${appointment.patientUID}`, 16, startY + 8)
+    let data = []
 
+    const validPrescriptions = prescriptionInputs.filter(
+      (input) => input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "",
+    )
 
-        pdf.setFont("helvetica", "bold")
-        pdf.setFontSize(12)
-        pdf.setTextColor(40, 40, 40)
-        pdf.text(`Date: ${appointment.appointmentDate}`, 160, startY)
+    const validPlans = Object.entries(planDetails)
+      .filter(([key, value]) => value && value.trim() !== "")
+      .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
 
+    // Add sections in consistent order
+    if (selectedDiagnosis.length > 0) {
+      data = data.concat(
+        createSubTableRows(
+          "Diagnosis",
+          selectedDiagnosis.map((diagnosis) => diagnosis.diagnosis),
+        ),
+      )
+    }
 
-        startY += 15
+    if (selectedComplaints.length > 0) {
+      data = data.concat(
+        createSubTableRows(
+          "Complaints",
+          selectedComplaints.map((input) => {
+            const complaintText = input.selectedComplaints.map((complaint) => complaint.complaints).join(", ") || "No complaint provided"
+            const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || "N/A"}` : ""
+            return `${complaintText}${duration}`
+          }),
+        ),
+      )
+    }
 
-        const createSubTableRows = (label, entries) => {
-          if (!entries || entries.length === 0) {
-            return []
-          }
-          return entries.map((entry, index) => [index === 0 ? label : "", entry])
-        }
+    if (selectedFindings.length > 0) {
+      data = data.concat(
+        createSubTableRows(
+          "Findings",
+          selectedFindings.map((findings) => findings.findings),
+        ),
+      )
+    }
 
-        let data = []
+    if (selectedProcedure.length > 0) {
+      data = data.concat(
+        createSubTableRows(
+          "Procedures",
+          selectedProcedure.map(
+            (p) => `${p.selectedProcedures.map((proc) => proc.procedure).join(", ")} - Date: ${p.selectedDate ? formatDate(new Date(p.selectedDate)) : "None"}`,
+          ),
+        ),
+      )
+    }
 
-        const validPrescriptions = prescriptionInputs.filter(
-          (input) => input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "",
-        )
+    // Unified prescription formatting function for both PDF export methods
+  const formatPrescriptionUnified = (prescriptionData, isFromCurrentData = false) => {
+    try {
+      if (!prescriptionData) return ""
 
-        const validPlans = Object.entries(planDetails)
-          .filter(([key, value]) => value && value.trim() !== "")
-          .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
+      let prescriptions = []
 
-        const prescriptionSummary = validPrescriptions
-          .map((input, index) => {
+      if (isFromCurrentData) {
+        // For the first function (exportToPDF) - handle validPrescriptions array
+        if (Array.isArray(prescriptionData)) {
+          prescriptions = prescriptionData.map((input, index) => {
             const times = ["M", "A", "E", "N"]
               .map((time) => (input[time.toLowerCase()] ? time : ""))
               .filter(Boolean)
               .join(" ")
-            const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ")
-            const isLoadedPrescription = loadedData.prescriptions.some(
-              (loaded) => loaded.selectedPrescription[0]?.label === medicineName,
-            )
-            return `${index + 1}. ${medicineName}- Dosage: ${input.dosage} - ${times} - Duration: ${input.durationNumber} ${input.duration}`
-          })
-          .join("\n")
+            
+            const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ") || ""
+            const dosage = input.dosage || ""
+            const frequency = times || ""
+            const duration = input.durationNumber && input.duration 
+              ? `${input.durationNumber} ${input.duration}` 
+              : ""
 
-        if (selectedDiagnosis.length > 0) {
-          data = data.concat(
-            createSubTableRows(
-              "Diagnosis",
-              selectedDiagnosis.map((diagnosis) => diagnosis.diagnosis),
-            ),
-          )
-        }
-
-        if (selectedComplaints.length > 0) {
-          data = data.concat(
-            createSubTableRows(
-              "Complaints",
-              selectedComplaints.map((input) => {
-                const complaintText =
-                  input.selectedComplaints.map((complaint) => complaint.complaints).join(", ") ||
-                  "No complaint provided"
-                const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || "N/A"}` : ""
-                return `${complaintText}${duration}`
-              }),
-            ),
-          )
-        }
-
-        if (selectedFindings.length > 0) {
-          data = data.concat(
-            createSubTableRows(
-              "Findings",
-              selectedFindings.map((findings) => findings.findings),
-            ),
-          )
-        }
-
-        if (selectedProcedure.length > 0) {
-          data = data.concat(
-            createSubTableRows(
-              "Procedures",
-              selectedProcedure.map(
-                (p) =>
-                  `${p.selectedProcedures.map((proc) => proc.procedure).join(", ")} - Date: ${p.selectedDate ? formatDate(new Date(p.selectedDate)) : "None"}`,
-              ),
-            ),
-          )
-        }
-
-        if (validPrescriptions.length > 0) {
-          data.push(["Prescription", prescriptionSummary])
-        }
-
-        data.push(["Plans", validPlans.map((plan) => plan.split(":")[1]?.trim()).join("\n")])
-
-        if (selectedTests.length > 0) {
-          data = data.concat(
-            createSubTableRows(
-              "Tests",
-              selectedTests.map((test) => test.test),
-            ),
-          )
-        }
-
-        if (selectedDate) {
-          data.push(["Next Visit Date", selectedDate.toLocaleDateString()])
-        }
-
-        if (data.length > 0) {
-          pdf.autoTable({
-            startY,
-            head: [["Section", "Details"]],
-            body: data,
-            theme: "grid",
-            headStyles: {
-              fillColor: [116, 180, 155],
-              textColor: [255, 255, 255],
-              fontStyle: "bold",
-              fontSize: 10,
-            },
-            bodyStyles: {
-              fontSize: 9,
-              textColor: [40, 40, 40],
-              font: "helvetica",
-            },
-            styles: {
-              cellWidth: "wrap",
-              minCellHeight: 10,
-              overflow: "linebreak",
-              tableWidth: "auto",
-            },
-            columnStyles: {
-              0: { cellWidth: 60 },
-              1: { cellWidth: pageWidth - 80 },
-            },
-            margin: { left: 14, right: 14 },
+            return {
+              medication: medicineName,
+              dosage: dosage,
+              frequency: frequency,
+              duration: duration
+            }
           })
         }
+      } else {
+        // For the second function (exportPatientToPDF) - handle stored data
+        if (typeof prescriptionData === "string") {
+          // Try to parse if it's a JSON string
+          try {
+            const parsed = JSON.parse(prescriptionData)
+            if (Array.isArray(parsed)) {
+              prescriptions = parsed
+            } else {
+              // If it's a formatted string, parse it differently
+              const lines = prescriptionData.split('\n').filter(line => line.trim() !== "")
+              prescriptions = lines.map(line => {
+                // Parse existing format like "1. Medicine - Dosage: X - Frequency - Duration: Y"
+                const match = line.match(/^\d+\.\s*(.+?)(?:\s*-\s*Dosage:\s*(.+?))?(?:\s*-\s*(.+?))?(?:\s*-\s*Duration:\s*(.+?))?$/)
+                if (match) {
+                  return {
+                    medication: match[1] || "",
+                    dosage: match[2] || "",
+                    frequency: match[3] || "",
+                    duration: match[4] || ""
+                  }
+                }
+                return { medication: line, dosage: "", frequency: "", duration: "" }
+              })
+            }
+          } catch (e) {
+            // If parsing fails, treat as simple text
+            prescriptions = [{ medication: prescriptionData, dosage: "", frequency: "", duration: "" }]
+          }
+        } else if (Array.isArray(prescriptionData)) {
+          prescriptions = prescriptionData.map(item => {
+            if (typeof item === "object") {
+              return {
+                medication: item.medication || item.medicine || item.name || "",
+                dosage: item.dosage || item.dose || "",
+                frequency: item.frequency || item.times || "",
+                duration: item.duration || ""
+              }
+            }
+            return { medication: item.toString(), dosage: "", frequency: "", duration: "" }
+          })
+        }
+      }
 
-        let currentY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 10 : startY
-        pdf.setFontSize(14)
-        pdf.setTextColor(0, 0, 0)
-        currentY += 10
+      // Format according to the required pattern: **Medication - Dosage - Frequency - Duration**
+      return prescriptions
+        .filter(p => p.medication && p.medication.trim() !== "")
+        .map((prescription, index) => {
+          const parts = [prescription.medication.trim()]
+          
+          // Only add dosage if it exists
+          if (prescription.dosage && prescription.dosage.trim() !== "") {
+            parts.push(`Dosage: ${prescription.dosage.trim()}`)
+          }
+          
+          // Only add frequency if it exists
+          if (prescription.frequency && prescription.frequency.trim() !== "") {
+            parts.push(prescription.frequency.trim())
+          }
+          
+          // Only add duration if it exists
+          if (prescription.duration && prescription.duration.trim() !== "") {
+            parts.push(`Duration: ${prescription.duration.trim()}`)
+          }
 
-        pdf.save(`${branchCode}_${appointment.patientName}_${appointment.patientUID}_${appointmentDate}`)
+          return `${index + 1}. ${parts.join(" - ")}`
+        })
+        .join("\n")
+
+    } catch (error) {
+      console.warn("Error formatting prescription:", error)
+      return typeof prescriptionData === "string" ? prescriptionData : ""
+    }
+  }
+
+    // Clean prescription formatting - single entry for all prescriptions
+    if (validPrescriptions.length > 0) {
+      const prescriptionSummary = formatPrescriptionUnified(validPrescriptions, true)
+      if (prescriptionSummary.trim() !== "") {
+        data.push(["Prescription", prescriptionSummary])
+      }
+    }
+
+    // Plans formatting
+    if (validPlans.length > 0) {
+      data.push(["Plans", validPlans.map((plan) => plan.split(":")[1]?.trim()).join("\n")])
+    }
+
+    if (selectedTests.length > 0) {
+      data = data.concat(
+        createSubTableRows(
+          "Tests",
+          selectedTests.map((test) => test.test),
+        ),
+      )
+    }
+
+    if (selectedDate) {
+      data.push(["Next Visit Date", selectedDate.toLocaleDateString()])
+    }
+
+    // Generate table
+    if (data.length > 0) {
+      pdf.autoTable({
+        startY,
+        head: [["Section", "Details"]],
+        body: data,
+        theme: "grid",
+        headStyles: {
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+          font: "helvetica",
+        },
+        styles: {
+          cellWidth: "wrap",
+          minCellHeight: 10,
+          overflow: "linebreak",
+          tableWidth: "auto",
+        },
+        columnStyles: {
+          0: { cellWidth: 60 },
+          1: { cellWidth: pageWidth - 80 },
+        },
+        margin: { left: 14, right: 14 },
       })
     }
 
+    pdf.save(`${branchCode}_${appointment.patientName}_${appointment.patientUID}_${appointmentDate}`)
+  })
+}
     return (
       <div ref={summaryRef}>
         {summaryContent}

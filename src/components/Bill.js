@@ -1786,7 +1786,7 @@ const calculateNetAmount = (customDiscount = null) => {
                       <td style={{ textAlign: "center" }}>
                         <input
                           style={{ width: "60px" }}
-                          type="number"
+                          type="text"
                           value={row.quantity}
                           onChange={(e) => handleAdditionalRowChange(row.id, "quantity", e.target.value)}
                         />
@@ -1794,7 +1794,7 @@ const calculateNetAmount = (customDiscount = null) => {
                       <td style={{ textAlign: "center" }}>
                         <input
                           style={{ width: "80px" }}
-                          type="number"
+                          type="text"
                           value={row.price}
                           onChange={(e) => handleAdditionalRowChange(row.id, "price", e.target.value)}
                         />
@@ -1802,7 +1802,7 @@ const calculateNetAmount = (customDiscount = null) => {
                       <td style={{ textAlign: "center" }}>
                         <input
                           style={{ width: "60px" }}
-                          type="number"
+                          type="text"
                           value={row.CGST_percentage}
                           onChange={(e) => handleCGSTPercentageChange(row.id, e.target.value)}
                         />
@@ -1811,7 +1811,7 @@ const calculateNetAmount = (customDiscount = null) => {
                       <td style={{ textAlign: "center" }}>
                         <input
                           style={{ width: "60px" }}
-                          type="number"
+                          type="text"
                           value={row.SGST_percentage}
                           onChange={(e) => handleSGSTPercentageChange(row.id, e.target.value)}
                         />
