@@ -803,7 +803,7 @@ const PharmacyComponent = () => {
                       </InputIcon>
                       <StyledInput
                         placeholder="Price (₹)"
-                        type="number"
+                        type="text"
                         value={data.price || ""}
                         onChange={(e) => handleChange(originalIndex, "price", e.target.value)}
                         onKeyPress={(e) => handleKeyPress(originalIndex, e)}
@@ -817,7 +817,7 @@ const PharmacyComponent = () => {
                       <TaxRow>
                         <StyledInput
                           placeholder="CGST %"
-                          type="number"
+                          type="text"
                           value={data.CGSTPercentage || ""}
                           onChange={(e) => handleChange(originalIndex, "CGSTPercentage", e.target.value)}
                           onKeyPress={(e) => handleKeyPress(originalIndex, e)}
@@ -827,7 +827,7 @@ const PharmacyComponent = () => {
                       <TaxRow>
                         <StyledInput
                           placeholder="SGST %"
-                          type="number"
+                          type="text"
                           value={data.SGSTPercentage || ""}
                           onChange={(e) => handleChange(originalIndex, "SGSTPercentage", e.target.value)}
                           onKeyPress={(e) => handleKeyPress(originalIndex, e)}
@@ -841,7 +841,7 @@ const PharmacyComponent = () => {
                   <StockSection>
                     <StockInputRow>
                       <StyledInput
-                        type="number"
+                        type="text"
                         placeholder={data._id ? "Add stock" : "Initial stock"}
                         value={data._id ? data.newStock || "" : data.stock || ""}
                         onChange={(e) => handleChange(originalIndex, data._id ? "newStock" : "stock", e.target.value)}

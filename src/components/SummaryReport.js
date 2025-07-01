@@ -116,9 +116,7 @@ const SummaryReport = () => {
     setSelectedDate(date)
   }
 
-
-// Robust PDF export function to handle current data structure issues
-const exportPatientToPDF = (patientData) => {
+  const exportPatientToPDF = (patientData) => {
   const pdf = new jsPDF("p", "mm", "a4")
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
@@ -129,16 +127,9 @@ const exportPatientToPDF = (patientData) => {
   }
 
   const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+  let startY = branchCode === "SCC002" ? 80 : 50
 
-  let startY = 50
-
-  if (branchCode === "SCC002") {
-    startY = 80
-  }
-
-
-  
-    const convertToBase64 = (url, callback) => {
+      const convertToBase64 = (url, callback) => {
     const img = new Image()
     img.crossOrigin = "Anonymous"
     img.src = url
@@ -153,53 +144,39 @@ const exportPatientToPDF = (patientData) => {
     }
     img.onerror = (error) => console.error("Error converting image to Base64:", error)
   }
+
   convertToBase64(PDFMain, (mainImage) => {
     pdf.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
-    // Match the exact styling from exportToPDF
+    // Header information - exact same formatting
     pdf.setFont("helvetica", "bold")
     pdf.setFontSize(12)
     pdf.setTextColor(40, 40, 40)
     pdf.text(`Patient: ${patientData.patientName}`, 16, startY)
-
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(12)
-    pdf.setTextColor(40, 40, 40)
     pdf.text(`Patient UID: ${patientData.patientUID || "N/A"}`, 16, startY + 8)
-
-    pdf.setFont("helvetica", "bold")
-    pdf.setFontSize(12)
-    pdf.setTextColor(40, 40, 40)
     pdf.text(`Date: ${patientData.appointmentDate || new Date().toLocaleDateString()}`, 160, startY)
 
     startY += 15
 
     const createSubTableRows = (label, entries) => {
-      if (!entries || entries.length === 0) {
-        return []
-      }
+      if (!entries || entries.length === 0) return []
       return entries.map((entry, index) => [index === 0 ? label : "", entry])
     }
 
-    // Enhanced parsing function to handle multiple levels of escaping
+    // Enhanced parsing function
     const parseComplexString = (str) => {
       if (!str || str === "null" || str === "undefined") return null
-
       try {
         let parsed = str
-
         if (typeof parsed === "string" && parsed.startsWith('"') && parsed.endsWith('"')) {
           parsed = parsed.slice(1, -1)
         }
-
         if (typeof parsed === "string") {
           parsed = parsed.replace(/\\"/g, '"').replace(/\\\\/g, "\\")
         }
-
         if (typeof parsed === "string" && (parsed.startsWith("[") || parsed.startsWith("{"))) {
           parsed = JSON.parse(parsed)
         }
-
         return parsed
       } catch (e) {
         console.warn("Failed to parse complex string:", str, e)
@@ -209,15 +186,13 @@ const exportPatientToPDF = (patientData) => {
 
     let data = []
 
-    // Enhanced complaints formatting
+    // Enhanced formatting functions
     const formatComplaints = (complaintsData) => {
       try {
         if (!complaintsData || complaintsData === "[]" || complaintsData === "{}" || complaintsData === '""') {
           return []
         }
-
         let complaints = parseComplexString(complaintsData)
-
         if (!Array.isArray(complaints)) {
           if (complaints && typeof complaints === "object") {
             complaints = [complaints]
@@ -225,11 +200,9 @@ const exportPatientToPDF = (patientData) => {
             return []
           }
         }
-
         return complaints
           .map((complaint) => {
             if (!complaint || typeof complaint !== "object") return ""
-
             let formatted = complaint.complaints || complaint.complaint || ""
             if (complaint.duration && complaint.durationUnit) {
               formatted += ` - Duration: ${complaint.duration} ${complaint.durationUnit}`
@@ -243,13 +216,10 @@ const exportPatientToPDF = (patientData) => {
       }
     }
 
-    // Enhanced procedures formatting
     const formatProcedures = (proceduresData) => {
       try {
         if (!proceduresData) return ""
-
         const procedures = parseComplexString(proceduresData)
-
         if (Array.isArray(procedures)) {
           return procedures
             .map((proc) => {
@@ -260,7 +230,6 @@ const exportPatientToPDF = (patientData) => {
             })
             .join("\n")
         }
-
         return procedures.toString()
       } catch (e) {
         console.warn("Error parsing procedures:", e)
@@ -268,45 +237,9 @@ const exportPatientToPDF = (patientData) => {
       }
     }
 
-    // Enhanced prescription formatting
-    const formatPrescription = (prescriptionData) => {
-      try {
-        if (!prescriptionData) return ""
-
-        if (typeof prescriptionData === "string") {
-          return prescriptionData.replace(/\n/g, "\n").trim()
-        }
-
-        const prescription = parseComplexString(prescriptionData)
-
-        if (Array.isArray(prescription)) {
-          return prescription
-            .map((med, index) => {
-              if (typeof med === "object") {
-                const parts = []
-                if (med.medication) parts.push(med.medication)
-                if (med.dosage) parts.push(`Dosage: ${med.dosage}`)
-                if (med.frequency) parts.push(med.frequency)
-                if (med.duration) parts.push(`Duration: ${med.duration}`)
-                return `${index + 1}. ${parts.join(" - ")}`
-              }
-              return `${index + 1}. ${med}`
-            })
-            .join("\n")
-        }
-
-        return prescription.toString()
-      } catch (e) {
-        console.warn("Error parsing prescription:", e)
-        return prescriptionData.toString()
-      }
-    }
-
-    // Enhanced plans formatting
     const formatPlans = (plansData) => {
       try {
         if (!plansData) return ""
-
         if (typeof plansData === "string") {
           return plansData
             .split("\n")
@@ -314,13 +247,10 @@ const exportPatientToPDF = (patientData) => {
             .filter((plan) => plan !== "")
             .join("\n")
         }
-
         const plans = parseComplexString(plansData)
-
         if (Array.isArray(plans)) {
           return plans.join("\n")
         }
-
         return plans.toString()
       } catch (e) {
         console.warn("Error parsing plans:", e)
@@ -328,7 +258,7 @@ const exportPatientToPDF = (patientData) => {
       }
     }
 
-    // Add data sections with enhanced parsing - matching exportToPDF order
+    // Add sections in EXACT same order as exportToPDF
     if (patientData.diagnosis && patientData.diagnosis.trim() !== "") {
       data = data.concat(createSubTableRows("Diagnosis", [patientData.diagnosis]))
     }
@@ -347,7 +277,145 @@ const exportPatientToPDF = (patientData) => {
       data = data.concat(createSubTableRows("Procedures", [proceduresFormatted]))
     }
 
-    const prescriptionFormatted = formatPrescription(patientData.prescription)
+    // Unified prescription formatting function for both PDF export methods
+    const formatPrescriptionUnified = (prescriptionData, isFromCurrentData = false) => {
+      try {
+        if (!prescriptionData) return ""
+
+        let prescriptions = []
+
+        if (isFromCurrentData) {
+          // For exportToPDF - handle validPrescriptions array from current form data
+          if (Array.isArray(prescriptionData)) {
+            prescriptions = prescriptionData.map((input) => {
+              const times = ["M", "A", "E", "N"]
+                .map((time) => (input[time.toLowerCase()] ? time : ""))
+                .filter(Boolean)
+                .join(" ")
+              
+              const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ") || ""
+              const dosage = input.dosage || ""
+              const frequency = times || ""
+              const duration = input.durationNumber && input.duration 
+                ? `${input.durationNumber} ${input.duration}` 
+                : ""
+
+              return {
+                medication: medicineName,
+                dosage: dosage,
+                frequency: frequency,
+                duration: duration
+              }
+            })
+          }
+        } else {
+          // For exportPatientToPDF - handle stored data from database
+          if (typeof prescriptionData === "string") {
+            // Handle the messy format with repeated "Prescription:" headers
+            let cleanedData = prescriptionData
+            
+            // Remove duplicate entries and clean up the string
+            if (cleanedData.includes("Prescription:")) {
+              // Split by "Prescription:" and filter out empty entries
+              const prescriptionEntries = cleanedData
+                .split(/Prescription:\s*/)
+                .filter(entry => entry.trim() !== "")
+                .map(entry => entry.replace(/,$/, "").trim()) // Remove trailing commas
+              
+              // Remove duplicates
+              const uniqueEntries = [...new Set(prescriptionEntries)]
+              
+              prescriptions = uniqueEntries.map(entry => {
+                // Parse each entry: "Medicine - Dosage: X - Frequency - Duration: Y - Total Dosage: Z"
+                const parts = entry.split(" - ")
+                const medication = parts[0] || ""
+                
+                let dosage = ""
+                let frequency = ""
+                let duration = ""
+                
+                parts.slice(1).forEach(part => {
+                  if (part.toLowerCase().includes("dosage:") && !part.toLowerCase().includes("total")) {
+                    dosage = part.replace(/dosage:\s*/i, "").trim()
+                  } else if (part.toLowerCase().includes("duration:")) {
+                    duration = part.replace(/duration:\s*/i, "").trim()
+                  } else if (!part.toLowerCase().includes("total") && !part.toLowerCase().includes("dosage")) {
+                    // This is likely the frequency (M, A, E, N)
+                    frequency = part.trim()
+                  }
+                })
+                
+                return { medication, dosage, frequency, duration }
+              })
+            } else {
+              // Try JSON parsing or other formats
+              try {
+                const parsed = JSON.parse(cleanedData)
+                if (Array.isArray(parsed)) {
+                  prescriptions = parsed.map(item => ({
+                    medication: item.medication || item.medicine || item.name || "",
+                    dosage: item.dosage || item.dose || "",
+                    frequency: item.frequency || item.times || "",
+                    duration: item.duration || ""
+                  }))
+                }
+              } catch (e) {
+                // If all parsing fails, treat as simple text
+                prescriptions = [{ medication: cleanedData, dosage: "", frequency: "", duration: "" }]
+              }
+            }
+          } else if (Array.isArray(prescriptionData)) {
+            prescriptions = prescriptionData.map(item => {
+              if (typeof item === "object") {
+                return {
+                  medication: item.medication || item.medicine || item.name || "",
+                  dosage: item.dosage || item.dose || "",
+                  frequency: item.frequency || item.times || "",
+                  duration: item.duration || ""
+                }
+              }
+              return { medication: item.toString(), dosage: "", frequency: "", duration: "" }
+            })
+          }
+        }
+
+        // Clean and format prescription entries - simple, clean format
+        const cleanPrescriptions = prescriptions
+          .filter(p => p.medication && p.medication.trim() !== "")
+          .map((prescription, index) => {
+            const parts = []
+            
+            // Always start with medication name
+            parts.push(prescription.medication.trim())
+            
+            // Add dosage if available (without "Dosage:" label)
+            if (prescription.dosage && prescription.dosage.trim() !== "" && prescription.dosage !== "1") {
+              parts.push(prescription.dosage.trim())
+            }
+            
+            // Add frequency if available (without label)
+            if (prescription.frequency && prescription.frequency.trim() !== "") {
+              parts.push(prescription.frequency.trim())
+            }
+            
+            // Add duration if available (without "Duration:" label)
+            if (prescription.duration && prescription.duration.trim() !== "") {
+              parts.push(prescription.duration.trim())
+            }
+
+            // Simple clean format: "1. MedicineName - Details"
+            return `${index + 1}. ${parts.join(" - ")}`
+          })
+
+        return cleanPrescriptions.join("\n")
+
+      } catch (error) {
+        console.warn("Error formatting prescription:", error)
+        return typeof prescriptionData === "string" ? prescriptionData : ""
+      }
+    }
+    // Clean prescription formatting - single entry
+    const prescriptionFormatted = formatPrescriptionUnified(patientData.prescription, false)
     if (prescriptionFormatted && prescriptionFormatted.trim() !== "") {
       data.push(["Prescription", prescriptionFormatted])
     }
@@ -361,6 +429,7 @@ const exportPatientToPDF = (patientData) => {
       data = data.concat(createSubTableRows("Tests", [patientData.tests]))
     }
 
+    // Generate table with same styling
     if (data.length > 0) {
       pdf.autoTable({
         startY,
@@ -392,12 +461,7 @@ const exportPatientToPDF = (patientData) => {
       })
     }
 
-    let currentY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 10 : startY
-    pdf.setFontSize(14)
-    pdf.setTextColor(0, 0, 0)
-    currentY += 10
-
-    // Create safe filename matching the exportToPDF format
+    // Save with consistent filename format
     const safePatientName = patientData.patientName.replace(/[^a-zA-Z0-9]/g, "_")
     const appointmentDate = patientData.appointmentDate || new Date().toISOString().split("T")[0]
 

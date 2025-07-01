@@ -170,105 +170,128 @@ const BillingProcedureReport = () => {
  return uniqueWeeks;
  }
 
-const downloadProcedureCSV = () => {
- if (!billingData || billingData.length === 0) {
- toast.warn("No data to download.");
- return;
- }
-
- const headers = [
- "Patient Name",
- "Patient UID",
- "Procedure Billnumber",
- "Appointment Date",
- "Doctor Name",
- "Procedure",
- "Procedure Date",
- "Price",
- "GST",
- "GST Rate",
- "consultationFee",
- "Total",
-
- ];
-
- const rows = billingData.flatMap((item) => {
- const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures;
- return procedures.map((proc, index) => [
- index === 0 ? `"${item.patientName}"` : "",
- index === 0 ? `"${item.patientUID}"` : "",
- index === 0 ? `"${item.procedureBillNumber}"` : "",
- index === 0 ? `"${item.appointmentDate}"` : "",
- index === 0 ? `"${item.patient_handledby}"` : "",
- `"${proc.procedure}"`,
- `"${proc.procedureDate}"`,
- proc.price,
- proc.gst,
- proc.gstRate,
- proc.consultationFee,
- proc.total,
- ]);
- });
-
- const currentGrandTotal = (billingData || []).reduce((sum, item) => {
- const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures;
- return (
- sum +
- (procedures || []).reduce((innerSum, proc) => {
- const total = Number.parseFloat(proc.total || 0);
- return innerSum + (isNaN(total) ? 0 : total);
- }, 0)
- );
- }, 0);
-
- rows.push(["", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2)]);
-
- const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
-
- const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
- const url = URL.createObjectURL(blob);
- const link = document.createElement("a");
- link.href = url;
- link.setAttribute("download", `Procedure_${getReportHeading(selectedInterval).replace(/\s/g, '_')}_${branchCode}.csv`);
- document.body.appendChild(link);
- link.click();
- document.body.removeChild(link);
- URL.revokeObjectURL(url);
- toast.success("CSV downloaded successfully!");
+// Helper function to calculate procedure grand total consistently
+const calculateProcedureGrandTotal = (billingData) => {
+  return (billingData || []).reduce((sum, item) => {
+    const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures;
+    return sum + (procedures || []).reduce((innerSum, proc) => {
+      const total = Number.parseFloat(proc.total || 0);
+      return innerSum + (isNaN(total) ? 0 : total);
+    }, 0);
+  }, 0);
 };
 
- const downloadConsumerCSV = () => {
- if (!billingData || billingData.length === 0) {
- toast.warning("No consumer data available to download")
- return
- }
+// Helper function to calculate consumer grand total consistently
+const calculateConsumerGrandTotal = (billingData) => {
+  return (billingData || []).reduce((sum, item) => {
+    const consumer = Array.isArray(item.consumer) ? item.consumer : 
+                    (typeof item.consumer === "string" ? JSON.parse(item.consumer) : []);
+    return sum + consumer.reduce((innerSum, con) => {
+      const total = Number.parseFloat(con.total || 0);
+      return innerSum + (isNaN(total) ? 0 : total);
+    }, 0);
+  }, 0);
+};
 
- const headers = ["Patient Name", "Patient UID", "Consumer Billnumber", "Appointment Date", "Item", "Quantity", "Total", "Branch Code"]
- let totalSum = 0
- const rows = billingData.flatMap((item) => {
- const consumer = typeof item.consumer === "string" ? JSON.parse(item.consumer) : item.consumer
- return consumer.map((con) => {
- totalSum += Number.parseFloat(con.total || 0)
- return [item.patientName, item.patientUID, item.consumerBillNumber, item.appointmentDate, con.item, con.qty, con.total, branchCode]
- })
- })
+// Fixed downloadProcedureCSV function
+const downloadProcedureCSV = () => {
+  if (!billingData || billingData.length === 0) {
+    toast.warn("No data to download.");
+    return;
+  }
 
- rows.push(["", "", "", "", "Grand Total", totalSum.toFixed(2), ""])
+  const headers = [
+    "Patient Name",
+    "Patient UID",
+    "Procedure Billnumber",
+    "Appointment Date",
+    "Doctor Name",
+    "Procedure",
+    "Procedure Date",
+    "Price",
+    "GST",
+    "GST Rate",
+    "consultationFee",
+    "Total",
+  ];
 
- const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
+  const rows = billingData.flatMap((item) => {
+    const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures;
+    return procedures.map((proc, index) => [
+      index === 0 ? `"${item.patientName}"` : "",
+      index === 0 ? `"${item.patientUID}"` : "",
+      index === 0 ? `"${item.procedureBillNumber}"` : "",
+      index === 0 ? `"${item.appointmentDate}"` : "",
+      index === 0 ? `"${item.patient_handledby}"` : "",
+      `"${proc.procedure}"`,
+      `"${proc.procedureDate}"`,
+      proc.price,
+      proc.gst,
+      proc.gstRate,
+      proc.consultationFee,
+      proc.total,
+    ]);
+  });
 
- const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
- const url = URL.createObjectURL(blob)
- const link = document.createElement("a")
- link.href = url
- link.setAttribute(
- "download",
- `Consumer_${getReportHeading(selectedInterval)}_${branchCode}_${format(selectedDate, "yyyy-MM-dd")}.csv`,
- )
- document.body.appendChild(link)
- link.click()
- document.body.removeChild(link)
- }
+  // Use the consistent calculation function
+  const currentGrandTotal = calculateProcedureGrandTotal(billingData);
+  rows.push(["", "", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2)]);
+
+  const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `Procedure_${getReportHeading(selectedInterval).replace(/\s/g, '_')}_${branchCode}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  toast.success("CSV downloaded successfully!");
+};
+
+// Fixed downloadConsumerCSV function
+const downloadConsumerCSV = () => {
+  if (!billingData || billingData.length === 0) {
+    toast.warning("No consumer data available to download");
+    return;
+  }
+
+  const headers = ["Patient Name", "Patient UID", "Consumer Billnumber", "Appointment Date", "Item", "Quantity", "Total", "Branch Code"];
+  
+  const rows = billingData.flatMap((item) => {
+    const consumer = typeof item.consumer === "string" ? JSON.parse(item.consumer) : item.consumer;
+    return consumer.map((con) => [
+      item.patientName, 
+      item.patientUID, 
+      item.consumerBillNumber, 
+      item.appointmentDate, 
+      con.item, 
+      con.qty, 
+      con.total, 
+      branchCode
+    ]);
+  });
+
+  // Use the consistent calculation function
+  const totalSum = calculateConsumerGrandTotal(billingData);
+  rows.push(["", "", "", "", "", "Grand Total", totalSum.toFixed(2), ""]);
+
+  const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute(
+    "download",
+    `Consumer_${getReportHeading(selectedInterval)}_${branchCode}_${format(selectedDate, "yyyy-MM-dd")}.csv`,
+  );
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
  const convertToBase64 = (url, callback) => {
  const img = new Image()
@@ -652,7 +675,7 @@ if (patientData.consultationFee > 0) {
  }
  disabled={loading}
  >
- {`Week ${index + 1} (${format(weekStart, "MMM dd")})`} {/* Show week number and start date */}
+ {`Week ${index + 1}`} {/* Show week number and start date */}
  </WeekButton>
  ))}
  </WeekButtons>
@@ -753,16 +776,11 @@ if (patientData.consultationFee > 0) {
  <td colSpan="8" className="text-right">
  <strong>Grand Total</strong>
  </td>
- <td colSpan="2">
-<strong>
- {billingData
- .reduce((sum, item) => {
- return sum + Number.parseFloat(item.procedureNetAmount || 0)
- }, 0)
- .toFixed(2)}
-</strong>
-
- </td>
+      <td colSpan="3">
+        <strong>
+          {calculateProcedureGrandTotal(billingData).toFixed(2)}
+        </strong>
+      </td>
  <td></td>
  </tr>
  </tfoot>
@@ -834,20 +852,11 @@ if (patientData.consultationFee > 0) {
  <td colSpan="5" className="text-right">
  <strong>Grand Total</strong>
  </td>
- <td colSpan="3">
- <strong>
- {billingData
- .reduce((sum, item) => {
- // Ensure consumer is an array before reducing
- const consumer = Array.isArray(item.consumer) ? item.consumer : [];
- return (
- sum +
- consumer.reduce((conSum, con) => conSum + Number.parseFloat(con.total || 0), 0)
- )
- }, 0)
- .toFixed(2)}
- </strong>
- </td>
+      <td colSpan="2">
+        <strong>
+          {calculateConsumerGrandTotal(billingData).toFixed(2)}
+        </strong>
+      </td>
  </tr>
  </tfoot>
  </table>

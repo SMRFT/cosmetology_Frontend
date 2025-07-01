@@ -1446,7 +1446,7 @@ textColor: [255, 255, 255],
       </td>
       <td>
         <EditableInput
-          type="number"
+          type="text"
           value={procedure.gstRate}
           onChange={(e) => handleAdditionalProcedureChange(procedure.id, "gstRate", e.target.value)}
           placeholder="GST rate"

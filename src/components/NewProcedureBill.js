@@ -1040,24 +1040,24 @@ const NewProcedureComponent = () => {
                       </td>
                       <td>
                         <input
-                          type="number"
+                          type="text"
                           value={procedure.price}
                           onChange={(e) => handleAdditionalProcedureChange(procedure.id, "price", e.target.value)}
                         />
                       </td>
                       <td>
                         <input
-                          type="number"
+                          type="text"
                           value={procedure.gstRate}
                           onChange={(e) => handleAdditionalProcedureChange(procedure.id, "gstRate", e.target.value)}
                         />
                       </td>
                       <td>
-                        <input type="number" value={procedure.gst} readOnly />
+                        <input type="text" value={procedure.gst} readOnly />
                       </td>
                       <td>
                         <input
-                          type="number"
+                          type="text"
                           value={procedure.total}
                           onChange={(e) => handleAdditionalProcedureChange(procedure.id, "total", e.target.value)}
                         />
@@ -1080,7 +1080,7 @@ const NewProcedureComponent = () => {
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <label>Consultation Fee:</label>
               <input
-                type="number"
+                type="text"
                 value={consultationFee}
                 onChange={(e) => setConsultationFee(Number.parseFloat(e.target.value) || 0)}
                 style={{ padding: "8px", width: "120px" }}
@@ -1126,21 +1126,21 @@ const NewProcedureComponent = () => {
                         </td>
                         <td>
                           <input
-                            type="number"
+                            type="text"
                             value={record.qty}
                             onChange={(e) => handleConsumerChange(index, "qty", e.target.value)}
                           />
                         </td>
                         <td>
                           <input
-                            type="number"
+                            type="text"
                             value={record.price}
                             onChange={(e) => handleConsumerChange(index, "price", e.target.value)}
                           />
                         </td>
                         <td>
                           <input
-                            type="number"
+                            type="text"
                             value={record.total}
                             onChange={(e) => handleConsumerChange(index, "total", e.target.value)}
                           />
