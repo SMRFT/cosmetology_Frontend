@@ -1650,6 +1650,7 @@ const exportToPDF = () => {
     pdf.text(`Date: ${appointment.appointmentDate}`, 160, startY)
 
     startY += 15
+    let currentY = startY
 
     const createSubTableRows = (label, entries) => {
       if (!entries || entries.length === 0) return []
@@ -1666,7 +1667,98 @@ const exportToPDF = () => {
       .filter(([key, value]) => value && value.trim() !== "")
       .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
 
-    // Add sections in consistent order
+    // Unified prescription formatting function for table format
+    const formatPrescriptionForTable = (prescriptionData, isFromCurrentData = false) => {
+      try {
+        if (!prescriptionData) return []
+
+        let prescriptions = []
+
+        if (isFromCurrentData) {
+          // For exportToPDF - handle validPrescriptions array from current form data
+          if (Array.isArray(prescriptionData)) {
+            prescriptions = prescriptionData.map((input) => {
+              const times = ["M", "A", "E", "N"]
+                .map((time) => (input[time.toLowerCase()] ? time : ""))
+                .filter(Boolean)
+                .join(" ")
+              
+              const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ") || ""
+              const dosage = input.dosage || ""
+              const frequency = times || ""
+              const duration = input.durationNumber && input.duration 
+                ? `${input.durationNumber} ${input.duration}` 
+                : ""
+
+              return {
+                medication: medicineName,
+                dosage: dosage,
+                frequency: frequency,
+                duration: duration
+              }
+            })
+          }
+        } else {
+          // For exportPatientToPDF - handle stored data from database
+          if (typeof prescriptionData === "string") {
+            try {
+              const parsed = JSON.parse(prescriptionData)
+              if (Array.isArray(parsed)) {
+                prescriptions = parsed
+              } else {
+                // If it's a formatted string, parse it differently
+                const lines = prescriptionData.split('\n').filter(line => line.trim() !== "")
+                prescriptions = lines.map(line => {
+                  // Parse existing format like "1. Medicine - Dosage: X - Frequency - Duration: Y"
+                  const match = line.match(/^\d+\.\s*(.+?)(?:\s*-\s*Dosage:\s*(.+?))?(?:\s*-\s*(.+?))?(?:\s*-\s*Duration:\s*(.+?))?$/)
+                  if (match) {
+                    return {
+                      medication: match[1] || "",
+                      dosage: match[2] || "",
+                      frequency: match[3] || "",
+                      duration: match[4] || ""
+                    }
+                  }
+                  return { medication: line, dosage: "", frequency: "", duration: "" }
+                })
+              }
+            } catch (e) {
+              // If parsing fails, treat as simple text
+              prescriptions = [{ medication: prescriptionData, dosage: "", frequency: "", duration: "" }]
+            }
+          } else if (Array.isArray(prescriptionData)) {
+            prescriptions = prescriptionData.map(item => {
+              if (typeof item === "object") {
+                return {
+                  medication: item.medication || item.medicine || item.name || "",
+                  dosage: item.dosage || item.dose || "",
+                  frequency: item.frequency || item.times || "",
+                  duration: item.duration || ""
+                }
+              }
+              return { medication: item.toString(), dosage: "", frequency: "", duration: "" }
+            })
+          }
+        }
+
+        // Filter out empty prescriptions and return structured data for table
+        return prescriptions
+          .filter(p => p.medication && p.medication.trim() !== "")
+          .map((prescription, index) => [
+            index + 1,
+            prescription.medication.trim() || "-",
+            prescription.dosage.trim() || "-",
+            prescription.frequency.trim() || "-",
+            prescription.duration.trim() || "-"
+          ])
+
+      } catch (error) {
+        console.warn("Error formatting prescription:", error)
+        return []
+      }
+    }
+
+    // Add sections in consistent order WITHOUT prescription (moved to end)
     if (selectedDiagnosis.length > 0) {
       data = data.concat(
         createSubTableRows(
@@ -1709,120 +1801,6 @@ const exportToPDF = () => {
       )
     }
 
-    // Unified prescription formatting function for both PDF export methods
-  const formatPrescriptionUnified = (prescriptionData, isFromCurrentData = false) => {
-    try {
-      if (!prescriptionData) return ""
-
-      let prescriptions = []
-
-      if (isFromCurrentData) {
-        // For the first function (exportToPDF) - handle validPrescriptions array
-        if (Array.isArray(prescriptionData)) {
-          prescriptions = prescriptionData.map((input, index) => {
-            const times = ["M", "A", "E", "N"]
-              .map((time) => (input[time.toLowerCase()] ? time : ""))
-              .filter(Boolean)
-              .join(" ")
-            
-            const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ") || ""
-            const dosage = input.dosage || ""
-            const frequency = times || ""
-            const duration = input.durationNumber && input.duration 
-              ? `${input.durationNumber} ${input.duration}` 
-              : ""
-
-            return {
-              medication: medicineName,
-              dosage: dosage,
-              frequency: frequency,
-              duration: duration
-            }
-          })
-        }
-      } else {
-        // For the second function (exportPatientToPDF) - handle stored data
-        if (typeof prescriptionData === "string") {
-          // Try to parse if it's a JSON string
-          try {
-            const parsed = JSON.parse(prescriptionData)
-            if (Array.isArray(parsed)) {
-              prescriptions = parsed
-            } else {
-              // If it's a formatted string, parse it differently
-              const lines = prescriptionData.split('\n').filter(line => line.trim() !== "")
-              prescriptions = lines.map(line => {
-                // Parse existing format like "1. Medicine - Dosage: X - Frequency - Duration: Y"
-                const match = line.match(/^\d+\.\s*(.+?)(?:\s*-\s*Dosage:\s*(.+?))?(?:\s*-\s*(.+?))?(?:\s*-\s*Duration:\s*(.+?))?$/)
-                if (match) {
-                  return {
-                    medication: match[1] || "",
-                    dosage: match[2] || "",
-                    frequency: match[3] || "",
-                    duration: match[4] || ""
-                  }
-                }
-                return { medication: line, dosage: "", frequency: "", duration: "" }
-              })
-            }
-          } catch (e) {
-            // If parsing fails, treat as simple text
-            prescriptions = [{ medication: prescriptionData, dosage: "", frequency: "", duration: "" }]
-          }
-        } else if (Array.isArray(prescriptionData)) {
-          prescriptions = prescriptionData.map(item => {
-            if (typeof item === "object") {
-              return {
-                medication: item.medication || item.medicine || item.name || "",
-                dosage: item.dosage || item.dose || "",
-                frequency: item.frequency || item.times || "",
-                duration: item.duration || ""
-              }
-            }
-            return { medication: item.toString(), dosage: "", frequency: "", duration: "" }
-          })
-        }
-      }
-
-      // Format according to the required pattern: **Medication - Dosage - Frequency - Duration**
-      return prescriptions
-        .filter(p => p.medication && p.medication.trim() !== "")
-        .map((prescription, index) => {
-          const parts = [prescription.medication.trim()]
-          
-          // Only add dosage if it exists
-          if (prescription.dosage && prescription.dosage.trim() !== "") {
-            parts.push(`Dosage: ${prescription.dosage.trim()}`)
-          }
-          
-          // Only add frequency if it exists
-          if (prescription.frequency && prescription.frequency.trim() !== "") {
-            parts.push(prescription.frequency.trim())
-          }
-          
-          // Only add duration if it exists
-          if (prescription.duration && prescription.duration.trim() !== "") {
-            parts.push(`Duration: ${prescription.duration.trim()}`)
-          }
-
-          return `${index + 1}. ${parts.join(" - ")}`
-        })
-        .join("\n")
-
-    } catch (error) {
-      console.warn("Error formatting prescription:", error)
-      return typeof prescriptionData === "string" ? prescriptionData : ""
-    }
-  }
-
-    // Clean prescription formatting - single entry for all prescriptions
-    if (validPrescriptions.length > 0) {
-      const prescriptionSummary = formatPrescriptionUnified(validPrescriptions, true)
-      if (prescriptionSummary.trim() !== "") {
-        data.push(["Prescription", prescriptionSummary])
-      }
-    }
-
     // Plans formatting
     if (validPlans.length > 0) {
       data.push(["Plans", validPlans.map((plan) => plan.split(":")[1]?.trim()).join("\n")])
@@ -1841,10 +1819,10 @@ const exportToPDF = () => {
       data.push(["Next Visit Date", selectedDate.toLocaleDateString()])
     }
 
-    // Generate table
+    // Generate main table for all sections except prescription
     if (data.length > 0) {
       pdf.autoTable({
-        startY,
+        startY: currentY,
         head: [["Section", "Details"]],
         body: data,
         theme: "grid",
@@ -1871,19 +1849,71 @@ const exportToPDF = () => {
         },
         margin: { left: 14, right: 14 },
       })
+      
+      // Update currentY to the end of the main table
+      currentY = pdf.lastAutoTable.finalY + 10
+    }
+
+    // Handle prescription as the LAST section - separate table
+    if (validPrescriptions.length > 0) {
+      const prescriptionTableData = formatPrescriptionForTable(validPrescriptions, true)
+      
+      if (prescriptionTableData.length > 0) {
+        // Add prescription table header
+        pdf.setFont("helvetica", "bold")
+        pdf.setFontSize(12)
+        pdf.setTextColor(40, 40, 40)
+        pdf.text("Prescription", 16, currentY)
+        
+        currentY += 8
+
+        // Generate prescription table
+        pdf.autoTable({
+          startY: currentY,
+          head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
+          body: prescriptionTableData,
+          theme: "grid",
+          headStyles: {
+            fillColor: [76, 140, 115], // Slightly different color for prescription table
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+            fontSize: 9,
+          },
+          bodyStyles: {
+            fontSize: 8,
+            textColor: [40, 40, 40],
+            font: "helvetica",
+          },
+          styles: {
+            cellWidth: "wrap",
+            minCellHeight: 8,
+            overflow: "linebreak",
+            tableWidth: "auto",
+          },
+          columnStyles: {
+            0: { cellWidth: 15, halign: "center" }, // # column
+            1: { cellWidth: 70 }, // Medication
+            2: { cellWidth: 30 }, // Dosage
+            3: { cellWidth: 35 }, // Frequency
+            4: { cellWidth: 35 }, // Duration
+          },
+          margin: { left: 14, right: 14 },
+        })
+      }
     }
 
     pdf.save(`${branchCode}_${appointment.patientName}_${appointment.patientUID}_${appointmentDate}`)
   })
 }
-    return (
-      <div ref={summaryRef}>
-        {summaryContent}
-        <button style={{ marginTop: "25px", marginRight: "180px" }} onClick={exportToPDF}>
-          Export to PDF
-        </button>
-      </div>
-    )
+
+return (
+  <div ref={summaryRef}>
+    {summaryContent}
+    <button style={{ marginTop: "25px", marginRight: "180px" }} onClick={exportToPDF}>
+      Export to PDF
+    </button>
+  </div>
+)
   }
 
   return (

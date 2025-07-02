@@ -116,7 +116,7 @@ const SummaryReport = () => {
     setSelectedDate(date)
   }
 
-  const exportPatientToPDF = (patientData) => {
+const exportPatientToPDF = (patientData) => {
   const pdf = new jsPDF("p", "mm", "a4")
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
@@ -129,7 +129,7 @@ const SummaryReport = () => {
   const PDFMain = backgroundImageMap[branchCode] || PDFMain1
   let startY = branchCode === "SCC002" ? 80 : 50
 
-      const convertToBase64 = (url, callback) => {
+  const convertToBase64 = (url, callback) => {
     const img = new Image()
     img.crossOrigin = "Anonymous"
     img.src = url
@@ -185,6 +185,7 @@ const SummaryReport = () => {
     }
 
     let data = []
+    let currentY = startY
 
     // Enhanced formatting functions
     const formatComplaints = (complaintsData) => {
@@ -258,29 +259,10 @@ const SummaryReport = () => {
       }
     }
 
-    // Add sections in EXACT same order as exportToPDF
-    if (patientData.diagnosis && patientData.diagnosis.trim() !== "") {
-      data = data.concat(createSubTableRows("Diagnosis", [patientData.diagnosis]))
-    }
-
-    const complaintsFormatted = formatComplaints(patientData.complaints)
-    if (complaintsFormatted.length > 0) {
-      data = data.concat(createSubTableRows("Complaints", complaintsFormatted))
-    }
-
-    if (patientData.findings && patientData.findings.trim() !== "") {
-      data = data.concat(createSubTableRows("Findings", [patientData.findings]))
-    }
-
-    const proceduresFormatted = formatProcedures(patientData.proceduresList)
-    if (proceduresFormatted && proceduresFormatted.trim() !== "") {
-      data = data.concat(createSubTableRows("Procedures", [proceduresFormatted]))
-    }
-
-    // Unified prescription formatting function for both PDF export methods
-    const formatPrescriptionUnified = (prescriptionData, isFromCurrentData = false) => {
+    // Unified prescription formatting function - returns array of prescription objects
+    const formatPrescriptionForTable = (prescriptionData, isFromCurrentData = false) => {
       try {
-        if (!prescriptionData) return ""
+        if (!prescriptionData) return []
 
         let prescriptions = []
 
@@ -379,60 +361,47 @@ const SummaryReport = () => {
           }
         }
 
-        // Clean and format prescription entries - simple, clean format
-        const cleanPrescriptions = prescriptions
-          .filter(p => p.medication && p.medication.trim() !== "")
-          .map((prescription, index) => {
-            const parts = []
-            
-            // Always start with medication name
-            parts.push(prescription.medication.trim())
-            
-            // Add dosage if available (without "Dosage:" label)
-            if (prescription.dosage && prescription.dosage.trim() !== "" && prescription.dosage !== "1") {
-              parts.push(prescription.dosage.trim())
-            }
-            
-            // Add frequency if available (without label)
-            if (prescription.frequency && prescription.frequency.trim() !== "") {
-              parts.push(prescription.frequency.trim())
-            }
-            
-            // Add duration if available (without "Duration:" label)
-            if (prescription.duration && prescription.duration.trim() !== "") {
-              parts.push(prescription.duration.trim())
-            }
-
-            // Simple clean format: "1. MedicineName - Details"
-            return `${index + 1}. ${parts.join(" - ")}`
-          })
-
-        return cleanPrescriptions.join("\n")
+        // Filter out empty prescriptions
+        return prescriptions.filter(p => p.medication && p.medication.trim() !== "")
 
       } catch (error) {
         console.warn("Error formatting prescription:", error)
-        return typeof prescriptionData === "string" ? prescriptionData : ""
+        return []
       }
     }
-    // Clean prescription formatting - single entry
-    const prescriptionFormatted = formatPrescriptionUnified(patientData.prescription, false)
-    if (prescriptionFormatted && prescriptionFormatted.trim() !== "") {
-      data.push(["Prescription", prescriptionFormatted])
+
+    // Add sections in order WITHOUT prescription (moved to end)
+    if (patientData.diagnosis && patientData.diagnosis.trim() !== "") {
+      data = data.concat(createSubTableRows("Diagnosis", [patientData.diagnosis]))
+    }
+
+    const complaintsFormatted = formatComplaints(patientData.complaints)
+    if (complaintsFormatted.length > 0) {
+      data = data.concat(createSubTableRows("Complaints", complaintsFormatted))
+    }
+
+    if (patientData.findings && patientData.findings.trim() !== "") {
+      data = data.concat(createSubTableRows("Findings", [patientData.findings]))
+    }
+
+    const proceduresFormatted = formatProcedures(patientData.proceduresList)
+    if (proceduresFormatted && proceduresFormatted.trim() !== "") {
+      data = data.concat(createSubTableRows("Procedures", [proceduresFormatted]))
     }
 
     const plansFormatted = formatPlans(patientData.plans)
     if (plansFormatted && plansFormatted.trim() !== "") {
-      data.push(["Plans", plansFormatted])
+      data = data.concat(createSubTableRows("Plans", [plansFormatted]))
     }
 
     if (patientData.tests && patientData.tests.trim() !== "") {
       data = data.concat(createSubTableRows("Tests", [patientData.tests]))
     }
 
-    // Generate table with same styling
+    // Generate main table for all sections except prescription
     if (data.length > 0) {
       pdf.autoTable({
-        startY,
+        startY: currentY,
         head: [["Section", "Details"]],
         body: data,
         theme: "grid",
@@ -459,6 +428,63 @@ const SummaryReport = () => {
         },
         margin: { left: 14, right: 14 },
       })
+      
+      // Update currentY to the end of the main table
+      currentY = pdf.lastAutoTable.finalY + 10
+    }
+
+    // Handle prescription as the LAST section
+    const prescriptionData = formatPrescriptionForTable(patientData.prescription, false)
+    if (prescriptionData.length > 0) {
+      // Add prescription table header
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(12)
+      pdf.setTextColor(40, 40, 40)
+      pdf.text("Prescription", 16, currentY)
+      
+      currentY += 8
+
+      // Prepare prescription table data
+      const prescriptionTableData = prescriptionData.map((prescription, index) => [
+        index + 1,
+        prescription.medication || "-",
+        prescription.dosage || "-",
+        prescription.frequency || "-",
+        prescription.duration || "-"
+      ])
+
+      // Generate prescription table
+      pdf.autoTable({
+        startY: currentY,
+        head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
+        body: prescriptionTableData,
+        theme: "grid",
+        headStyles: {
+          fillColor: [76, 140, 115], // Slightly different color for prescription table
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9,
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [40, 40, 40],
+          font: "helvetica",
+        },
+        styles: {
+          cellWidth: "wrap",
+          minCellHeight: 8,
+          overflow: "linebreak",
+          tableWidth: "auto",
+        },
+        columnStyles: {
+          0: { cellWidth: 15, halign: "center" }, // # column
+          1: { cellWidth: 70 }, // Medication
+          2: { cellWidth: 30 }, // Dosage
+          3: { cellWidth: 35 }, // Frequency
+          4: { cellWidth: 35 }, // Duration
+        },
+        margin: { left: 14, right: 14 },
+      })
     }
 
     // Save with consistent filename format
@@ -478,7 +504,6 @@ const SummaryReport = () => {
     }
   })
 }
-
 
   const downloadCSV = () => {
     if (!summaryData || summaryData.length === 0) return

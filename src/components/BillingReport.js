@@ -29,8 +29,8 @@ const BillingReport = () => {
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [branchCode, setBranchCode] = useState("");
   const [userRole, setUserRole] = useState("");
-  const [loading, setLoading] = useState(false); // Add loading state
-  const [error, setError] = useState(null); // Add error state
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
 
@@ -47,6 +47,7 @@ const BillingReport = () => {
     }
   };
 
+  // Initialize branch code and user role
   useEffect(() => {
     const code = localStorage.getItem("selectedBranch");
     const role =
@@ -56,7 +57,7 @@ const BillingReport = () => {
       setBranchCode(code);
     } else {
       console.warn("Branch code not found in localStorage");
-      setError("Branch code not found. Please ensure you are logged in."); // Set error
+      setError("Branch code not found. Please ensure you are logged in.");
     }
 
     if (role) {
@@ -64,101 +65,125 @@ const BillingReport = () => {
     } else {
       console.warn("User role not found");
     }
+  }, []);
 
-    // Initialize selectedWeek if interval is 'week' on first load
+  // Initialize selectedWeek when interval is 'week'
+  useEffect(() => {
     if (selectedInterval === "week" && !selectedWeek) {
-      setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 })); // Start week on Monday
+      const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      setSelectedWeek(weekStart);
     }
-  }, []); // Empty dependency array means this runs only once on component mount
+  }, [selectedInterval, selectedDate, selectedWeek]);
 
+  // Fetch data when dependencies change
   useEffect(() => {
     if (branchCode) {
-      fetchData(selectedInterval);
+      // Add a small delay to ensure state has been updated properly
+      const timeoutId = setTimeout(() => {
+        fetchData();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [branchCode, selectedInterval, selectedDate, selectedWeek]);
 
-const fetchData = async (interval) => {
-  if (!branchCode) {
-    console.warn("Branch code is not available, skipping data fetch.");
-    setBillingData(null); // Clear data if branch code is missing
-    setLoading(false); // Ensure loading is false
-    return;
-  }
-
-  setLoading(true); // Set loading to true before API call
-  setError(null); // Clear previous errors
-
-  let dateParam = "";
-  let currentSelectedDateForParam = selectedDate; // Use selectedDate for day and month
-
-  // For week interval, if selectedWeek is null (e.g., on initial load or interval change),
-  // calculate it from selectedDate, defaulting to Monday of that week.
-  if (interval === "week" && !selectedWeek) {
-    currentSelectedDateForParam = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Ensure Monday
-  } else if (interval === "week" && selectedWeek) {
-    currentSelectedDateForParam = selectedWeek; // Use the explicitly selected week's start
-  }
-
-  if (interval === "day") {
-    dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
-  } else if (interval === "week") {
-    dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
-  } else if (interval === "month") {
-    dateParam = format(startOfMonth(currentSelectedDateForParam), "yyyy-MM-dd");
-  }
-
-  try {
-    const response = await axios.get(
-      `${Cosmetologybaseurl}billing/${interval}/`,
-      {
-        params: {
-          appointmentDate: dateParam,
-          branch_code: branchCode,
-        },
-        withCredentials: true,
-      }
-    );
-
-    setBillingData(response.data.billing_data);
-
-    // --- ADDED TOAST NOTIFICATION HERE ---
-    if (!response.data.billing_data || Object.keys(response.data.billing_data).length === 0) {
-      toast.info("No data found for the selected criteria.");
+  const fetchData = async () => {
+    if (!branchCode) {
+      console.warn("Branch code is not available, skipping data fetch.");
+      setBillingData(null);
+      setLoading(false);
+      return;
     }
-    // --- END ADDED TOAST NOTIFICATION ---
 
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    setError("Failed to fetch billing data. Please try again."); // Set error message
+    setLoading(true);
+    setError(null);
+    // Clear previous data immediately when starting new fetch
     setBillingData(null);
-    toast.error("Failed to fetch data."); // Show error toast
-  } finally {
-    setLoading(false); // Set loading to false after API call
-  }
-};
+
+    let dateParam = "";
+    let currentSelectedDateForParam = selectedDate;
+
+    try {
+      // Handle date parameter based on interval
+      if (selectedInterval === "week") {
+        if (selectedWeek) {
+          currentSelectedDateForParam = selectedWeek;
+        } else {
+          currentSelectedDateForParam = startOfWeek(selectedDate, { weekStartsOn: 1 });
+        }
+        dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
+      } else if (selectedInterval === "day") {
+        dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd");
+      } else if (selectedInterval === "month") {
+        dateParam = format(startOfMonth(currentSelectedDateForParam), "yyyy-MM-dd");
+      }
+
+      console.log(`Fetching ${selectedInterval} data for date: ${dateParam}, branch: ${branchCode}`);
+
+      const response = await axios.get(
+        `${Cosmetologybaseurl}billing/${selectedInterval}/`,
+        {
+          params: {
+            appointmentDate: dateParam,
+            branch_code: branchCode,
+          },
+          withCredentials: true,
+        }
+      );
+
+      setBillingData(response.data.billing_data);
+
+      if (!response.data.billing_data || Object.keys(response.data.billing_data).length === 0) {
+        toast.info("No data found for the selected criteria.");
+      }
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError("Failed to fetch billing data. Please try again.");
+      setBillingData(null);
+      toast.error("Failed to fetch data.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleIntervalChange = (interval) => {
+    console.log(`Changing interval to: ${interval}`);
+    
+    // Clear previous data immediately
+    setBillingData(null);
+    setLoading(true);
+    
     setSelectedInterval(interval);
-    // Reset selectedDate to today's date for 'day' and 'month' intervals
-    // Reset selectedWeek to the start of the current week for 'week' interval
+    
+    const today = new Date();
+    
     if (interval === "week") {
-      setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 })); // Start week on Monday
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+      setSelectedWeek(weekStart);
+      setSelectedDate(weekStart); // Set selectedDate to week start for consistency
     } else {
-      setSelectedDate(new Date()); // Reset to today for day/month
+      setSelectedDate(today);
       setSelectedWeek(null); // Clear selectedWeek when not in week mode
     }
   };
 
   const handleDateChange = (date) => {
+    console.log(`Date changed to: ${date}`);
+    setBillingData(null); // Clear data immediately
     setSelectedDate(date);
+    
     if (selectedInterval === "week") {
-      setSelectedWeek(startOfWeek(date, { weekStartsOn: 1 }));
+      const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+      setSelectedWeek(weekStart);
     }
   };
 
   const handleWeekChange = (weekStart) => {
+    console.log(`Week changed to: ${weekStart}`);
+    setBillingData(null); // Clear data immediately
     setSelectedWeek(weekStart);
-    setSelectedDate(weekStart); // Also update selectedDate to reflect the chosen week's start
+    setSelectedDate(weekStart);
   };
 
   const getWeeksInMonth = (date) => {
@@ -267,7 +292,7 @@ const fetchData = async (interval) => {
     }
   }
 
-const generatePharmacyPDF = (patientUID, billNumber) => {
+  const generatePharmacyPDF = (patientUID, billNumber) => {
     const patientData = billingData.find((item) => item.patientUID === patientUID && item.billNumber === billNumber)
     if (!patientData) {
       toast.error("Patient data not found for PDF generation.")
@@ -374,7 +399,6 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
         currentY += 8;
       }
 
-
       // Display consultation fee separately if it exists
       if (consultationFee) {
         doc.setFont("helvetica", "bold")
@@ -413,7 +437,6 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
       toast.success("PDF generated successfully!");
     })
   }
-  
 
   const handleDelete = async (patientUID, billNumber) => {
     if (!window.confirm(`Are you sure you want to delete bill ${billNumber} for ${patientUID}?`)) {
@@ -424,7 +447,7 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
         data: { patientUID, billNumber, branch_code: branchCode },
         withCredentials: true,
       })
-      fetchData(selectedInterval)
+      fetchData() // Refetch data after deletion
       toast.success("Data deleted successfully")
     } catch (error) {
       console.error("Error deleting data:", error)
@@ -452,7 +475,6 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
         <FaFilePdf />
       </button>
       {userRole !== "Manager" && userRole !== "Receptionist" && (
-        // Only show delete if not Manager/manager
         <button
           title="Delete Bill"
           className="btn btn-danger"
@@ -469,7 +491,6 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
       <ToastContainer position="top-right" autoClose={5000} />
       <Header>
         <h3 className="text-center mb-2">Billing Report</h3>
-
         <button title="Download Excel" onClick={downloadCSV}>
           <FaDownload /> 
         </button>
@@ -536,6 +557,7 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
           )}
         </DatePickerWrapper>
       </IntervalSelector>
+      
       {selectedInterval === "week" && (
         <WeekButtons>
           {getWeeksInMonth(selectedDate).map((weekStart, index) => (
@@ -551,9 +573,26 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
           ))}
         </WeekButtons>
       )}
+      
       <br />
+      
       <Content>
-        {billingData && billingData.length > 0 ? (
+        {loading && (
+          <div className="text-center">
+            <div className="spinner-border" role="status">
+              <span className="sr-only">Loading...</span>
+            </div>
+            <p>Loading {selectedInterval} data...</p>
+          </div>
+        )}
+        
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
+        
+        {!loading && !error && billingData && billingData.length > 0 ? (
           <Billing>
             <h5 className="text-center">{getReportHeading(selectedInterval)}</h5>
             <table>
@@ -625,8 +664,10 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
               </tfoot>
             </table>
           </Billing>
-        ) : (
-           console.log("No Data available")
+        ) : !loading && !error && (
+          <div className="text-center">
+            <p>No data available for the selected {selectedInterval} interval.</p>
+          </div>
         )}
       </Content>
     </Container>

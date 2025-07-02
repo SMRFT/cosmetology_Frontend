@@ -16,321 +16,349 @@ import "jspdf-autotable"
 import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
 import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
 
+
 const BillingProcedureReport = () => {
- const [billingData, setBillingData] = useState(null)
- const [selectedInterval, setSelectedInterval] = useState("day")
- const [selectedDate, setSelectedDate] = useState(new Date())
- const [selectedWeek, setSelectedWeek] = useState(null)
- const [activeTab, setActiveTab] = useState("procedure")
- const [branchCode, setBranchCode] = useState("")
- const [userRole, setUserRole] = useState("")
- const [loading, setLoading] = useState(false)
- const [error, setError] = useState(null)
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+  const [billingData, setBillingData] = useState(null)
+  const [selectedInterval, setSelectedInterval] = useState("day")
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedWeek, setSelectedWeek] = useState(null)
+  const [activeTab, setActiveTab] = useState("procedure")
+  const [branchCode, setBranchCode] = useState("")
+  const [userRole, setUserRole] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
- const getReportHeading = (interval) => {
- switch (interval) {
- case "day":
- return "Daily Report"
- case "week":
- return "Weekly Report"
- case "month":
- return "Monthly Report"
- default:
- return "Billing Report"
- }
- }
-
- // Effect to get branch_code and userRole from localStorage/sessionStorage
- useEffect(() => {
- const code = localStorage.getItem("selectedBranch") // Get from localStorage as requested
- const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
-
- if (code) {
- setBranchCode(code)
- } else {
- console.warn("Branch code not found in localStorage")
- setError("Branch code not found. Please ensure you are logged in.")
- }
-
- if (role) {
- setUserRole(role)
- } else {
- console.warn("User role not found")
- }
-
- // Initialize selectedWeek if interval is 'week' on first load
- // This runs once when component mounts
- if (selectedInterval === "week" && !selectedWeek) {
- setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 })) // Start week on Monday
- }
- }, []) // Empty dependency array means this runs only once on component mount
-
- // Effect to fetch data whenever relevant dependencies change
- useEffect(() => {
- if (branchCode) { // Ensure branchCode is available before fetching
- fetchData(selectedInterval)
- }
- }, [selectedInterval, selectedDate, selectedWeek, branchCode]) // Dependencies for re-fetching
-
- const fetchData = async (interval) => {
- if (!branchCode) {
- console.warn("Branch code not available, skipping API call.")
- setBillingData(null); // Clear data if branch code is missing
- setLoading(false);
- return;
- }
-
- setLoading(true)
- setError(null)
-
- let dateParam = ""
- let currentSelectedDateForParam = selectedDate; // Use selectedDate for day and month
-
- // For week interval, if selectedWeek is null (e.g., on initial load or interval change),
- // calculate it from selectedDate, defaulting to Monday of that week.
- if (interval === "week" && !selectedWeek) {
- currentSelectedDateForParam = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Ensure Monday
- } else if (interval === "week" && selectedWeek) {
- currentSelectedDateForParam = selectedWeek; // Use the explicitly selected week's start
- }
-
- if (interval === "day") {
- dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd")
- } else if (interval === "week") {
- dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd")
- } else if (interval === "month") {
- dateParam = format(startOfMonth(currentSelectedDateForParam), "yyyy-MM-dd")
- }
-
- try {
- const response = await axios.get(`${Cosmetologybaseurl}procedurebilling/${interval}/`, {
- params: {
- appointmentDate: dateParam,
- branch_code: branchCode, // Sending branch_code in params as requested
- },
- withCredentials: true,
- })
- setBillingData(response.data)
- if (response.data.length === 0) {
- toast.info("No data found for the selected criteria.");
- }
- } catch (error) {
- console.error("Error fetching procedure billing data:", error)
- setError("Failed to fetch procedure billing data. Please try again.")
- toast.error("Failed to fetch data.");
- } finally {
- setLoading(false)
- }
- }
-
- const handleIntervalChange = (interval) => {
- setSelectedInterval(interval)
- // Reset selectedDate to today's date for 'day' and 'month' intervals
- // Reset selectedWeek to the start of the current week for 'week' interval
- if (interval === "week") {
- setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 })) // Start week on Monday
- } else {
- setSelectedDate(new Date()) // Reset to today for day/month
- setSelectedWeek(null) // Clear selectedWeek when not in week mode
- }
- }
-
- const handleDateChange = (date) => {
- setSelectedDate(date)
- if (selectedInterval === "week") {
- setSelectedWeek(startOfWeek(date, { weekStartsOn: 1 })) // Update week start when month/year changes in weekly mode
- }
- }
-
- const handleWeekChange = (weekStart) => {
- setSelectedWeek(weekStart)
- setSelectedDate(weekStart); // Also update selectedDate to reflect the chosen week's start
- }
-
- const getWeeksInMonth = (date) => {
- const startOfMonthDate = startOfMonth(date)
- const weeks = []
- // Loop up to 6 times to cover all possible weeks in a month
- for (let i = 0; i < 6; i++) {
- const weekStart = startOfWeek(addWeeks(startOfMonthDate, i), { weekStartsOn: 1 }); // Start week on Monday
- // Only add the week if it falls within the same month or if it's the start of the next month
- // that includes days from the current month
- if (weekStart.getMonth() === date.getMonth() || (i > 0 && startOfWeek(addWeeks(startOfMonthDate, i -1), { weekStartsOn: 1 }).getMonth() === date.getMonth() && weekStart.getMonth() !== date.getMonth())) {
- weeks.push(weekStart)
- } else if (weeks.length > 0) {
- // If we've already added weeks and current week is entirely in next month, stop
- break;
- }
- }
- // Filter out duplicate week starts if any
- const uniqueWeeks = weeks.filter((week, index, self) =>
- index === self.findIndex((t) => format(t, 'yyyy-MM-dd') === format(week, 'yyyy-MM-dd'))
- );
- return uniqueWeeks;
- }
-
-// Helper function to calculate procedure grand total consistently
-const calculateProcedureGrandTotal = (billingData) => {
-  return (billingData || []).reduce((sum, item) => {
-    const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures;
-    return sum + (procedures || []).reduce((innerSum, proc) => {
-      const total = Number.parseFloat(proc.total || 0);
-      return innerSum + (isNaN(total) ? 0 : total);
-    }, 0);
-  }, 0);
-};
-
-// Helper function to calculate consumer grand total consistently
-const calculateConsumerGrandTotal = (billingData) => {
-  return (billingData || []).reduce((sum, item) => {
-    const consumer = Array.isArray(item.consumer) ? item.consumer : 
-                    (typeof item.consumer === "string" ? JSON.parse(item.consumer) : []);
-    return sum + consumer.reduce((innerSum, con) => {
-      const total = Number.parseFloat(con.total || 0);
-      return innerSum + (isNaN(total) ? 0 : total);
-    }, 0);
-  }, 0);
-};
-
-// Fixed downloadProcedureCSV function
-const downloadProcedureCSV = () => {
-  if (!billingData || billingData.length === 0) {
-    toast.warn("No data to download.");
-    return;
+  const getReportHeading = (interval) => {
+    switch (interval) {
+      case "day":
+        return "Daily Report"
+      case "week":
+        return "Weekly Report"
+      case "month":
+        return "Monthly Report"
+      default:
+        return "Billing Report"
+    }
   }
 
-  const headers = [
-    "Patient Name",
-    "Patient UID",
-    "Procedure Billnumber",
-    "Appointment Date",
-    "Doctor Name",
-    "Procedure",
-    "Procedure Date",
-    "Price",
-    "GST",
-    "GST Rate",
-    "consultationFee",
-    "Total",
-  ];
+  // Effect to get branch_code and userRole from localStorage/sessionStorage
+  useEffect(() => {
+    const code = localStorage.getItem("selectedBranch")
+    const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
 
-  const rows = billingData.flatMap((item) => {
-    const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures;
-    return procedures.map((proc, index) => [
-      index === 0 ? `"${item.patientName}"` : "",
-      index === 0 ? `"${item.patientUID}"` : "",
-      index === 0 ? `"${item.procedureBillNumber}"` : "",
-      index === 0 ? `"${item.appointmentDate}"` : "",
-      index === 0 ? `"${item.patient_handledby}"` : "",
-      `"${proc.procedure}"`,
-      `"${proc.procedureDate}"`,
-      proc.price,
-      proc.gst,
-      proc.gstRate,
-      proc.consultationFee,
-      proc.total,
-    ]);
-  });
+    if (code) {
+      setBranchCode(code)
+    } else {
+      console.warn("Branch code not found in localStorage")
+      setError("Branch code not found. Please ensure you are logged in.")
+    }
 
-  // Use the consistent calculation function
-  const currentGrandTotal = calculateProcedureGrandTotal(billingData);
-  rows.push(["", "", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2)]);
+    if (role) {
+      setUserRole(role)
+    } else {
+      console.warn("User role not found")
+    }
 
-  const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    // Initialize selectedWeek if interval is 'week' on first load
+    if (selectedInterval === "week" && !selectedWeek) {
+      setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 }))
+    }
+  }, [selectedInterval, selectedWeek]) // Added dependencies
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", `Procedure_${getReportHeading(selectedInterval).replace(/\s/g, '_')}_${branchCode}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-  toast.success("CSV downloaded successfully!");
-};
+  // Effect to fetch data whenever relevant dependencies change
+  useEffect(() => {
+    if (branchCode) {
+      // Clear previous data immediately when interval changes
+      setBillingData(null)
+      fetchData(selectedInterval)
+    }
+  }, [selectedInterval, selectedDate, selectedWeek, branchCode])
 
-// Fixed downloadConsumerCSV function
-const downloadConsumerCSV = () => {
-  if (!billingData || billingData.length === 0) {
-    toast.warning("No consumer data available to download");
-    return;
+  const fetchData = async (interval) => {
+    if (!branchCode) {
+      console.warn("Branch code not available, skipping API call.")
+      setBillingData(null)
+      setLoading(false)
+      return
+    }
+
+    // Prevent multiple simultaneous requests
+    if (loading) {
+      console.log("Already loading, skipping duplicate request")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    // Clear data immediately when starting new fetch
+    setBillingData(null)
+
+    let dateParam = ""
+    let currentSelectedDateForParam = selectedDate
+
+    // For week interval, handle selectedWeek properly
+    if (interval === "week") {
+      if (!selectedWeek) {
+        currentSelectedDateForParam = startOfWeek(selectedDate, { weekStartsOn: 1 })
+        setSelectedWeek(currentSelectedDateForParam) // Update selectedWeek state
+      } else {
+        currentSelectedDateForParam = selectedWeek
+      }
+    }
+
+    // Format date parameter based on interval
+    if (interval === "day") {
+      dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd")
+    } else if (interval === "week") {
+      dateParam = format(currentSelectedDateForParam, "yyyy-MM-dd")
+    } else if (interval === "month") {
+      dateParam = format(startOfMonth(currentSelectedDateForParam), "yyyy-MM-dd")
+    }
+
+    try {
+      console.log(`Fetching ${interval} data for date: ${dateParam}, branch: ${branchCode}`)
+      
+      const response = await axios.get(`${Cosmetologybaseurl}procedurebilling/${interval}/`, {
+        params: {
+          appointmentDate: dateParam,
+          branch_code: branchCode,
+        },
+        withCredentials: true,
+      })
+      
+      console.log(`Received ${response.data.length} records for ${interval}`)
+      setBillingData(response.data)
+      
+      if (response.data.length === 0) {
+        toast.info("No data found for the selected criteria.")
+      }
+    } catch (error) {
+      console.error("Error fetching procedure billing data:", error)
+      setError("Failed to fetch procedure billing data. Please try again.")
+      setBillingData(null) // Ensure data is cleared on error
+      toast.error("Failed to fetch data.")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const headers = ["Patient Name", "Patient UID", "Consumer Billnumber", "Appointment Date", "Item", "Quantity", "Total", "Branch Code"];
-  
-  const rows = billingData.flatMap((item) => {
-    const consumer = typeof item.consumer === "string" ? JSON.parse(item.consumer) : item.consumer;
-    return consumer.map((con) => [
-      item.patientName, 
-      item.patientUID, 
-      item.consumerBillNumber, 
-      item.appointmentDate, 
-      con.item, 
-      con.qty, 
-      con.total, 
-      branchCode
-    ]);
-  });
+  const handleIntervalChange = (interval) => {
+    console.log(`Changing interval from ${selectedInterval} to ${interval}`)
+    
+    // Clear data immediately when changing interval
+    setBillingData(null)
+    setSelectedInterval(interval)
+    
+    // Reset dates based on new interval
+    const today = new Date()
+    
+    if (interval === "week") {
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 })
+      setSelectedWeek(weekStart)
+      setSelectedDate(today) // Keep selectedDate for month/year picker
+    } else {
+      setSelectedDate(today)
+      setSelectedWeek(null) // Clear selectedWeek when not in week mode
+    }
+  }
 
-  // Use the consistent calculation function
-  const totalSum = calculateConsumerGrandTotal(billingData);
-  rows.push(["", "", "", "", "", "Grand Total", totalSum.toFixed(2), ""]);
+  const handleDateChange = (date) => {
+    console.log(`Date changed to: ${format(date, "yyyy-MM-dd")}`)
+    setSelectedDate(date)
+    
+    if (selectedInterval === "week") {
+      const weekStart = startOfWeek(date, { weekStartsOn: 1 })
+      setSelectedWeek(weekStart)
+    }
+  }
 
-  const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+  const handleWeekChange = (weekStart) => {
+    console.log(`Week changed to: ${format(weekStart, "yyyy-MM-dd")}`)
+    setSelectedWeek(weekStart)
+    setSelectedDate(weekStart)
+  }
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute(
-    "download",
-    `Consumer_${getReportHeading(selectedInterval)}_${branchCode}_${format(selectedDate, "yyyy-MM-dd")}.csv`,
-  );
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+  const getWeeksInMonth = (date) => {
+    const startOfMonthDate = startOfMonth(date)
+    const weeks = []
+    
+    for (let i = 0; i < 6; i++) {
+      const weekStart = startOfWeek(addWeeks(startOfMonthDate, i), { weekStartsOn: 1 })
+      
+      if (weekStart.getMonth() === date.getMonth() || 
+          (i > 0 && startOfWeek(addWeeks(startOfMonthDate, i - 1), { weekStartsOn: 1 }).getMonth() === date.getMonth() && 
+           weekStart.getMonth() !== date.getMonth())) {
+        weeks.push(weekStart)
+      } else if (weeks.length > 0) {
+        break
+      }
+    }
+    
+    // Filter out duplicate week starts
+    const uniqueWeeks = weeks.filter((week, index, self) =>
+      index === self.findIndex((t) => format(t, 'yyyy-MM-dd') === format(week, 'yyyy-MM-dd'))
+    )
+    
+    return uniqueWeeks
+  }
 
- const convertToBase64 = (url, callback) => {
- const img = new Image()
- img.crossOrigin = "Anonymous"
- img.src = url
- img.onload = () => {
- const canvas = document.createElement("canvas")
- canvas.width = img.width
- canvas.height = img.height
- const ctx = canvas.getContext("2d")
- ctx.drawImage(img, 0, 0)
- const dataURL = canvas.toDataURL("image/png")
- callback(dataURL)
- }
- img.onerror = (error) => console.error("Error converting image to Base64:", error)
- }
+  // Helper function to calculate procedure grand total consistently
+  const calculateProcedureGrandTotal = (billingData) => {
+    return (billingData || []).reduce((sum, item) => {
+      const netAmount = Number.parseFloat(item.procedureNetAmount || 0)
+      return sum + (isNaN(netAmount) ? 0 : netAmount)
+    }, 0)
+  }
 
- const generateProcedurePDF = (patientUID, billNumber) => {
- const patientData = billingData.find(
- (item) => item.patientUID === patientUID && item.procedureBillNumber === billNumber,
- )
- if (!patientData) {
- toast.error("Patient data not found")
- return
- }
+  // Helper function to calculate consumer grand total consistently
+  const calculateConsumerGrandTotal = (billingData) => {
+    return (billingData || []).reduce((sum, item) => {
+      const consumer = Array.isArray(item.consumer) ? item.consumer : 
+                     (typeof item.consumer === "string" ? JSON.parse(item.consumer) : [])
+      return sum + consumer.reduce((innerSum, con) => {
+        const total = Number.parseFloat(con.total || 0)
+        return innerSum + (isNaN(total) ? 0 : total)
+      }, 0)
+    }, 0)
+  }
 
- const doc = new jsPDF("p", "mm", "a4")
- const pageWidth = doc.internal.pageSize.getWidth()
- const pageHeight = doc.internal.pageSize.getHeight()
+  // Fixed downloadProcedureCSV function
+  const downloadProcedureCSV = () => {
+    if (!billingData || billingData.length === 0) {
+      toast.warn("No data to download.")
+      return
+    }
 
- const backgroundImageMap = {
- SCC001: PDFMain1,
- SCC002: PDFMain2,
- }
- const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+    const headers = [
+      "Patient Name",
+      "Patient UID",
+      "Procedure Billnumber",
+      "Appointment Date",
+      "Doctor Name",
+      "Procedure",
+      "Procedure Date",
+      "Price",
+      "GST",
+      "GST Rate",
+      "consultationFee",
+      "Total",
+    ]
 
- convertToBase64(PDFMain, (mainImage) => {
- doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
- // Header
+    const rows = billingData.flatMap((item) => {
+      const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures
+      return procedures.map((proc, index) => [
+        index === 0 ? `"${item.patientName}"` : "",
+        index === 0 ? `"${item.patientUID}"` : "",
+        index === 0 ? `"${item.procedureBillNumber}"` : "",
+        index === 0 ? `"${item.appointmentDate}"` : "",
+        index === 0 ? `"${item.patient_handledby}"` : "",
+        `"${proc.procedure}"`,
+        `"${proc.procedureDate}"`,
+        proc.price,
+        proc.gst,
+        proc.gstRate,
+        proc.consultationFee,
+        proc.total,
+      ])
+    })
+
+    const currentGrandTotal = calculateProcedureGrandTotal(billingData)
+    rows.push(["", "", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2)])
+
+    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", `Procedure_${getReportHeading(selectedInterval).replace(/\s/g, '_')}_${branchCode}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    toast.success("CSV downloaded successfully!")
+  }
+
+  // Fixed downloadConsumerCSV function
+  const downloadConsumerCSV = () => {
+    if (!billingData || billingData.length === 0) {
+      toast.warning("No consumer data available to download")
+      return
+    }
+
+    const headers = ["Patient Name", "Patient UID", "Consumer Billnumber", "Appointment Date", "Item", "Quantity", "Total", "Branch Code"]
+    
+    const rows = billingData.flatMap((item) => {
+      const consumer = typeof item.consumer === "string" ? JSON.parse(item.consumer) : item.consumer
+      return consumer.map((con) => [
+        item.patientName, 
+        item.patientUID, 
+        item.consumerBillNumber, 
+        item.appointmentDate, 
+        con.item, 
+        con.qty, 
+        con.total, 
+        branchCode
+      ])
+    })
+
+    const totalSum = calculateConsumerGrandTotal(billingData)
+    rows.push(["", "", "", "", "", "Grand Total", totalSum.toFixed(2), ""])
+
+    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute(
+      "download",
+      `Consumer_${getReportHeading(selectedInterval)}_${branchCode}_${format(selectedDate, "yyyy-MM-dd")}.csv`,
+    )
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const convertToBase64 = (url, callback) => {
+    const img = new Image()
+    img.crossOrigin = "Anonymous"
+    img.src = url
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext("2d")
+      ctx.drawImage(img, 0, 0)
+      const dataURL = canvas.toDataURL("image/png")
+      callback(dataURL)
+    }
+    img.onerror = (error) => console.error("Error converting image to Base64:", error)
+  }
+
+  const generateProcedurePDF = (patientUID, billNumber) => {
+    const patientData = billingData.find(
+      (item) => item.patientUID === patientUID && item.procedureBillNumber === billNumber,
+    )
+    if (!patientData) {
+      toast.error("Patient data not found")
+      return
+    }
+
+    const doc = new jsPDF("p", "mm", "a4")
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    const backgroundImageMap = {
+      SCC001: PDFMain1,
+      SCC002: PDFMain2,
+    }
+    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+
+    convertToBase64(PDFMain, (mainImage) => {
+      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+      // Header
       let startY = 110
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
@@ -361,89 +389,88 @@ const downloadConsumerCSV = () => {
       doc.setFontSize(10)
       doc.text(`${patientData.procedureBillNumber}`, 170, startY + 8)
 
- startY += 30
+      startY += 30
 
- // Filter out consultation fee from procedures
- const procedureData = patientData.procedures.filter(proc => 
- !proc.procedure.toLowerCase().includes('consultation') && 
- !proc.procedure.toLowerCase().includes('consult')
- )
+      // Filter out consultation fee from procedures
+      const procedureData = patientData.procedures.filter(proc => 
+        !proc.procedure.toLowerCase().includes('consultation') && 
+        !proc.procedure.toLowerCase().includes('consult')
+      )
 
- const procedureTable = procedureData.map((proc) => [
- proc.procedure,
- proc.procedureDate,
- `${proc.price}`,
- `${proc.gstRate}%`,
- `${proc.gst}`,
- `${proc.total}`,
- ])
+      const procedureTable = procedureData.map((proc) => [
+        proc.procedure,
+        proc.procedureDate,
+        `${proc.price}`,
+        `${proc.gstRate}%`,
+        `${proc.gst}`,
+        `${proc.total}`,
+      ])
 
- doc.autoTable({
- head: [["Procedure", "Date", "Price", "GST Rate", "GST", "Total"]],
- body: procedureTable,
- startY: startY,
- theme: "grid",
- headStyles: {
- fillColor: [116, 180, 155],
- textColor: [255, 255, 255],
- fontStyle: "bold",
- fontSize: 10,
- },
- bodyStyles: {
- fontSize: 9,
- textColor: [40, 40, 40],
- },
- margin: { left: 14, right: 14 },
- })
+      doc.autoTable({
+        head: [["Procedure", "Date", "Price", "GST Rate", "GST", "Total"]],
+        body: procedureTable,
+        startY: startY,
+        theme: "grid",
+        headStyles: {
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+        },
+        margin: { left: 14, right: 14 },
+      })
 
- let currentY = doc.previousAutoTable.finalY + 15
+      let currentY = doc.previousAutoTable.finalY + 15
 
-  // Calculate and display net total
-if (patientData.consultationFee > 0) {
- doc.setFont("helvetica", "bold")
- doc.setFontSize(12)
- doc.setTextColor(0, 100, 0)
- doc.text(`Consultation Fee : ${patientData.consultationFee}`, 150, currentY)
-}
+      // Calculate and display net total
+      if (patientData.consultationFee > 0) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(12)
+        doc.setTextColor(0, 100, 0)
+        doc.text(`Consultation Fee : ${patientData.consultationFee}`, 150, currentY)
+      }
 
+      // Calculate and display net total
+      const procedureNetAmount = Number.parseFloat(patientData.procedureNetAmount || 0)
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(0, 100, 0)
+      doc.text(`Net Amount : ${procedureNetAmount.toFixed(2)}`, 150, currentY + 10)
 
- // Calculate and display net total
- const netTotal = patientData.procedures.reduce((sum, proc) => sum + Number.parseFloat(proc.total || 0), 0)
- doc.setFont("helvetica", "bold")
- doc.setFontSize(12)
- doc.setTextColor(0, 100, 0)
- doc.text(`Net Amount : ${netTotal.toFixed(2)}`, 150, currentY + 10)
+      const pdfBlob = doc.output("blob")
+      const pdfUrl = URL.createObjectURL(pdfBlob)
+      window.open(pdfUrl, "_blank")
+    })
+  }
 
- const pdfBlob = doc.output("blob")
- const pdfUrl = URL.createObjectURL(pdfBlob)
- window.open(pdfUrl, "_blank")
- })
- }
+  const generateConsumerPDF = (patientUID, billNumber) => {
+    const patientData = billingData.find(
+      (item) => item.patientUID === patientUID && item.consumerBillNumber === billNumber,
+    )
+    if (!patientData) {
+      toast.error("Patient data not found")
+      return
+    }
 
- const generateConsumerPDF = (patientUID, billNumber) => {
- const patientData = billingData.find(
- (item) => item.patientUID === patientUID && item.consumerBillNumber === billNumber,
- )
- if (!patientData) {
- toast.error("Patient data not found")
- return
- }
+    const doc = new jsPDF("p", "mm", "a4")
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
 
- const doc = new jsPDF("p", "mm", "a4")
- const pageWidth = doc.internal.pageSize.getWidth()
- const pageHeight = doc.internal.pageSize.getHeight()
+    // Select PDF background based on branch code without directly using branch names
+    const backgroundImageMap = {
+      SCC001: PDFMain1,
+      SCC002: PDFMain2,
+    }
+    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
 
- // Select PDF background based on branch code without directly using branch names
- const backgroundImageMap = {
- SCC001: PDFMain1,
- SCC002: PDFMain2,
- }
- const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+    convertToBase64(PDFMain, (mainImage) => {
+      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
- convertToBase64(PDFMain, (mainImage) => {
- doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-
- // Set font style for patient name - make it more prominent
+      // Set font style for patient name - make it more prominent
       let startY = 110
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
@@ -474,223 +501,222 @@ if (patientData.consultationFee > 0) {
       doc.setFontSize(10)
       doc.text(`${patientData.procedureBillNumber}`, 170, startY + 8)
 
- startY += 30
+      startY += 30
 
- // Consumer Table
- const consumerTable = patientData.consumer.map((con) => [con.item, con.qty, `${con.total}`])
+      // Consumer Table
+      const consumerTable = patientData.consumer.map((con) => [con.item, con.qty, `${con.total}`])
 
- doc.autoTable({
- head: [["Item", "Quantity", "Total"]],
- body: consumerTable,
- startY: startY,
- theme: "grid",
- headStyles: {
- fillColor: [116, 180, 155],
- textColor: [255, 255, 255],
- fontStyle: "bold",
- fontSize: 10,
- },
- bodyStyles: {
- fontSize: 9,
- textColor: [40, 40, 40],
- },
- margin: { left: 14, right: 14 },
- })
+      doc.autoTable({
+        head: [["Item", "Quantity", "Total"]],
+        body: consumerTable,
+        startY: startY,
+        theme: "grid",
+        headStyles: {
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+        },
+        margin: { left: 14, right: 14 },
+      })
 
- // Total with better styling
- const total = patientData.consumer.reduce((sum, con) => sum + Number.parseFloat(con.total || 0), 0)
- doc.setFont("helvetica", "bold")
- doc.setFontSize(12)
- doc.setTextColor(0, 100, 0)
- doc.text(`Total Amount: ${total.toFixed(2)}`, 150, doc.previousAutoTable.finalY + 15)
+      // Total with better styling
+      const total = patientData.consumer.reduce((sum, con) => sum + Number.parseFloat(con.total || 0), 0)
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(0, 100, 0)
+      doc.text(`Total Amount: ${total.toFixed(2)}`, 150, doc.previousAutoTable.finalY + 15)
 
- // Open in new window instead of auto-print
- const pdfBlob = doc.output("blob")
- const pdfUrl = URL.createObjectURL(pdfBlob)
- window.open(pdfUrl, "_blank")
- })
- }
+      // Open in new window instead of auto-print
+      const pdfBlob = doc.output("blob")
+      const pdfUrl = URL.createObjectURL(pdfBlob)
+      window.open(pdfUrl, "_blank")
+    })
+  }
 
- const deleteRecord = async (patientUID, billType, billNumber) => {
- if (!branchCode) {
- toast.error("Branch code not available")
- return
- }
+  const deleteRecord = async (patientUID, billType, billNumber) => {
+    if (!branchCode) {
+      toast.error("Branch code not available")
+      return
+    }
 
- try {
- const response = await axios.delete(`${Cosmetologybaseurl}delete_procedure_data/`, {
- data: {
- patientUID: patientUID,
- consumerBillNumber: billType === "consumer" ? billNumber : undefined,
- procedureBillNumber: billType === "procedure" ? billNumber : undefined,
- branch_code: branchCode,
- },
- // Removed headers to send branch_code, as requested
- withCredentials: true,
- })
+    try {
+      const response = await axios.delete(`${Cosmetologybaseurl}delete_procedure_data/`, {
+        data: {
+          patientUID: patientUID,
+          consumerBillNumber: billType === "consumer" ? billNumber : undefined,
+          procedureBillNumber: billType === "procedure" ? billNumber : undefined,
+          branch_code: branchCode,
+        },
+        withCredentials: true,
+      })
 
- if (response.status === 200) {
- setBillingData((prevData) =>
- prevData.filter(
- (item) =>
- !(
- item.patientUID === patientUID &&
- (billType === "consumer" ? item.consumerBillNumber : item.procedureBillNumber) === billNumber
- ),
- ),
- )
- toast.success("Record deleted successfully.")
- } else {
- toast.error("Failed to delete the record.")
- }
- } catch (error) {
- console.error("Error deleting record:", error)
- toast.error("Error deleting record.")
- }
- }
+      if (response.status === 200) {
+        setBillingData((prevData) =>
+          prevData.filter(
+            (item) =>
+              !(
+                item.patientUID === patientUID &&
+                (billType === "consumer" ? item.consumerBillNumber : item.procedureBillNumber) === billNumber
+              ),
+          ),
+        )
+        toast.success("Record deleted successfully.")
+      } else {
+        toast.error("Failed to delete the record.")
+      }
+    } catch (error) {
+      console.error("Error deleting record:", error)
+      toast.error("Error deleting record.")
+    }
+  }
 
- const refreshData = () => {
- if (branchCode) {
- fetchData(selectedInterval)
- }
- }
+  const refreshData = () => {
+    if (branchCode) {
+      setBillingData(null) // Clear data before refreshing
+      fetchData(selectedInterval)
+    }
+  }
 
- const renderActionButtons = (patientUID, billType, billNumber) => (
- <ActionButtonsContainer>
- <button
- title="Generate PDF"
- className="btn btn-primary me-2"
- onClick={() => {
- if (billType === "procedure") {
- generateProcedurePDF(patientUID, billNumber)
- } else {
- generateConsumerPDF(patientUID, billNumber)
- }
- }}
- >
- <FaFilePdf />
- </button>
- {userRole !== "Manager" && userRole !== "Receptionist" && (
- <button
- title="Delete Record"
- className="btn btn-danger"
- onClick={() => {
- deleteRecord(patientUID, billType, billNumber)
- }}
- >
- <FontAwesomeIcon icon={faTrashAlt} />
- </button>
- )}
- </ActionButtonsContainer>
- )
+  const renderActionButtons = (patientUID, billType, billNumber) => (
+    <ActionButtonsContainer>
+      <button
+        title="Generate PDF"
+        className="btn btn-primary me-2"
+        onClick={() => {
+          if (billType === "procedure") {
+            generateProcedurePDF(patientUID, billNumber)
+          } else {
+            generateConsumerPDF(patientUID, billNumber)
+          }
+        }}
+      >
+        <FaFilePdf />
+      </button>
+      {userRole !== "Manager" && userRole !== "Receptionist" && (
+        <button
+          title="Delete Record"
+          className="btn btn-danger"
+          onClick={() => {
+            deleteRecord(patientUID, billType, billNumber)
+          }}
+        >
+          <FontAwesomeIcon icon={faTrashAlt} />
+        </button>
+      )}
+    </ActionButtonsContainer>
+  )
 
- return (
- <Container>
- <ToastContainer position="top-right" autoClose={5000} />
- <Header>
- <div>
- <h3 className="text-center mb-2">Procedure Billing Report</h3>
- </div>
- <RefreshButton onClick={refreshData} disabled={loading}>
- 🔄 Refresh
- </RefreshButton>
- </Header>
+  return (
+    <Container>
+      <ToastContainer position="top-right" autoClose={5000} />
+      <Header>
+        <div>
+          <h3 className="text-center mb-2">Procedure Billing Report</h3>
+        </div>
+        <RefreshButton onClick={refreshData} disabled={loading}>
+          🔄 Refresh
+        </RefreshButton>
+      </Header>
 
- {error && <ErrorMessage>{error}</ErrorMessage>}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
- <IntervalSelector>
- <ButtonGroup>
- <IntervalButton
- title="Daily Report"
- onClick={() => handleIntervalChange("day")}
- className={selectedInterval === "day" ? "active" : ""}
- active={selectedInterval === "day"}
- disabled={loading}
- >
- <FontAwesomeIcon icon={faCalendarDay} />
- </IntervalButton>
- <IntervalButton
- title="Weekly Report"
- onClick={() => handleIntervalChange("week")}
- className={selectedInterval === "week" ? "active" : ""}
- active={selectedInterval === "week"}
- disabled={loading}
- >
- <FontAwesomeIcon icon={faCalendarWeek} />
- </IntervalButton>
- <IntervalButton
- title="Monthly Report"
- onClick={() => handleIntervalChange("month")}
- className={selectedInterval === "month" ? "active" : ""}
- active={selectedInterval === "month"}
- disabled={loading}
- >
- <FontAwesomeIcon icon={faCalendarAlt} />
- </IntervalButton>
- </ButtonGroup>
- <DatePickerWrapper>
- {selectedInterval === "day" && (
- <DatePicker
- selected={selectedDate}
- onChange={handleDateChange}
- dateFormat="yyyy-MM-dd"
- showPopperArrow={false}
- customInput={<CustomDateInput />}
- disabled={loading}
- />
- )}
- {selectedInterval === "week" && (
- <DatePicker
- selected={selectedDate} // Display selectedDate for week, but logic uses selectedWeek
- onChange={handleDateChange} // Still allows changing month/year for week selection
- dateFormat="yyyy-MM"
- showMonthYearPicker
- showPopperArrow={false}
- customInput={<CustomDateInput />}
- disabled={loading}
- />
- )}
- {selectedInterval === "month" && (
- <DatePicker
- selected={selectedDate}
- onChange={handleDateChange}
- dateFormat="yyyy-MM"
- showMonthYearPicker
- showPopperArrow={false}
- customInput={<CustomDateInput />}
- disabled={loading}
- />
- )}
- </DatePickerWrapper>
- </IntervalSelector>
+      <IntervalSelector>
+        <ButtonGroup>
+          <IntervalButton
+            title="Daily Report"
+            onClick={() => handleIntervalChange("day")}
+            className={selectedInterval === "day" ? "active" : ""}
+            active={selectedInterval === "day"}
+            disabled={loading}
+          >
+            <FontAwesomeIcon icon={faCalendarDay} />
+          </IntervalButton>
+          <IntervalButton
+            title="Weekly Report"
+            onClick={() => handleIntervalChange("week")}
+            className={selectedInterval === "week" ? "active" : ""}
+            active={selectedInterval === "week"}
+            disabled={loading}
+          >
+            <FontAwesomeIcon icon={faCalendarWeek} />
+          </IntervalButton>
+          <IntervalButton
+            title="Monthly Report"
+            onClick={() => handleIntervalChange("month")}
+            className={selectedInterval === "month" ? "active" : ""}
+            active={selectedInterval === "month"}
+            disabled={loading}
+          >
+            <FontAwesomeIcon icon={faCalendarAlt} />
+          </IntervalButton>
+        </ButtonGroup>
+        <DatePickerWrapper>
+          {selectedInterval === "day" && (
+            <DatePicker
+              selected={selectedDate}
+              onChange={handleDateChange}
+              dateFormat="yyyy-MM-dd"
+              showPopperArrow={false}
+              customInput={<CustomDateInput />}
+              disabled={loading}
+            />
+          )}
+          {selectedInterval === "week" && (
+            <DatePicker
+              selected={selectedDate}
+              onChange={handleDateChange}
+              dateFormat="yyyy-MM"
+              showMonthYearPicker
+              showPopperArrow={false}
+              customInput={<CustomDateInput />}
+              disabled={loading}
+            />
+          )}
+          {selectedInterval === "month" && (
+            <DatePicker
+              selected={selectedDate}
+              onChange={handleDateChange}
+              dateFormat="yyyy-MM"
+              showMonthYearPicker
+              showPopperArrow={false}
+              customInput={<CustomDateInput />}
+              disabled={loading}
+            />
+          )}
+        </DatePickerWrapper>
+      </IntervalSelector>
 
- {selectedInterval === "week" && (
- <WeekButtons>
- {getWeeksInMonth(selectedDate).map((weekStart, index) => (
- <WeekButton
- key={format(weekStart, "yyyy-MM-dd")} // Use formatted date as key for stability
- onClick={() => handleWeekChange(weekStart)}
- className={
- selectedWeek && format(selectedWeek, "yyyy-MM-dd") === format(weekStart, "yyyy-MM-dd") ? "active" : ""
- }
- disabled={loading}
- >
- {`Week ${index + 1}`} {/* Show week number and start date */}
- </WeekButton>
- ))}
- </WeekButtons>
- )}
- <br />
- <Content>
- <TabButtons>
- <TabButton active={activeTab === "procedure"} onClick={() => setActiveTab("procedure")}>
- Procedure Bill
- </TabButton>
- <TabButton active={activeTab === "consumer"} onClick={() => setActiveTab("consumer")}>
- Consumable Bill
- </TabButton>
- </TabButtons>
-
+      {selectedInterval === "week" && (
+        <WeekButtons>
+          {getWeeksInMonth(selectedDate).map((weekStart, index) => (
+            <WeekButton
+              key={format(weekStart, "yyyy-MM-dd")}
+              onClick={() => handleWeekChange(weekStart)}
+              className={
+                selectedWeek && format(selectedWeek, "yyyy-MM-dd") === format(weekStart, "yyyy-MM-dd") ? "active" : ""
+              }
+              disabled={loading}
+            >
+              {`Week ${index + 1}`}
+            </WeekButton>
+          ))}
+        </WeekButtons>
+      )}
+      <br />
+      <Content>
+        <TabButtons>
+          <TabButton active={activeTab === "procedure"} onClick={() => setActiveTab("procedure")}>
+            Procedure Bill
+          </TabButton>
+          <TabButton active={activeTab === "consumer"} onClick={() => setActiveTab("consumer")}>
+            Consumable Bill
+          </TabButton>
+        </TabButtons>
  {loading && <LoadingMessage>Loading billing data...</LoadingMessage>}
 
  {!loading && billingData && billingData.length > 0 ? (

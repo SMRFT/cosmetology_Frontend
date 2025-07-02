@@ -1413,165 +1413,180 @@ const calculateNetAmount = (customDiscount = null) => {
     }
     img.onerror = (error) => console.error("Error converting image to Base64:", error)
   }
+const handleDownload = () => {
+  if (!selectedPatient || (!billingData.length && !additionalRows.length)) {
+    console.error("No patient selected or billing data is empty")
+    return
+  }
 
-  const handleDownload = () => {
-    if (!selectedPatient || (!billingData.length && !additionalRows.length)) {
-      console.error("No patient selected or billing data is empty")
-      return
-    }
+  const patientBillingData = billingData.filter((item) => item.patientUID === selectedPatient.patientUID)
 
-    const patientBillingData = billingData.filter((item) => item.patientUID === selectedPatient.patientUID)
-    const procedureTable = patientBillingData.flatMap((item, itemIndex) => {
-      const prescriptions = extractPrescriptionDetails(item.prescription)
-      return prescriptions
-        .map((prescription, prescriptionIndex) => {
-          const key = `${itemIndex}-${prescriptionIndex}`
-          if (!selectedPrescriptions[key]) return null
+  const procedureTable = patientBillingData.flatMap((item, itemIndex) => {
+    const prescriptions = extractPrescriptionDetails(item.prescription)
+    return prescriptions
+      .map((prescription, prescriptionIndex) => {
+        const key = `${itemIndex}-${prescriptionIndex}`
+        if (!selectedPrescriptions[key]) return null
 
-          const qty = quantity[key] !== undefined ? quantity[key] : prescription.totalDosage
-          const medicineDetail = medicineDetails[prescription.particulars] || {}
-          const { CGST_percentage, CGST_value, SGST_percentage, SGST_value, batch_number } = medicineDetail
-          const price = editablePrices[`${itemIndex}-${prescriptionIndex}`] || medicineDetail.price || "0.00"
-          const total = editableTotals[key] || calculateTotal(price, qty)
+        const qty = quantity[key] !== undefined ? quantity[key] : prescription.totalDosage
+        const medicineDetail = medicineDetails[prescription.particulars] || {}
+        const { CGST_percentage, CGST_value, SGST_percentage, SGST_value, batch_number } = medicineDetail
+        const price = editablePrices[key] || medicineDetail.price || "0.00"
+        const total = editableTotals[key] || calculateTotal(price, qty)
 
-          return [
-            prescription.particulars || "N/A",
-            qty || "N/A",
-            price,
-            CGST_percentage || "N/A",
-            CGST_value || "N/A",
-            SGST_percentage || "N/A",
-            SGST_value || "N/A",
-            batch_number || "N/A",
-            total,
-          ]
-        })
-        .filter(Boolean)
-    })
+        return [
+          prescription.particulars || "N/A",
+          qty || "N/A",
+          price,
+          CGST_percentage || "N/A",
+          CGST_value || "N/A",
+          SGST_percentage || "N/A",
+          SGST_value || "N/A",
+          batch_number || "N/A",
+          total,
+        ]
+      })
+      .filter(Boolean)
+  })
 
-    const additionalRowsForPDF = additionalRows
-      .filter((row) => row.selected)
-      .map((row) => [
-        row.particulars,
-        row.quantity,
-        row.price,
+  const additionalRowsForPDF = additionalRows
+    .filter((row) => row.selected)
+    .map((row) => {
+      const total = editableTotals[row.id] || (
+        parseFloat(row.price || 0) * parseFloat(row.quantity || 0)
+      ).toFixed(2)
+
+      return [
+        row.particulars || "N/A",
+        row.quantity || "N/A",
+        row.price || "0.00",
         row.CGST_percentage || "N/A",
         row.CGST_value || "N/A",
         row.SGST_percentage || "N/A",
         row.SGST_value || "N/A",
         row.batch_number || "N/A",
-        editableTotals[row.id] || (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
-      ])
-
-    const allPDFRows = [...procedureTable, ...additionalRowsForPDF]
-
-    if (allPDFRows.length === 0 && consultationFee <= 0) {
-      alert("Please select a prescription to download the bill.")
-      return
-    }
-
-    const doc = new jsPDF("p", "mm", "a4")
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const pageHeight = doc.internal.pageSize.getHeight()
-
-    const backgroundImageMap = {
-      SCC001: PDFMain1,
-      SCC002: PDFMain2,
-    }
-    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
-
-    convertToBase64(PDFMain, (mainImage) => {
-      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-
-      let startY = 110
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(30, 30, 30)
-      doc.text(`Patient Name:`, 16, startY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
-
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.text(`Patient UID:`, 16, startY + 8)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
-
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.text(`Date:`, 140, startY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${selectedPatient.appointmentDate}`, 170, startY)
-
-      startY += 20
-
-      if (allPDFRows.length > 0) {
-        doc.autoTable({
-          head: [
-            ["Particulars", "Qty", "Price", "CGST (%)", "CGST Value", "SGST (%)", "SGST Value", "Batch No.", "Total"],
-          ],
-          body: allPDFRows,
-          startY: startY,
-          theme: "grid",
-          headStyles: {
-            fillColor: [116, 180, 155],
-            textColor: [255, 255, 255],
-            fontStyle: "bold",
-            fontSize: 10,
-          },
-          bodyStyles: {
-            fontSize: 9,
-            textColor: [40, 40, 40],
-            font: "helvetica",
-          },
-          margin: { left: 14, right: 14 },
-        })
-
-        startY = doc.lastAutoTable.finalY
-      }
-
-      let finalY = startY
-
-      if (discount > 0) {
-        finalY += 8
-        doc.setFontSize(12)
-        doc.setTextColor(60, 60, 60)
-        doc.text("Discount %", 130, finalY)
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(10)
-        doc.text(`${discount}`, 170, finalY)
-      }
-
-      if (consultationFee > 0) {
-        finalY += 10
-        doc.setFontSize(12)
-        doc.setTextColor(60, 60, 60)
-        doc.text("Consultation Fee", 130, finalY)
-        doc.setFont("helvetica", "normal")
-        doc.setFontSize(10)
-        doc.text(`Rs. ${consultationFee.toFixed(2)}`, 170, finalY)
-      }
-
-      finalY += 10
-      doc.setDrawColor(150)
-      doc.setLineWidth(0.5)
-      doc.line(14, finalY, pageWidth - 14, finalY)
-
-      finalY += 6
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(14)
-      doc.setTextColor(0, 100, 0)
-      doc.text("Net Amount: ", 130, finalY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`Rs. ${netAmount || "N/A"}`, 170, finalY)
-
-      doc.save(`${selectedPatient.patientName}_Bill.pdf`)
+        total,
+      ]
     })
+
+  const allPDFRows = [...procedureTable, ...additionalRowsForPDF]
+
+  if (allPDFRows.length === 0 && consultationFee <= 0) {
+    alert("Please select a prescription to download the bill.")
+    return
   }
+
+  // ✅ Calculate netAmount safely
+  const totalSum = allPDFRows.reduce((sum, row) => {
+    const total = parseFloat(row[8])
+    return sum + (isNaN(total) ? 0 : total)
+  }, 0)
+
+  const discountedTotal = discount > 0 ? totalSum * ((100 - discount) / 100) : totalSum
+  const netAmount = discountedTotal + (consultationFee || 0)
+
+  const doc = new jsPDF("p", "mm", "a4")
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+
+  const backgroundImageMap = {
+    SCC001: PDFMain1,
+    SCC002: PDFMain2,
+  }
+  const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+
+  convertToBase64(PDFMain, (mainImage) => {
+    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+
+    let startY = 110
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.setTextColor(30, 30, 30)
+    doc.text("Patient Name:", 16, startY)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text("Patient UID:", 16, startY + 8)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text("Date:", 140, startY)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${selectedPatient.appointmentDate}`, 170, startY)
+
+    startY += 20
+
+    if (allPDFRows.length > 0) {
+      doc.autoTable({
+        head: [
+          ["Particulars", "Qty", "Price", "CGST (%)", "CGST Value", "SGST (%)", "SGST Value", "Batch No.", "Total"],
+        ],
+        body: allPDFRows,
+        startY: startY,
+        theme: "grid",
+        headStyles: {
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+          font: "helvetica",
+        },
+        margin: { left: 14, right: 14 },
+      })
+
+      startY = doc.lastAutoTable.finalY
+    }
+
+    let finalY = startY
+
+    if (discount > 0) {
+      finalY += 8
+      doc.setFontSize(12)
+      doc.setTextColor(60, 60, 60)
+      doc.text("Discount %", 130, finalY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${discount}`, 170, finalY)
+    }
+
+    if (consultationFee > 0) {
+      finalY += 10
+      doc.setFontSize(12)
+      doc.setTextColor(60, 60, 60)
+      doc.text("Consultation Fee", 130, finalY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`Rs. ${consultationFee.toFixed(2)}`, 170, finalY)
+    }
+
+    finalY += 10
+    doc.setDrawColor(150)
+    doc.setLineWidth(0.5)
+    doc.line(14, finalY, pageWidth - 14, finalY)
+
+    finalY += 6
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(14)
+    doc.setTextColor(0, 100, 0)
+    doc.text("Net Amount: ", 130, finalY)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`Rs. ${netAmount.toFixed(2)}`, 170, finalY)
+
+    doc.save(`${selectedPatient.patientName}_Bill.pdf`)
+  })
+}
 
   return (
     <Container>
