@@ -9,8 +9,8 @@ import "bootstrap/dist/css/bootstrap.min.css"
 import { Row, Col } from "react-bootstrap"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
-import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
+import Kumarapalayam from "./images/KumarapalayamBill.jpg"
+import Salem from "./images/Salembill.jpg"
 import { consumerItems } from "./constant"
 import CreatableSelect from "react-select/creatable"
 import { IoMdArrowRoundBack } from "react-icons/io"
@@ -939,84 +939,84 @@ const ProcedureComponent = () => {
  // Update additional procedure data with auto GST calculation
 // Enhanced handleAdditionalProcedureChange function with bidirectional price/total editing
 const handleAdditionalProcedureChange = (rowId, field, value) => {
-  setAdditionalProcedures((prev) =>
-    prev.map((row) => {
-      if (row.id === rowId) {
-        const updatedRow = { ...row, [field]: value }
+ setAdditionalProcedures((prev) =>
+ prev.map((row) => {
+ if (row.id === rowId) {
+ const updatedRow = { ...row, [field]: value }
 
-        // Handle price change - calculate GST and total
-        if (field === "price") {
-          const price = parseFloat(value) || 0
-          const gstRate = parseFloat(row.gstRate) || 0
-          updatedRow.gst = calculateGST(price, gstRate)
-          updatedRow.total = calculateTotal(price, updatedRow.gst)
-        }
-        
-        // Handle total change - calculate price based on total
-        else if (field === "total") {
-          const total = parseFloat(value) || 0
-          const gstRate = parseFloat(row.gstRate) || 0
-          // Calculate price from total: price = total / (1 + gstRate/100)
-          const calculatedPrice = gstRate > 0 ? total / (1 + gstRate / 100) : total
-          updatedRow.price = calculatedPrice.toFixed(2)
-          updatedRow.gst = calculateGST(calculatedPrice, gstRate)
-        }
-        
-        // Handle GST rate change - recalculate GST and total based on existing price
-        else if (field === "gstRate") {
-          const price = parseFloat(row.price) || 0
-          const gstRate = parseFloat(value) || 0
-          updatedRow.gst = calculateGST(price, gstRate)
-          updatedRow.total = calculateTotal(price, updatedRow.gst)
-        }
+ // Handle price change - calculate GST and total
+ if (field === "price") {
+ const price = parseFloat(value) || 0
+ const gstRate = parseFloat(row.gstRate) || 0
+ updatedRow.gst = calculateGST(price, gstRate)
+ updatedRow.total = calculateTotal(price, updatedRow.gst)
+ }
+ 
+ // Handle total change - calculate price based on total
+ else if (field === "total") {
+ const total = parseFloat(value) || 0
+ const gstRate = parseFloat(row.gstRate) || 0
+ // Calculate price from total: price = total / (1 + gstRate/100)
+ const calculatedPrice = gstRate > 0 ? total / (1 + gstRate / 100) : total
+ updatedRow.price = calculatedPrice.toFixed(2)
+ updatedRow.gst = calculateGST(calculatedPrice, gstRate)
+ }
+ 
+ // Handle GST rate change - recalculate GST and total based on existing price
+ else if (field === "gstRate") {
+ const price = parseFloat(row.price) || 0
+ const gstRate = parseFloat(value) || 0
+ updatedRow.gst = calculateGST(price, gstRate)
+ updatedRow.total = calculateTotal(price, updatedRow.gst)
+ }
 
-        return updatedRow
-      }
-      return row
-    })
-  )
+ return updatedRow
+ }
+ return row
+ })
+ )
 }
 
 
  // Handle procedure data changes
 // Enhanced handleProcedureDataChange function with bidirectional price/total editing
 const handleProcedureDataChange = (index, field, value) => {
-  setProcedureData((prev) =>
-    prev.map((item, idx) => {
-      if (idx === index) {
-        const updatedItem = { ...item, [field]: value }
+ setProcedureData((prev) =>
+ prev.map((item, idx) => {
+ if (idx === index) {
+ const updatedItem = { ...item, [field]: value }
 
-        // Handle price change - calculate GST and total
-        if (field === "price") {
-          const price = parseFloat(value) || 0
-          const gstRate = parseFloat(item.gstRate) || 0
-          updatedItem.gst = calculateGST(price, gstRate)
-          updatedItem.total = calculateTotal(price, updatedItem.gst)
-        }
-        
-        // Handle total change - calculate price based on total
-        else if (field === "total") {
-          const total = parseFloat(value) || 0
-          const gstRate = parseFloat(item.gstRate) || 0
-          // Calculate price from total: price = total / (1 + gstRate/100)
-          const calculatedPrice = gstRate > 0 ? total / (1 + gstRate / 100) : total
-          updatedItem.price = calculatedPrice.toFixed(2)
-          updatedItem.gst = calculateGST(calculatedPrice, gstRate)
-        }
-        
-        // Handle GST rate change - recalculate GST and total based on existing price
-        else if (field === "gstRate") {
-          const price = parseFloat(item.price) || 0
-          const gstRate = parseFloat(value) || 0
-          updatedItem.gst = calculateGST(price, gstRate)
-          updatedItem.total = calculateTotal(price, updatedItem.gst)
-        }
+ // Handle price change - calculate GST and total
+ if (field === "price") {
+ const price = parseFloat(value) || 0
+ const gstRate = parseFloat(item.gstRate) || 0
+ updatedItem.gst = calculateGST(price, gstRate)
+ updatedItem.total = calculateTotal(price, updatedItem.gst)
+ }
+ 
+ // Handle total change - calculate price based on total
+ else if (field === "total") {
+ const total = parseFloat(value) || 0
+ const gstRate = parseFloat(item.gstRate) || 0
+ // Calculate price from total: price = total / (1 + gstRate/100)
+ const calculatedPrice = gstRate > 0 ? total / (1 + gstRate / 100) : total
+ updatedItem.price = calculatedPrice.toFixed(2)
+ updatedItem.gst = calculateGST(calculatedPrice, gstRate)
+ }
+ 
+ // Handle GST rate change - recalculate GST and total based on existing price
+ else if (field === "gstRate") {
+ const price = parseFloat(item.price) || 0
+ const gstRate = parseFloat(value) || 0
+ updatedItem.gst = calculateGST(price, gstRate)
+ updatedItem.total = calculateTotal(price, updatedItem.gst)
+ }
 
-        return updatedItem
-      }
-      return item
-    })
-  )
+ return updatedItem
+ }
+ return item
+ })
+ )
 }
  // Handle consumer data changes
  const handleConsumerChange = (index, field, value) => {
@@ -1128,10 +1128,10 @@ const handleProcedureDataChange = (index, field, value) => {
  })
 
  toast.success(`Procedure bill saved successfully for ${selectedPatient.patientName}`)
-     // Navigate back to patient list after successful save
-    setTimeout(() => {
-      handleBackClick()
-    }, 2000) // Wait 2 seconds to show success message
+ // Navigate back to patient list after successful save
+ setTimeout(() => {
+ handleBackClick()
+ }, 2000) // Wait 2 seconds to show success message
 
  // Refresh data after save
  fetchPatientProcedureData(selectedPatient)
@@ -1143,71 +1143,67 @@ const handleProcedureDataChange = (index, field, value) => {
 
 const handleDownload = () => {
   if (!selectedPatient) {
-    toast.error("No patient selected for download");
-    return;
+    toast.error("No patient selected for download")
+    return
   }
 
-  const doc = new jsPDF("p", "mm", "a4");
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+  const doc = new jsPDF("p", "mm", "a4")
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
 
-  const backgroundImageMap = {
-    SCC001: PDFMain1,
-    SCC002: PDFMain2,
-  };
-  const PDFMain = backgroundImageMap[branchCode] || PDFMain1;
+  const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+  let PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
 
   const convertToBase64 = (url, callback) => {
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.src = url;
+    const img = new Image()
+    img.crossOrigin = "Anonymous"
+    img.src = url
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-      const dataURL = canvas.toDataURL("image/png");
-      callback(dataURL);
-    };
-    img.onerror = (error) =>
-      console.error("Error converting image to Base64:", error);
-  };
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext("2d")
+      ctx.drawImage(img, 0, 0)
+      const dataURL = canvas.toDataURL("image/png")
+      callback(dataURL)
+    }
+    img.onerror = (error) => console.error("Error converting image to Base64:", error)
+  }
 
   convertToBase64(PDFMain, (mainImage) => {
-    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight);
+    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
-    // Header
-    let startY = 110;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(30, 30, 30);
-    doc.text(`Patient Name:`, 16, startY);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY);
+    let startY = 110
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.setTextColor(30, 30, 30)
+    doc.text(`Patient Name:`, 16, startY)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`Patient UID:`, 16, startY + 8);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`${selectedPatient.patientUID}`, 50, startY + 8);
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text(`Patient UID:`, 16, startY + 8)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`Date:`, 140, startY);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`${selectedPatient.appointmentDate}`, 170, startY);
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text(`Date:`, 140, startY)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${selectedPatient.appointmentDate}`, 170, startY)
 
-    let yOffset = startY + 20;
+    let yOffset = startY + 20
 
-    // Procedure Table
+    // ======= Procedure Table with Multi-Page Support =======
     const selectedProcedures = [
       ...procedureData.filter((item) => item.selected),
       ...additionalProcedures.filter((item) => item.selected),
-    ];
+    ]
 
     if (selectedProcedures.length > 0) {
       const procedureTable = selectedProcedures.map((procedure) => [
@@ -1217,40 +1213,45 @@ const handleDownload = () => {
         `${procedure.gstRate}%`,
         `${procedure.gst}`,
         `${procedure.total}`,
-      ]);
+      ])
 
-      doc.autoTable({
-        head: [["Procedure", "Date", "Price", "GST Rate", "GST", "Total"]],
-        body: procedureTable,
-        startY: yOffset,
-        theme: "grid",
-        headStyles: {
-          fillColor: [116, 180, 155],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 10,
-        },
-        bodyStyles: {
-          fontSize: 9,
-          textColor: [40, 40, 40],
-        },
-        margin: { left: 14, right: 14 },
-      });
+    doc.autoTable({
+    head: [["Procedure", "Date", "Price", "GST Rate", "GST", "Total"]],
+    body: procedureTable,
+    startY: yOffset,
+    theme: "grid",
+    headStyles: {
+    fillColor: [116, 180, 155],
+    textColor: [255, 255, 255],
+    fontStyle: "bold",
+    fontSize: 10,
+    },
+    bodyStyles: {
+    fontSize: 9,
+    textColor: [40, 40, 40],
+    },
+    margin: { left: 14, right: 14 },
+    });
 
-      yOffset = doc.lastAutoTable.finalY + 10;
+    yOffset = doc.lastAutoTable.finalY + 10;
     }
 
-    // Consumer Table
-    const selectedConsumers = consumerData.filter(
-      (item) => item.selected && item.item
-    );
+    // ======= Consumer Table with Multi-Page Support =======
+    const selectedConsumers = consumerData.filter((item) => item.selected && item.item)
     if (selectedConsumers.length > 0) {
+      // Check if we need a new page
+      if (yOffset > pageHeight - 100) {
+        doc.addPage()
+        doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+        yOffset = 80
+      }
+
       const consumerTable = selectedConsumers.map((record) => [
         record.item,
         record.qty,
         `${record.price}`,
         `${record.total}`,
-      ]);
+      ])
 
       doc.autoTable({
         head: [["Item", "Qty", "Price", "Total"]],
@@ -1267,31 +1268,39 @@ const handleDownload = () => {
           fontSize: 9,
           textColor: [40, 40, 40],
         },
-        margin: { left: 14, right: 14 },
-      });
+        margin: { left: margin, right: margin, top: 20, bottom: 40 },
+        pageBreak: "auto", // Enable automatic page breaks
+        showHead: "everyPage", // Show header on every page
+        didDrawPage: (data) => {
+          // Add background image to new pages
+          if (data.pageNumber > 1) {
+            doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+          }
+        },
+      })
 
-      yOffset = doc.lastAutoTable.finalY + 10;
+      yOffset = doc.lastAutoTable.finalY + 10
     }
 
-    // Consultation Fee
+    // ======= Summary Information =======
     if (consultationFee > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text(`Consultation Fee: ${consultationFee.toFixed(2)}`, 150, yOffset);
-      yOffset += 10;
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(11)
+      doc.text(`Consultation Fee: ${consultationFee.toFixed(2)}`, 150, yOffset)
+      yOffset += 10
     }
 
     // Net Total
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(0, 100, 0);
-    doc.text(`Net Total: ${totalAmount}`, 150, yOffset + 5);
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(14)
+    doc.setTextColor(0, 100, 0)
+    doc.text(`Net Total: ${totalAmount}`, 150, yOffset + 5)
 
     // Save the PDF
-    doc.save(`${selectedPatient.patientName}_Final_Bill.pdf`);
-    toast.success(`PDF downloaded for ${selectedPatient.patientName}`);
-  });
-};
+    doc.save(`${selectedPatient.patientName}_Final_Bill.pdf`)
+    toast.success(`PDF downloaded for ${selectedPatient.patientName}`)
+  })
+}
 
 
  const consumerOptions = consumerItems.map((item) => ({
@@ -1366,113 +1375,113 @@ const handleDownload = () => {
  </thead>
  <tbody>
  {/* Existing procedures from summary/stored data */}
-  {procedureData.map((procedure, index) => (
-    <tr key={procedure.id}>
-      <td>
-        <input
-          type="checkbox"
-          checked={procedure.selected}
-          onChange={(e) => handleProcedureDataChange(index, "selected", e.target.checked)}
-        />
-      </td>
-      <td>{procedure.procedure}</td>
-      <td>{procedure.procedureDate}</td>
-      <td>
-        <EditableInput
-          type="text"
-          value={procedure.price}
-          onChange={(e) => handleProcedureDataChange(index, "price", e.target.value)}
-          placeholder="Enter price"
-        />
-      </td>
-      <td>
-        <EditableInput
-          type="text"
-          value={procedure.gstRate}
-          onChange={(e) => handleProcedureDataChange(index, "gstRate", e.target.value)}
-          placeholder="GST rate"
-        />
-      </td>
-      <td>₹{procedure.gst}</td>
-      <td>
-        <EditableInput
-          type="text"
-          value={procedure.total}
-          onChange={(e) => handleProcedureDataChange(index, "total", e.target.value)}
-          placeholder="Enter total"
-        />
-      </td>
-      <td>-</td>
-    </tr>
-  ))}
+ {procedureData.map((procedure, index) => (
+ <tr key={procedure.id}>
+ <td>
+ <input
+ type="checkbox"
+ checked={procedure.selected}
+ onChange={(e) => handleProcedureDataChange(index, "selected", e.target.checked)}
+ />
+ </td>
+ <td>{procedure.procedure}</td>
+ <td>{procedure.procedureDate}</td>
+ <td>
+ <EditableInput
+ type="text"
+ value={procedure.price}
+ onChange={(e) => handleProcedureDataChange(index, "price", e.target.value)}
+ placeholder="Enter price"
+ />
+ </td>
+ <td>
+ <EditableInput
+ type="text"
+ value={procedure.gstRate}
+ onChange={(e) => handleProcedureDataChange(index, "gstRate", e.target.value)}
+ placeholder="GST rate"
+ />
+ </td>
+ <td>₹{procedure.gst}</td>
+ <td>
+ <EditableInput
+ type="text"
+ value={procedure.total}
+ onChange={(e) => handleProcedureDataChange(index, "total", e.target.value)}
+ placeholder="Enter total"
+ />
+ </td>
+ <td>-</td>
+ </tr>
+ ))}
  {/* Additional procedures */}
-  {additionalProcedures.map((procedure) => (
-    <tr key={procedure.id}>
-      <td>
-        <input
-          type="checkbox"
-          checked={procedure.selected}
-          onChange={(e) =>
-            handleAdditionalProcedureChange(procedure.id, "selected", e.target.checked)
-          }
-        />
-      </td>
-      <td>
-        <ProcedureSelect
-          value={procedure.selectedProcedureId || ""}
-          onChange={(e) => handleProcedureSelect(procedure.id, e.target.value)}
-        >
-          <option value="">Select Procedure...</option>
-          {proceduresList.map((proc) => (
-            <option key={proc.id} value={proc.id}>
-              {proc.procedure}
-            </option>
-          ))}
-        </ProcedureSelect>
-      </td>
-      <td>
-        <input
-          type="date"
-          value={procedure.procedureDate}
-          onChange={(e) =>
-            handleAdditionalProcedureChange(procedure.id, "procedureDate", e.target.value)
-          }
-          className="form-control"
-        />
-      </td>
-      <td>
-        <EditableInput
-          type="text"
-          value={procedure.price}
-          onChange={(e) => handleAdditionalProcedureChange(procedure.id, "price", e.target.value)}
-          placeholder="Enter price"
-        />
-      </td>
-      <td>
-        <EditableInput
-          type="text"
-          value={procedure.gstRate}
-          onChange={(e) => handleAdditionalProcedureChange(procedure.id, "gstRate", e.target.value)}
-          placeholder="GST rate"
-        />
-      </td>
-      <td>₹{procedure.gst}</td>
-      <td>
-        <EditableInput
-          type="text"
-          value={procedure.total}
-          onChange={(e) => handleAdditionalProcedureChange(procedure.id, "total", e.target.value)}
-          placeholder="Enter total"
-        />
-      </td>
-      <td>
-        <FaTrash
-          style={{ cursor: "pointer", color: "#dc3545" }}
-          onClick={() => handleDeleteProcedureRow(procedure.id)}
-        />
-      </td>
-    </tr>
-  ))}
+ {additionalProcedures.map((procedure) => (
+ <tr key={procedure.id}>
+ <td>
+ <input
+ type="checkbox"
+ checked={procedure.selected}
+ onChange={(e) =>
+ handleAdditionalProcedureChange(procedure.id, "selected", e.target.checked)
+ }
+ />
+ </td>
+ <td>
+ <ProcedureSelect
+ value={procedure.selectedProcedureId || ""}
+ onChange={(e) => handleProcedureSelect(procedure.id, e.target.value)}
+ >
+ <option value="">Select Procedure...</option>
+ {proceduresList.map((proc) => (
+ <option key={proc.id} value={proc.id}>
+ {proc.procedure}
+ </option>
+ ))}
+ </ProcedureSelect>
+ </td>
+ <td>
+ <input
+ type="date"
+ value={procedure.procedureDate}
+ onChange={(e) =>
+ handleAdditionalProcedureChange(procedure.id, "procedureDate", e.target.value)
+ }
+ className="form-control"
+ />
+ </td>
+ <td>
+ <EditableInput
+ type="text"
+ value={procedure.price}
+ onChange={(e) => handleAdditionalProcedureChange(procedure.id, "price", e.target.value)}
+ placeholder="Enter price"
+ />
+ </td>
+ <td>
+ <EditableInput
+ type="text"
+ value={procedure.gstRate}
+ onChange={(e) => handleAdditionalProcedureChange(procedure.id, "gstRate", e.target.value)}
+ placeholder="GST rate"
+ />
+ </td>
+ <td>₹{procedure.gst}</td>
+ <td>
+ <EditableInput
+ type="text"
+ value={procedure.total}
+ onChange={(e) => handleAdditionalProcedureChange(procedure.id, "total", e.target.value)}
+ placeholder="Enter total"
+ />
+ </td>
+ <td>
+ <FaTrash
+ style={{ cursor: "pointer", color: "#dc3545" }}
+ onClick={() => handleDeleteProcedureRow(procedure.id)}
+ />
+ </td>
+ </tr>
+ ))}
 </tbody> </table>
  </TableContainer>
  )}
@@ -1498,13 +1507,13 @@ const handleDownload = () => {
  </ConsultationSection>
 
 <div style={{ textAlign: "right", marginTop: "20px" }}>
-  <label>Procedure Net Amount: </label>
-  <input
-    type="text"
-    value={procedureNetAmount}
-    onChange={(e) => setProcedureNetAmount(e.target.value)}
-    style={{ width: "120px", padding: "8px", marginLeft: "10px" }}
-  />
+ <label>Procedure Net Amount: </label>
+ <input
+ type="text"
+ value={procedureNetAmount}
+ onChange={(e) => setProcedureNetAmount(e.target.value)}
+ style={{ width: "120px", padding: "8px", marginLeft: "10px" }}
+ />
 </div>
 
  {/* Consumer section */}
@@ -1612,13 +1621,13 @@ const handleDownload = () => {
  </TableContainer>
 
 <div style={{ textAlign: "right", marginTop: "10px" }}>
-  <label>Consumer Net Amount: </label>
-  <input
-    type="text"
-    value={consumerNetAmount}
-    onChange={(e) => setConsumerNetAmount(e.target.value)}
-    style={{ width: "120px", padding: "8px", marginLeft: "10px" }}
-  />
+ <label>Consumer Net Amount: </label>
+ <input
+ type="text"
+ value={consumerNetAmount}
+ onChange={(e) => setConsumerNetAmount(e.target.value)}
+ style={{ width: "120px", padding: "8px", marginLeft: "10px" }}
+ />
 </div>
  </>
  )}

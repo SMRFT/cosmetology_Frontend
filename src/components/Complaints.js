@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { Typeahead } from "react-bootstrap-typeahead";
 import { Col, Row, Form, Button } from "react-bootstrap";
@@ -56,6 +56,9 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
   const [messageType, setMessageType] = useState('success');
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
+  // Memoize the callback to prevent unnecessary re-renders
+  const memoizedOnSelectComplaints = useCallback(onSelectComplaints, []);
+
   useEffect(() => {
     axios
       .get(`${Cosmetologybaseurl}complaints/`)
@@ -65,7 +68,7 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
       .catch((error) => {
         console.error("Error fetching complaints data:", error);
       });
-  }, []);
+  }, [Cosmetologybaseurl]);
 
   useEffect(() => {
     if (preSelectedComplaints && complaintsList.length > 0) {
@@ -88,9 +91,10 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
     }
   }, [preSelectedComplaints, complaintsList]);
 
+  // Use useEffect with proper dependency to call parent callback
   useEffect(() => {
-    onSelectComplaints(complaintsInputs);
-  }, [complaintsInputs, onSelectComplaints]);
+    memoizedOnSelectComplaints(complaintsInputs);
+  }, [complaintsInputs, memoizedOnSelectComplaints]);
 
   const showMessage = (msg, type = 'success') => {
     setMessage(msg);
@@ -192,7 +196,7 @@ const Complaints = ({ preSelectedComplaints, onSelectComplaints }) => {
           </Col>
           <Col md="2">
             <Form.Group controlId={`durationUnit-${index}`}>
-              <Form.Label>Duration Unit</Form.Label>
+              <Form.Label>Unit</Form.Label>
               <Form.Control
                 as="select"
                 value={input.durationUnit}
