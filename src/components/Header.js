@@ -285,17 +285,51 @@ const TopContainer = styled.header`
   background: radial-gradient(circle, #A07BC6 0%, #7F54A9 100%);
   z-index: 1001;
   padding: 0 15px;
+
+  @media (max-width: 480px) {
+    height: 45px;
+    padding: 0 10px;
+  }
 `
 
 const BranchDisplay = styled.div`
   color: white;
   font-weight: bold;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   margin-left: 20px;
   max-width: 800px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  @media (max-width: 1440px) {
+    font-size: 1.1rem;
+    margin-left: 18px;
+    max-width: 700px;
+  }
+
+  @media (max-width: 1024px) {
+    font-size: 1rem;
+    margin-left: 15px;
+    max-width: 500px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 0.9rem;
+    margin-left: 10px;
+    max-width: 300px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.8rem;
+    margin-left: 5px;
+    max-width: 200px;
+  }
+
+  @media (max-width: 320px) {
+    font-size: 0.75rem;
+    max-width: 150px;
+  }
 `
 
 const HeaderContainer = styled.header`
@@ -310,10 +344,15 @@ const HeaderContainer = styled.header`
   padding: 10px 15px;
   z-index: 1000;
 
-  @media (max-width: 1200px) {
+  @media (max-width: 1024px) {
     flex-direction: column;
     align-items: flex-start;
     padding: 10px;
+  }
+
+  @media (max-width: 480px) {
+    top: 45px;
+    padding: 8px;
   }
 `
 
@@ -322,12 +361,7 @@ const HeaderLeft = styled.div`
   align-items: center;
   width: 100%;
 
-  @media (max-width: 1200px) {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
@@ -340,8 +374,20 @@ const LogoContainer = styled.div`
     height: auto;
   }
 
+  @media (max-width: 1024px) {
+    max-width: 180px;
+  }
+
   @media (max-width: 768px) {
     max-width: 150px;
+  }
+
+  @media (max-width: 480px) {
+    max-width: 130px;
+  }
+
+  @media (max-width: 320px) {
+    max-width: 110px;
   }
 `
 
@@ -351,19 +397,16 @@ const Navigation = styled.nav`
   margin-left: 40px;
   align-items: center;
 
-  @media (max-width: 1200px) {
-    margin-left: 0;
-    margin-top: 15px;
-    justify-content: center;
-    width: 100%;
-    flex-wrap: wrap;
+  @media (max-width: 1440px) {
+    gap: 12px;
+    margin-left: 30px;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     position: fixed;
     top: 110px;
     left: 0;
-    width: 280px;
+    width: 320px;
     height: calc(100vh - 110px);
     background: white;
     flex-direction: column;
@@ -376,11 +419,31 @@ const Navigation = styled.nav`
     z-index: 1000;
     overflow-y: auto;
   }
+
+  @media (max-width: 768px) {
+    width: 280px;
+    padding: 15px;
+  }
+
+  @media (max-width: 480px) {
+    top: 105px;
+    width: 260px;
+    padding: 12px;
+  }
+
+  @media (max-width: 320px) {
+    width: 240px;
+    padding: 10px;
+  }
 `
 
 const DropdownContainer = styled.div`
   position: relative;
   display: inline-block;
+
+  @media (max-width: 1024px) {
+    width: 100%;
+  }
 `
 
 const DropdownButton = styled.button`
@@ -389,18 +452,45 @@ const DropdownButton = styled.button`
       ? `linear-gradient(135deg, ${
           props.userRole === "Admin" || props.userRole === "Doctor" ? "#F3E5F5" : "#F5F1F6"
         } 0%, ${props.userRole === "Admin" || props.userRole === "Doctor" ? "#E1BEE7" : "#E8DCE9"} 100%)`
-      : "white"};};
-  border-radius: 8px;
+      : "white"};
   padding: 12px 16px;
   cursor: pointer;
   transition: all 0.3s ease;
   min-width: 180px;
-  box-shadow: ${(props) => (props.isExpanded ? "0 4px 12px rgba(122, 28, 172, 0.15)" : "0 2px 4px rgba(0, 0, 0, 0.1)")};
+  border: none;
+  border-radius: 8px;
 
-  @media (max-width: 768px) {
+  &:hover {
+    background: ${(props) =>
+      props.isExpanded
+        ? `linear-gradient(135deg, ${
+            props.userRole === "Admin" || props.userRole === "Doctor" ? "#F3E5F5" : "#F5F1F6"
+          } 0%, ${props.userRole === "Admin" || props.userRole === "Doctor" ? "#E1BEE7" : "#E8DCE9"} 100%)`
+        : "#F8F9FA"};
+  }
+
+  @media (max-width: 1440px) {
+    min-width: 160px;
+    padding: 11px 14px;
+  }
+
+  @media (max-width: 1024px) {
     width: 100%;
     min-width: unset;
-    padding: 10px 14px;
+    padding: 14px 16px;
+    margin-bottom: 5px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 14px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 10px 12px;
+  }
+
+  @media (max-width: 320px) {
+    padding: 8px 10px;
   }
 `
 
@@ -412,24 +502,94 @@ const DropdownButtonContent = styled.div`
 `
 
 const GroupIcon = styled.span`
-  font-size: 1.2rem;
-  margin-right: 8px;
+  font-size: 1.3rem;
+  margin-right: 10px;
+
+  @media (max-width: 1440px) {
+    font-size: 1.2rem;
+    margin-right: 8px;
+  }
+
+  @media (max-width: 1024px) {
+    font-size: 1.4rem;
+    margin-right: 12px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 1.3rem;
+    margin-right: 10px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1.2rem;
+    margin-right: 8px;
+  }
+
+  @media (max-width: 320px) {
+    font-size: 1.1rem;
+    margin-right: 6px;
+  }
 `
 
 const GroupTitle = styled.span`
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #6D4194;
   flex: 1;
   text-align: left;
+
+  @media (max-width: 1440px) {
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 1024px) {
+    font-size: 1.05rem;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 320px) {
+    font-size: 0.85rem;
+  }
 `
 
 const ChevronIcon = styled.span`
   color: #9A7BB8;
   transition: transform 0.3s ease;
   transform: ${(props) => (props.isExpanded ? "rotate(0deg)" : "rotate(0deg)")};
-  font-size: 0.6rem;
-  margin-left: 5px;
+  font-size: 0.7rem;
+  margin-left: 8px;
+
+  @media (max-width: 1440px) {
+    font-size: 0.65rem;
+    margin-left: 6px;
+  }
+
+  @media (max-width: 1024px) {
+    font-size: 0.8rem;
+    margin-left: 8px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    margin-left: 6px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.7rem;
+    margin-left: 5px;
+  }
+
+  @media (max-width: 320px) {
+    font-size: 0.65rem;
+    margin-left: 4px;
+  }
 `
 
 const DropdownMenu = styled.div`
@@ -448,10 +608,40 @@ const DropdownMenu = styled.div`
   opacity: ${(props) => (props.isExpanded ? "1" : "0")};
   transition: all 0.3s ease;
   transform: ${(props) => (props.isExpanded ? "translateY(0)" : "translateY(-10px)")};
+
+  @media (max-width: 1024px) {
+    position: static;
+    border: none;
+    box-shadow: none;
+    background: #F8F9FA;
+    border-radius: 0;
+    margin-top: 0;
+    max-height: ${(props) => (props.isExpanded ? `${props.itemCount * 55}px` : "0px")};
+  }
+
+  @media (max-width: 768px) {
+    max-height: ${(props) => (props.isExpanded ? `${props.itemCount * 50}px` : "0px")};
+  }
+
+  @media (max-width: 480px) {
+    max-height: ${(props) => (props.isExpanded ? `${props.itemCount * 45}px` : "0px")};
+  }
+
+  @media (max-width: 320px) {
+    max-height: ${(props) => (props.isExpanded ? `${props.itemCount * 40}px` : "0px")};
+  }
 `
 
 const DropdownContent = styled.div`
   padding: 8px 0;
+
+  @media (max-width: 1024px) {
+    padding: 5px 0;
+  }
+
+  @media (max-width: 480px) {
+    padding: 3px 0;
+  }
 `
 
 const DropdownItem = styled.div`
@@ -473,9 +663,23 @@ const StyledNavLink = styled(NavLink)`
         return "#6D4194"
     }
   }};
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 500;
   transition: all 0.2s ease;
+
+  &:hover {
+    background: ${(props) => {
+      switch (props.userRole) {
+        case "Admin":
+        case "Doctor":
+          return "#F3E5F5"
+        case "Receptionist":
+          return "#F5F1F6"
+        default:
+          return "#F3E5F5"
+      }
+    }};
+  }
 
   &.active {
     background: linear-gradient(90deg, 
@@ -503,7 +707,7 @@ const StyledNavLink = styled(NavLink)`
           return "#7A1CAC"
       }
     }};
-    border-left-color: ${(props) => {
+    border-left: 4px solid ${(props) => {
       switch (props.userRole) {
         case "Admin":
         case "Doctor":
@@ -516,7 +720,45 @@ const StyledNavLink = styled(NavLink)`
     }};
     font-weight: 600;
   }
- 
+
+  @media (max-width: 1440px) {
+    font-size: 0.9rem;
+    padding: 11px 14px;
+  }
+
+  @media (max-width: 1024px) {
+    padding: 14px 20px;
+    font-size: 1rem;
+    
+    &.active {
+      background: ${(props) => {
+        switch (props.userRole) {
+          case "Admin":
+          case "Doctor":
+            return "#E8D5F2"
+          case "Receptionist":
+            return "#F0E6F3"
+          default:
+            return "#E8D5F2"
+        }
+      }};
+    }
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 18px;
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 320px) {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
 `
 
 const HeaderRight = styled.div`
@@ -524,10 +766,16 @@ const HeaderRight = styled.div`
   align-items: center;
   gap: 10px;
 
-  @media (max-width: 768px) {
-    width: 100%;
-    justify-content: space-between;
-    margin-top: 10px;
+  @media (max-width: 1024px) {
+    gap: 8px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 6px;
+  }
+
+  @media (max-width: 320px) {
+    gap: 4px;
   }
 `
 
@@ -535,15 +783,15 @@ const MobileToggleButton = styled.button`
   display: none;
   flex-direction: column;
   justify-content: space-around;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 0;
 
   span {
-    width: 25px;
+    width: 28px;
     height: 3px;
     background: #6D4194;
     border-radius: 10px;
@@ -552,8 +800,38 @@ const MobileToggleButton = styled.button`
     transform-origin: 1px;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: flex;
+  }
+
+  @media (max-width: 768px) {
+    width: 30px;
+    height: 30px;
+    
+    span {
+      width: 25px;
+      height: 2.5px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    width: 28px;
+    height: 28px;
+    
+    span {
+      width: 23px;
+      height: 2.5px;
+    }
+  }
+
+  @media (max-width: 320px) {
+    width: 26px;
+    height: 26px;
+    
+    span {
+      width: 20px;
+      height: 2px;
+    }
   }
 `
 
@@ -567,7 +845,7 @@ const MobileOverlay = styled.div`
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: ${(props) => (props.isOpen ? "block" : "none")};
   }
 `

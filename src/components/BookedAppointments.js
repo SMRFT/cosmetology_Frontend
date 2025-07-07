@@ -55,34 +55,37 @@ function BookedAppointments() {
       })
   }
 
-  const fetchAppointments = () => {
-    const branchCode = localStorage.getItem("selectedBranch")
-    let url = `${Cosmetologybaseurl}AppointmentView/`
-    const params = []
+const fetchAppointments = () => {
+  const branchCode = localStorage.getItem("selectedBranch");
+  const loggedInRole = localStorage.getItem("userRole"); // e.g. 'Admin' or 'Doctor'
+  const loggedInDoctor = localStorage.getItem("userName"); // assuming you store doctor name here
 
-    if (branchCode) {
-      params.push(`branch_code=${branchCode}`)
-    }
+  let url = `${Cosmetologybaseurl}AppointmentView/`;
+  const params = [];
 
-    if (selectedDoctor) {
-      params.push(`doctor_name=${selectedDoctor}`)
-    }
+  if (branchCode) params.push(`branch_code=${branchCode}`);
 
-    if (params.length > 0) {
-      url += "?" + params.join("&")
-    }
-
-    axios
-      .get(url, {
-        withCredentials: true,
-      })
-      .then((response) => {
-        setAppointments(response.data)
-      })
-      .catch((error) => {
-        console.error("Error fetching appointments:", error)
-      })
+  // Only send doctor_name if role is Doctor
+  if (loggedInRole === "Doctor") {
+    params.push(`role=Doctor`);
+    params.push(`doctor_name=${loggedInDoctor}`);
+  } else {
+    params.push(`role=Admin`);
   }
+
+  if (params.length > 0) {
+    url += "?" + params.join("&");
+  }
+
+  axios
+    .get(url, { withCredentials: true })
+    .then((response) => {
+      setAppointments(response.data);
+    })
+    .catch((error) => {
+      console.error("Error fetching appointments:", error);
+    });
+};
 
   const filterAppointments = () => {
     let filtered = appointments.filter((appointment) => appointment.appointmentDate === selectedDate)

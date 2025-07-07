@@ -7,8 +7,8 @@ import { format } from "date-fns"
 import { IoMdArrowRoundBack } from "react-icons/io"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
-import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
+import Kumarapalayam from "./images/KumarapalayamBill.jpg"
+import Salem from "./images/Salembill.jpg"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import axios from "axios"
@@ -595,12 +595,10 @@ const generatePDF = (billData, isExisting) => {
   const doc = new jsPDF("p", "mm", "a4")
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
 
-  const backgroundImageMap = {
-    SCC001: PDFMain1,
-    SCC002: PDFMain2,
-  }
-  const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+  const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+  let PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
 
   const convertToBase64 = (url, callback) => {
     const img = new Image()
@@ -621,33 +619,32 @@ const generatePDF = (billData, isExisting) => {
   convertToBase64(PDFMain, (mainImage) => {
     doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
-    // ======= Patient Details (Minimal) =======
-      let startY = 110
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(30, 30, 30)
-      doc.text(`Patient Name:`, 16, startY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
+    let startY = 110
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.setTextColor(30, 30, 30)
+    doc.text(`Patient Name:`, 16, startY)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
 
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.text(`Patient UID:`, 16, startY + 8)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text(`Patient UID:`, 16, startY + 8)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
 
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.text(`Date:`, 140, startY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${selectedDate}`, 170, startY)
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text(`Date:`, 140, startY)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${selectedDate}`, 170, startY)
 
     startY += 25
 
-    // ======= ONLY TABLE DATA - No other items in table =======
+    // ======= Main Table Data with Multi-Page Support =======
     const tableData = billData.table_data.map((item) => [
       item.particulars,
       item.qty,
@@ -678,7 +675,15 @@ const generatePDF = (billData, isExisting) => {
         textColor: [40, 40, 40],
         font: "helvetica",
       },
-      margin: { left: 14, right: 14 },
+      margin: { left: margin, right: margin, top: 20, bottom: 40 },
+      pageBreak: "auto", // Enable automatic page breaks
+      showHead: "everyPage", // Show header on every page
+      didDrawPage: (data) => {
+        // Add background image to new pages
+        if (data.pageNumber > 1) {
+          doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+        }
+      },
     })
 
     let finalY = doc.lastAutoTable.finalY + 15
@@ -695,7 +700,6 @@ const generatePDF = (billData, isExisting) => {
       finalY += 10
     }
 
-
     if (discount > 0) {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
@@ -706,8 +710,8 @@ const generatePDF = (billData, isExisting) => {
       doc.text(`${discount}`, 170, finalY)
       finalY += 8
     }
+
     // ======= Net Amount - Displayed Separately =======
-    // Add separator line
     doc.setDrawColor(150)
     doc.setLineWidth(0.5)
     doc.line(14, finalY, pageWidth - 14, finalY)

@@ -13,8 +13,8 @@ import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
-import PDFMain1 from "./images/PDF_Main_branch1.jpeg"
-import PDFMain2 from "./images/PDF_Main_branch2.jpeg"
+import Kumarapalayam from "./images/KumarapalayamBill.jpg"
+import Salem from "./images/Salembill.jpg"
 
 // Utility function to format text
 const formatText = (text) => {
@@ -303,11 +303,17 @@ const BillingReport = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    const backgroundImageMap = {
-      SCC001: PDFMain1,
-      SCC002: PDFMain2,
-    }
-    const PDFMain = backgroundImageMap[branchCode] || PDFMain1
+      const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+
+      let PDFMain
+
+      if (branchCode === "SCC002") {
+      PDFMain = Kumarapalayam
+      } else if (branchCode === "SCC001") {
+      PDFMain = Salem
+      } else {
+      PDFMain = Salem // default fallback
+      }
 
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
