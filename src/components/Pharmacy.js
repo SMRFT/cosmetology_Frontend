@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import styled from "styled-components"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import Swal from "sweetalert2"
 import {
   FaDownload,
   FaArrowRight,
@@ -158,7 +159,6 @@ const PharmacyComponent = () => {
   const [pendingStockUpdates, setPendingStockUpdates] = useState({})
   const [searchTerm, setSearchTerm] = useState("")
   const [activeView, setActiveView] = useState("all")
-  const [isCompactView, setIsCompactView] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isTablet, setIsTablet] = useState(false)
   const tableRef = useRef(null)
@@ -182,7 +182,6 @@ const PharmacyComponent = () => {
       const width = window.innerWidth
       setIsMobile(width < 768)
       setIsTablet(width >= 768 && width < 1024)
-      setIsCompactView(width < 1200)
     }
 
     handleResize()
@@ -549,38 +548,66 @@ const PharmacyComponent = () => {
     const itemToRemove = formData[originalIndex]
 
     if (itemToRemove._id && itemToRemove.medicineName) {
-      try {
-        const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?_id=${itemToRemove._id}`, {
-          method: "DELETE",
-          withCredentials: true,
-        })
+      // Show SweetAlert confirmation
+      const result = await Swal.fire({
+        title: "Delete Medicine?",
+        text: `Do you really want to delete "${itemToRemove.medicineName}"?`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Yes, delete it!",
+        cancelButtonText: "No, cancel",
+      })
 
-        if (response.ok) {
-          toast.success("Medicine deleted successfully!")
-          const newFormData = [...formData]
-          newFormData.splice(originalIndex, 1)
-          setFormData(newFormData)
+      if (result.isConfirmed) {
+        try {
+          const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?_id=${itemToRemove._id}`, {
+            method: "DELETE",
+            withCredentials: true,
+          })
 
-          const newEditedRows = { ...editedRows }
-          delete newEditedRows[originalIndex]
-          setEditedRows(newEditedRows)
-        } else {
+          if (response.ok) {
+            toast.success("Medicine deleted successfully!")
+            const newFormData = [...formData]
+            newFormData.splice(originalIndex, 1)
+            setFormData(newFormData)
+
+            const newEditedRows = { ...editedRows }
+            delete newEditedRows[originalIndex]
+            setEditedRows(newEditedRows)
+          } else {
+            toast.error("Failed to delete medicine from database")
+          }
+        } catch (error) {
+          console.error("Error deleting record:", error)
           toast.error("Failed to delete medicine from database")
         }
-      } catch (error) {
-        console.error("Error deleting record:", error)
-        toast.error("Failed to delete medicine from database")
       }
     } else {
-      const newFormData = [...formData]
-      newFormData.splice(originalIndex, 1)
-      setFormData(newFormData)
+      // For new rows without ID, show simple confirmation
+      const result = await Swal.fire({
+        title: "Remove Row?",
+        text: "Do you want to remove this medicine row?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Yes, remove it!",
+        cancelButtonText: "No, cancel",
+      })
 
-      const newEditedRows = { ...editedRows }
-      delete newEditedRows[originalIndex]
-      setEditedRows(newEditedRows)
+      if (result.isConfirmed) {
+        const newFormData = [...formData]
+        newFormData.splice(originalIndex, 1)
+        setFormData(newFormData)
 
-      toast.success("Medicine row removed")
+        const newEditedRows = { ...editedRows }
+        delete newEditedRows[originalIndex]
+        setEditedRows(newEditedRows)
+
+        toast.success("Medicine row removed")
+      }
     }
   }
 
@@ -743,23 +770,22 @@ const PharmacyComponent = () => {
                   {!isMobile && "Add Medicine"}
                 </PrimaryButton>
               </ActionsContainer>
-                <SaveContent>
-                  <SaveButton onClick={handleSubmit} disabled={loading}>
-                    <FaSave />
-                    {loading ? "Saving..." : "Save All Changes"}
-                  </SaveButton>
-                </SaveContent>
-
+              <SaveContent>
+                <SaveButton onClick={handleSubmit} disabled={loading}>
+                  <FaSave />
+                  {loading ? "Saving..." : "Save All Changes"}
+                </SaveButton>
+              </SaveContent>
             </ControlsRow>
           </ControlsContent>
         </ControlsCard>
 
-        {/* Medicine Cards */}
+        {/* Medicine Cards - Always show full view */}
         <CardsContainer ref={tableRef}>
           {filteredDataWithIndices.map(({ item: data, originalIndex }) => (
             <MedicineCard key={originalIndex} $isEdited={editedRows[originalIndex]} $isMobile={isMobile}>
               <CardContent $isMobile={isMobile}>
-                <CardGrid $isCompact={isCompactView} $isMobile={isMobile} $isTablet={isTablet}>
+                <CardGrid $isMobile={isMobile} $isTablet={isTablet}>
                   {/* Medicine Info */}
                   <MedicineInfoSection>
                     <InputGroup>
@@ -811,31 +837,29 @@ const PharmacyComponent = () => {
                     </InputGroup>
                   </CompanyPriceSection>
 
-                  {/* Tax Info */}
-                  {!isCompactView && (
-                    <TaxSection>
-                      <TaxRow>
-                        <StyledInput
-                          placeholder="CGST %"
-                          type="text"
-                          value={data.CGSTPercentage || ""}
-                          onChange={(e) => handleChange(originalIndex, "CGSTPercentage", e.target.value)}
-                          onKeyPress={(e) => handleKeyPress(originalIndex, e)}
-                        />
-                        <StyledInput value={data.CGSTValue || ""} readOnly $readOnly />
-                      </TaxRow>
-                      <TaxRow>
-                        <StyledInput
-                          placeholder="SGST %"
-                          type="text"
-                          value={data.SGSTPercentage || ""}
-                          onChange={(e) => handleChange(originalIndex, "SGSTPercentage", e.target.value)}
-                          onKeyPress={(e) => handleKeyPress(originalIndex, e)}
-                        />
-                        <StyledInput value={data.SGSTValue || ""} readOnly $readOnly />
-                      </TaxRow>
-                    </TaxSection>
-                  )}
+                  {/* Tax Info - Always visible */}
+                  <TaxSection>
+                    <TaxRow>
+                      <StyledInput
+                        placeholder="CGST %"
+                        type="text"
+                        value={data.CGSTPercentage || ""}
+                        onChange={(e) => handleChange(originalIndex, "CGSTPercentage", e.target.value)}
+                        onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                      />
+                      <StyledInput value={data.CGSTValue || ""} readOnly $readOnly />
+                    </TaxRow>
+                    <TaxRow>
+                      <StyledInput
+                        placeholder="SGST %"
+                        type="text"
+                        value={data.SGSTPercentage || ""}
+                        onChange={(e) => handleChange(originalIndex, "SGSTPercentage", e.target.value)}
+                        onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                      />
+                      <StyledInput value={data.SGSTValue || ""} readOnly $readOnly />
+                    </TaxRow>
+                  </TaxSection>
 
                   {/* Stock Management */}
                   <StockSection>
@@ -868,37 +892,35 @@ const PharmacyComponent = () => {
                     </StockStatusRow>
                   </StockSection>
 
-                  {/* Dates - Enhanced to handle various formats */}
-                  {!isCompactView && (
-                    <DatesSection>
-                      <div>
+                  {/* Dates - Always visible */}
+                  <DatesSection>
+                    <div>
+                      <StyledInput
+                        type="date"
+                        placeholder="Received Date"
+                        value={data.receivedDate || ""}
+                        onChange={(e) => handleChange(originalIndex, "receivedDate", e.target.value)}
+                        onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                      />
+                    </div>
+                    <DateInputRow>
+                      <div style={{ flex: 1 }}>
                         <StyledInput
                           type="date"
-                          placeholder="Received Date"
-                          value={data.receivedDate || ""}
-                          onChange={(e) => handleChange(originalIndex, "receivedDate", e.target.value)}
+                          placeholder="Expiry Date"
+                          value={data.expiryDate || ""}
+                          onChange={(e) => handleChange(originalIndex, "expiryDate", e.target.value)}
                           onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                          $isExpired={isExpired(data.expiryDate)}
                         />
                       </div>
-                      <DateInputRow>
-                        <div style={{ flex: 1 }}>
-                          <StyledInput
-                            type="date"
-                            placeholder="Expiry Date"
-                            value={data.expiryDate || ""}
-                            onChange={(e) => handleChange(originalIndex, "expiryDate", e.target.value)}
-                            onKeyPress={(e) => handleKeyPress(originalIndex, e)}
-                            $isExpired={isExpired(data.expiryDate)}
-                          />
-                        </div>
-                        {isExpired(data.expiryDate) && (
-                          <WarningIcon>
-                            <FaExclamationTriangle />
-                          </WarningIcon>
-                        )}
-                      </DateInputRow>
-                    </DatesSection>
-                  )}
+                      {isExpired(data.expiryDate) && (
+                        <WarningIcon>
+                          <FaExclamationTriangle />
+                        </WarningIcon>
+                      )}
+                    </DateInputRow>
+                  </DatesSection>
 
                   {/* Batch & Actions */}
                   <BatchActionsSection>
@@ -1330,7 +1352,7 @@ const CardGrid = styled.div`
   }
 
   @media (min-width: 1024px) {
-    grid-template-columns: ${(props) => (props.$isCompact ? "3fr 2fr 2fr 1fr" : "3fr 2fr 2fr 2fr 2fr 1fr")};
+    grid-template-columns: 3fr 2fr 2fr 2fr 2fr 1fr;
     align-items: center;
   }
 `
