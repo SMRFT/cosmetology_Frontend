@@ -455,6 +455,7 @@ const PrescriptionDetails = () => {
     bloodPressure: "",
   })
   const [vitalsLoaded, setVitalsLoaded] = useState(false)
+  const [selectedPrescriptions, setSelectedPrescriptions] = useState(new Set())
 
   const [loadedData, setLoadedData] = useState({
     diagnosis: [],
@@ -710,6 +711,16 @@ const PrescriptionDetails = () => {
   }
 
   const handlePrescriptionDeleteInput = (index) => {
+    const prescriptionToDelete = prescriptionInputs[index]
+    if (prescriptionToDelete.selectedPrescription && prescriptionToDelete.selectedPrescription.length > 0) {
+      const medicineName = prescriptionToDelete.selectedPrescription[0].label
+      setSelectedPrescriptions(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(medicineName)
+        return newSet
+      })
+    }
+
     setPrescriptionInputs((prev) => prev.filter((_, i) => i !== index))
     setLoadedPrescriptionIndices((prev) => {
       const newSet = new Set(prev)
@@ -733,6 +744,32 @@ const PrescriptionDetails = () => {
   }
 
   const handlePrescriptionChange = (index, key, value) => {
+    if (key === "selectedPrescription" && value.length > 0) {
+      const medicineName = value[0].label
+      
+      // Check if this medicine is already selected
+      if (selectedPrescriptions.has(medicineName)) {
+        setSuccessMessage("Medicine Already selected")
+        setTimeout(() => {
+          setSuccessMessage("")
+        }, 3000)
+        return
+      }
+
+      // Remove previous selection from set if exists
+      const currentPrescription = prescriptionInputs[index].selectedPrescription
+      if (currentPrescription && currentPrescription.length > 0) {
+        setSelectedPrescriptions(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(currentPrescription[0].label)
+          return newSet
+        })
+      }
+
+      // Add new selection to set
+      setSelectedPrescriptions(prev => new Set(prev).add(medicineName))
+    }
+
     setPrescriptionInputs((prev) => {
       const updated = [...prev]
       updated[index][key] = value
@@ -820,10 +857,15 @@ const PrescriptionDetails = () => {
       const parsedPrescriptions = parsePrescriptions(summaryData.prescription)
       setPrescriptionInputs(parsedPrescriptions)
       const loadedIndices = new Set()
-      parsedPrescriptions.forEach((_, index) => {
+      const loadedMedicines = new Set()
+      parsedPrescriptions.forEach((prescription, index) => {
         loadedIndices.add(index)
+        if (prescription.selectedPrescription && prescription.selectedPrescription.length > 0) {
+          loadedMedicines.add(prescription.selectedPrescription[0].label)
+        }
       })
       setLoadedPrescriptionIndices(loadedIndices)
+      setSelectedPrescriptions(loadedMedicines)
     }
   }, [summaryData])
 
@@ -1621,13 +1663,16 @@ useEffect(() => {
     )
 
 // Enhanced Multi-Page PDF Export Function
+// Enhanced Multi-Page PDF Export Function with Doctor Signature Spacing
 const exportToPDF = () => {
   const doc = new jsPDF("p", "mm", "a4")
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const margin = 14
   const usableWidth = pageWidth - (margin * 2)
-  const usableHeight = pageHeight - 90 // Reserve space for header and footer
+  const usableHeight = pageHeight - 120 // Reserve more space for header, footer, and signature
+  const signatureSpace = 60 // Space reserved for doctor signature
+  const minSignatureY = pageHeight - signatureSpace // Minimum Y position for signature
 
   // Data sanitization helpers
   const sanitizeFilename = (str) => {
@@ -1652,6 +1697,23 @@ const exportToPDF = () => {
       console.warn("JSON parsing failed:", e)
       return jsonString
     }
+  }
+
+  // Helper function to add doctor signature with proper spacing
+  const addDoctorSignature = (doc, pageNumber = 1) => {
+    const doctorName = localStorage.getItem("userName") || "Doctor"
+    
+    // Add signature line
+    const signatureLineY = pageHeight - 55
+    const signatureLineStartX = pageWidth - margin - 80
+    const signatureLineEndX = pageWidth - margin - 10
+    
+    // Add doctor name below signature line
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(10)
+    doc.setTextColor(40, 40, 40)
+    doc.text(`Dr. ${doctorName}`, signatureLineStartX + 40, signatureLineY )
+    
   }
 
   // Select PDF background based on branch code
@@ -1810,18 +1872,21 @@ const exportToPDF = () => {
           0: { cellWidth: 60 },
           1: { cellWidth: usableWidth - 60 },
         },
-        margin: { left: margin, right: margin, top: 20, bottom: 40 },
-        pageBreak: "auto", // Enable automatic page breaks
-        showHead: "everyPage", // Show header on every page
+        margin: { left: margin, right: margin, top: 20, bottom: signatureSpace },
+        pageBreak: "auto",
+        showHead: "everyPage",
         didDrawPage: function (data) {
           // Add background image to new pages
           if (data.pageNumber > 1) {
             doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
           }
+          
+          // Add doctor signature on every page
+          addDoctorSignature(doc, data.pageNumber)
         }
       })
       
-      currentY = doc.lastAutoTable.finalY + 15
+      currentY = doc.lastAutoTable.finalY + 20
     }
 
     // Enhanced prescription parsing for multi-page support
@@ -1904,7 +1969,11 @@ const exportToPDF = () => {
       
       if (prescriptionTableData.length > 0) {
         // Check if we need a new page for prescription section
-        if (currentY > pageHeight - 100) {
+        // Consider both current position and space needed for signature
+        const estimatedTableHeight = (prescriptionTableData.length * 15) + 40 // Rough estimate
+        const spaceNeeded = estimatedTableHeight + signatureSpace + 30 // Extra buffer
+        
+        if (currentY + spaceNeeded > pageHeight) {
           doc.addPage()
           doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
           currentY = 80
@@ -1946,17 +2015,35 @@ const exportToPDF = () => {
             3: { cellWidth: (usableWidth - 15) * 0.2 },
             4: { cellWidth: (usableWidth - 15) * 0.2 },
           },
-          margin: { left: margin, right: margin, top: 20, bottom: 40 },
-          pageBreak: "auto", // Enable automatic page breaks
-          showHead: "everyPage", // Show header on every page
+          margin: { left: margin, right: margin, top: 20, bottom: signatureSpace },
+          pageBreak: "auto",
+          showHead: "everyPage",
           didDrawPage: function (data) {
             // Add background image to new pages
             if (data.pageNumber > 1) {
               doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
             }
+            
+            // Add doctor signature on every page
+            addDoctorSignature(doc, data.pageNumber)
           }
         })
+        
+        // Final check: if the table ended too close to signature area, add new page
+        const finalY = doc.lastAutoTable.finalY
+        if (finalY > minSignatureY - 20) {
+          doc.addPage()
+          doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+          addDoctorSignature(doc, doc.internal.getNumberOfPages())
+        }
       }
+    } else {
+      // If no prescription section, still add signature to the last page
+      if (currentY > minSignatureY - 20) {
+        doc.addPage()
+        doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+      }
+      addDoctorSignature(doc, doc.internal.getNumberOfPages())
     }
 
     // Generate filename
@@ -1972,14 +2059,15 @@ const exportToPDF = () => {
   })
 }
 
+
 return (
-    <div ref={summaryRef}>
-      {summaryContent}
-      <button style={{ marginTop: "25px", marginRight: "180px" }} onClick={exportToPDF}>
-        Export to PDF
-      </button>
-    </div>
-  )
+  <div ref={summaryRef}>
+    {summaryContent}
+    <button style={{ marginTop: "25px", marginRight: "180px" }} onClick={exportToPDF}>
+      Export to PDF
+    </button>
+  </div>
+)
   }
   return (
     <StyledContainer>

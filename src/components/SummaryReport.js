@@ -111,355 +111,385 @@ const SummaryReport = () => {
     setSelectedDate(date)
   }
 
-  // Enhanced Multi-Page PDF Export Function for Individual Patient
-  const exportPatientToPDF = (patientData) => {
-    const doc = new jsPDF("p", "mm", "a4")
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const pageHeight = doc.internal.pageSize.getHeight()
-    const margin = 14
-    const usableWidth = pageWidth - margin * 2
-    const usableHeight = pageHeight - 90 // Reserve space for header and footer
+// Enhanced Multi-Page PDF Export Function for Individual Patient
+const exportPatientToPDF = (patientData) => {
+  const doc = new jsPDF("p", "mm", "a4")
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 14
+  const usableWidth = pageWidth - margin * 2
+  const usableHeight = pageHeight - 120 // Reserve more space for header, footer, and signature
+  const signatureSpace = 60 // Space reserved for doctor signature
+  const minSignatureY = pageHeight - signatureSpace // Minimum Y position for signature
 
-    // Data sanitization helpers
-    const sanitizeFilename = (str) => {
-      if (!str || str === null || str === undefined) return "Unknown"
-      return str
-        .toString()
-        .replace(/[^a-zA-Z0-9\-_]/g, "_")
-        .replace(/_{2,}/g, "_")
-        .replace(/^_|_$/g, "")
-        .substring(0, 50)
+  // Data sanitization helpers
+  const sanitizeFilename = (str) => {
+    if (!str || str === null || str === undefined) return "Unknown"
+    return str
+      .toString()
+      .replace(/[^a-zA-Z0-9\-_]/g, "_")
+      .replace(/_{2,}/g, "_")
+      .replace(/^_|_$/g, "")
+      .substring(0, 50)
+  }
+
+  const safeParseJSON = (jsonString) => {
+    if (!jsonString) return null
+    try {
+      let cleanString = jsonString
+      if (typeof jsonString === "string" && jsonString.startsWith('"') && jsonString.endsWith('"')) {
+        cleanString = jsonString.slice(1, -1)
+        cleanString = cleanString.replace(/\\"/g, '"')
+      }
+      return JSON.parse(cleanString)
+    } catch (e) {
+      console.warn("JSON parsing failed:", e)
+      return jsonString
+    }
+  }
+
+  // Helper function to add doctor signature with proper spacing
+  const addDoctorSignature = (doc, pageNumber = 1) => {
+    const doctorName = patientData?.patient_handledby || "Doctor"
+    
+    // Add signature line
+    const signatureLineY = pageHeight - 55
+    const signatureLineStartX = pageWidth - margin - 80
+    const signatureLineEndX = pageWidth - margin - 10
+    
+    // Add doctor name below signature line
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(10)
+    doc.setTextColor(40, 40, 40)
+    doc.text(`Dr. ${doctorName}`, signatureLineStartX + 40, signatureLineY )
+  }
+
+  // Select PDF background based on patient_handledby
+  const PDFMain = patientData.patient_handledby === "Vijayakannan" ? Admin : Doctor
+
+  const convertToBase64 = (url, callback) => {
+    const img = new Image()
+    img.crossOrigin = "Anonymous"
+    img.src = url
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext("2d")
+      ctx.drawImage(img, 0, 0)
+      const dataURL = canvas.toDataURL("image/png")
+      callback(dataURL)
+    }
+    img.onerror = (error) => console.error("Error converting image to Base64:", error)
+  }
+
+  convertToBase64(PDFMain, (mainImage) => {
+    // Add background to first page
+    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+
+    let currentY = 80
+
+    // Header information
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.setTextColor(40, 40, 40)
+
+    const patientName = patientData?.patientName || "Unknown Patient"
+    const patientUID = patientData?.patientUID || "Unknown UID"
+    const appointmentDate = patientData?.appointmentDate || new Date().toISOString().split("T")[0]
+
+    doc.text(`Patient: ${patientName}`, margin, currentY)
+    doc.text(`Patient UID: ${patientUID}`, margin, currentY + 8)
+    doc.text(`Date: ${appointmentDate}`, pageWidth - margin - 50, currentY)
+
+    currentY += 20
+
+    const createSubTableRows = (label, entries) => {
+      if (!entries || entries.length === 0) return []
+      return entries.map((entry, index) => [index === 0 ? label : "", entry])
     }
 
-    const safeParseJSON = (jsonString) => {
-      if (!jsonString) return null
+    let data = []
+
+    // Handle diagnosis
+    if (patientData.diagnosis && patientData.diagnosis.trim() !== "") {
+      data = data.concat(createSubTableRows("Diagnosis", [patientData.diagnosis]))
+    }
+
+    // Handle complaints with proper JSON parsing
+    if (patientData.complaints && patientData.complaints.trim() !== "" && patientData.complaints !== "[]") {
       try {
-        let cleanString = jsonString
-        if (typeof jsonString === "string" && jsonString.startsWith('"') && jsonString.endsWith('"')) {
-          cleanString = jsonString.slice(1, -1)
-          cleanString = cleanString.replace(/\\"/g, '"')
+        const parsed = safeParseJSON(patientData.complaints)
+        if (Array.isArray(parsed)) {
+          const complaintsFormatted = parsed
+            .map((complaint) => {
+              let formatted = complaint.complaints || complaint.complaint || ""
+              if (complaint.duration && complaint.durationUnit) {
+                formatted += ` - Duration: ${complaint.duration} ${complaint.durationUnit}`
+              }
+              return formatted
+            })
+            .filter((item) => item !== "")
+
+          if (complaintsFormatted.length > 0) {
+            data = data.concat(createSubTableRows("Complaints", complaintsFormatted))
+          }
         }
-        return JSON.parse(cleanString)
-      } catch (e) {
-        console.warn("JSON parsing failed:", e)
-        return jsonString
+      } catch (error) {
+        console.warn("Error parsing complaints:", error)
+        data = data.concat(createSubTableRows("Complaints", [patientData.complaints]))
       }
     }
 
-    // Select PDF background based on patient_handledby
-    const PDFMain = patientData.patient_handledby === "Vijayakannan" ? Admin : Doctor
-
-    const convertToBase64 = (url, callback) => {
-      const img = new Image()
-      img.crossOrigin = "Anonymous"
-      img.src = url
-      img.onload = () => {
-        const canvas = document.createElement("canvas")
-        canvas.width = img.width
-        canvas.height = img.height
-        const ctx = canvas.getContext("2d")
-        ctx.drawImage(img, 0, 0)
-        const dataURL = canvas.toDataURL("image/png")
-        callback(dataURL)
-      }
-      img.onerror = (error) => console.error("Error converting image to Base64:", error)
+    // Handle findings
+    if (patientData.findings && patientData.findings.trim() !== "") {
+      data = data.concat(createSubTableRows("Findings", [patientData.findings]))
     }
 
-    convertToBase64(PDFMain, (mainImage) => {
-      // Add background to first page
-      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-
-      let currentY = 80
-
-      // Header information
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(40, 40, 40)
-
-      const patientName = patientData?.patientName || "Unknown Patient"
-      const patientUID = patientData?.patientUID || "Unknown UID"
-      const appointmentDate = patientData?.appointmentDate || new Date().toISOString().split("T")[0]
-
-      doc.text(`Patient: ${patientName}`, margin, currentY)
-      doc.text(`Patient UID: ${patientUID}`, margin, currentY + 8)
-      doc.text(`Date: ${appointmentDate}`, pageWidth - margin - 50, currentY)
-
-      currentY += 20
-
-      const createSubTableRows = (label, entries) => {
-        if (!entries || entries.length === 0) return []
-        return entries.map((entry, index) => [index === 0 ? label : "", entry])
-      }
-
-      let data = []
-
-      // Handle diagnosis
-      if (patientData.diagnosis && patientData.diagnosis.trim() !== "") {
-        data = data.concat(createSubTableRows("Diagnosis", [patientData.diagnosis]))
-      }
-
-      // Handle complaints with proper JSON parsing
-      if (patientData.complaints && patientData.complaints.trim() !== "" && patientData.complaints !== "[]") {
-        try {
-          const parsed = safeParseJSON(patientData.complaints)
-          if (Array.isArray(parsed)) {
-            const complaintsFormatted = parsed
-              .map((complaint) => {
-                let formatted = complaint.complaints || complaint.complaint || ""
-                if (complaint.duration && complaint.durationUnit) {
-                  formatted += ` - Duration: ${complaint.duration} ${complaint.durationUnit}`
-                }
-                return formatted
-              })
-              .filter((item) => item !== "")
-
-            if (complaintsFormatted.length > 0) {
-              data = data.concat(createSubTableRows("Complaints", complaintsFormatted))
-            }
-          }
-        } catch (error) {
-          console.warn("Error parsing complaints:", error)
-          data = data.concat(createSubTableRows("Complaints", [patientData.complaints]))
+    // Handle procedures with proper parsing
+    if (patientData.proceduresList && patientData.proceduresList.trim() !== "") {
+      try {
+        const procedures = patientData.proceduresList.split("\n").filter((line) => line.trim() !== "")
+        if (procedures.length > 0) {
+          data = data.concat(createSubTableRows("Procedures", procedures))
         }
+      } catch (error) {
+        console.warn("Error parsing procedures:", error)
+        data = data.concat(createSubTableRows("Procedures", [patientData.proceduresList]))
       }
+    }
 
-      // Handle findings
-      if (patientData.findings && patientData.findings.trim() !== "") {
-        data = data.concat(createSubTableRows("Findings", [patientData.findings]))
-      }
+    // Handle plans
+    if (patientData.plans && patientData.plans.trim() !== "") {
+      try {
+        const plans = patientData.plans
+          .split("\n")
+          .map((plan) => plan.replace(/Plan\d+:\s*/g, "").trim())
+          .filter((plan) => plan !== "")
 
-      // Handle procedures with proper parsing
-      if (patientData.proceduresList && patientData.proceduresList.trim() !== "") {
-        try {
-          const procedures = patientData.proceduresList.split("\n").filter((line) => line.trim() !== "")
-          if (procedures.length > 0) {
-            data = data.concat(createSubTableRows("Procedures", procedures))
-          }
-        } catch (error) {
-          console.warn("Error parsing procedures:", error)
-          data = data.concat(createSubTableRows("Procedures", [patientData.proceduresList]))
+        if (plans.length > 0) {
+          data = data.concat(createSubTableRows("Plans", plans))
         }
+      } catch (error) {
+        console.warn("Error parsing plans:", error)
+        data = data.concat(createSubTableRows("Plans", [patientData.plans]))
       }
+    }
 
-      // Handle plans
-      if (patientData.plans && patientData.plans.trim() !== "") {
-        try {
-          const plans = patientData.plans
-            .split("\n")
-            .map((plan) => plan.replace(/Plan\d+:\s*/g, "").trim())
-            .filter((plan) => plan !== "")
+    // Handle tests
+    if (patientData.tests && patientData.tests.trim() !== "") {
+      data = data.concat(createSubTableRows("Tests", [patientData.tests]))
+    }
 
-          if (plans.length > 0) {
-            data = data.concat(createSubTableRows("Plans", plans))
+    // Handle next visit date
+    if (patientData.nextVisit) {
+      const nextVisitDate = new Date(patientData.nextVisit).toLocaleDateString()
+      data.push(["Next Visit Date", nextVisitDate])
+    }
+
+    // Handle vitals
+    if (patientData.vital && patientData.vital.trim() !== "" && patientData.vital !== "{}") {
+      try {
+        const vitals = safeParseJSON(patientData.vital)
+        if (vitals && typeof vitals === "object") {
+          const vitalEntries = Object.entries(vitals)
+            .filter(([key, value]) => value && value.trim() !== "")
+            .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
+
+          if (vitalEntries.length > 0) {
+            data = data.concat(createSubTableRows("Vitals", vitalEntries))
           }
-        } catch (error) {
-          console.warn("Error parsing plans:", error)
-          data = data.concat(createSubTableRows("Plans", [patientData.plans]))
         }
+      } catch (error) {
+        console.warn("Error parsing vitals:", error)
+        data = data.concat(createSubTableRows("Vitals", [patientData.vital]))
       }
+    }
 
-      // Handle tests
-      if (patientData.tests && patientData.tests.trim() !== "") {
-        data = data.concat(createSubTableRows("Tests", [patientData.tests]))
-      }
-
-      // Handle next visit date
-      if (patientData.nextVisit) {
-        const nextVisitDate = new Date(patientData.nextVisit).toLocaleDateString()
-        data.push(["Next Visit Date", nextVisitDate])
-      }
-
-      // Handle vitals
-      if (patientData.vital && patientData.vital.trim() !== "" && patientData.vital !== "{}") {
-        try {
-          const vitals = safeParseJSON(patientData.vital)
-          if (vitals && typeof vitals === "object") {
-            const vitalEntries = Object.entries(vitals)
-              .filter(([key, value]) => value && value.trim() !== "")
-              .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
-
-            if (vitalEntries.length > 0) {
-              data = data.concat(createSubTableRows("Vitals", vitalEntries))
-            }
+    // Generate main table for all sections except prescription with multi-page support
+    if (data.length > 0) {
+      doc.autoTable({
+        startY: currentY,
+        head: [["Section", "Details"]],
+        body: data,
+        theme: "grid",
+        headStyles: {
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+          font: "helvetica",
+        },
+        styles: {
+          cellWidth: "wrap",
+          minCellHeight: 10,
+          overflow: "linebreak",
+          tableWidth: "auto",
+        },
+        columnStyles: {
+          0: { cellWidth: 60 },
+          1: { cellWidth: usableWidth - 60 },
+        },
+        margin: { left: margin, right: margin, top: 20, bottom: signatureSpace },
+        pageBreak: "auto",
+        showHead: "everyPage",
+        didDrawPage: function (data) {
+          // Add background image to new pages
+          if (data.pageNumber > 1) {
+            doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
           }
-        } catch (error) {
-          console.warn("Error parsing vitals:", error)
-          data = data.concat(createSubTableRows("Vitals", [patientData.vital]))
+          
+          // Add doctor signature on every page
+          addDoctorSignature(doc, data.pageNumber)
         }
-      }
+      })
 
-      // Generate main table for all sections except prescription with multi-page support
-      if (data.length > 0) {
+      currentY = doc.lastAutoTable.finalY + 20
+    }
+
+    // Enhanced prescription parsing for multi-page support
+    const formatPrescriptionForTable = (prescriptionData) => {
+      try {
+        if (!prescriptionData || prescriptionData.trim() === "") return []
+
+        let prescriptions = []
+
+        if (typeof prescriptionData === "string") {
+          const lines = prescriptionData.split("\n").filter((line) => line.trim() !== "")
+          prescriptions = lines.map((line) => {
+            const parts = line.split(" - ")
+            let medication = "",
+              dosage = "",
+              frequency = "",
+              duration = ""
+
+            parts.forEach((part) => {
+              if (part.startsWith("Prescription:")) {
+                medication = part.replace("Prescription:", "").trim()
+              } else if (part.startsWith("Dosage:")) {
+                dosage = part.replace("Dosage:", "").trim()
+              } else if (part.startsWith("Duration:")) {
+                duration = part.replace("Duration:", "").trim()
+              } else if (part.match(/^[MAEN\s]+$/)) {
+                frequency = part.trim()
+              }
+            })
+
+            return { medication, dosage, frequency, duration }
+          })
+        }
+
+        return prescriptions
+          .filter((p) => p.medication && p.medication.trim() !== "")
+          .map((prescription, index) => [
+            index + 1,
+            prescription.medication.trim() || "-",
+            prescription.dosage.trim() || "-",
+            prescription.frequency.trim() || "-",
+            prescription.duration.trim() || "-",
+          ])
+      } catch (error) {
+        console.warn("Error formatting prescription:", error)
+        return []
+      }
+    }
+
+    // Handle prescription section with multi-page support
+    if (patientData.prescription && patientData.prescription.trim() !== "") {
+      const prescriptionTableData = formatPrescriptionForTable(patientData.prescription)
+
+      if (prescriptionTableData.length > 0) {
+        // Check if we need a new page for prescription section
+        // Consider both current position and space needed for signature
+        const estimatedTableHeight = (prescriptionTableData.length * 15) + 40 // Rough estimate
+        const spaceNeeded = estimatedTableHeight + signatureSpace + 30 // Extra buffer
+        
+        if (currentY + spaceNeeded > pageHeight) {
+          doc.addPage()
+          doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+          currentY = 80
+        }
+
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(12)
+        doc.setTextColor(40, 40, 40)
+        doc.text("Prescription", margin, currentY)
+
+        currentY += 10
+
         doc.autoTable({
           startY: currentY,
-          head: [["Section", "Details"]],
-          body: data,
+          head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
+          body: prescriptionTableData,
           theme: "grid",
           headStyles: {
-            fillColor: [116, 180, 155],
+            fillColor: [76, 140, 115],
             textColor: [255, 255, 255],
             fontStyle: "bold",
-            fontSize: 10,
+            fontSize: 9,
           },
           bodyStyles: {
-            fontSize: 9,
+            fontSize: 8,
             textColor: [40, 40, 40],
             font: "helvetica",
           },
           styles: {
             cellWidth: "wrap",
-            minCellHeight: 10,
+            minCellHeight: 8,
             overflow: "linebreak",
             tableWidth: "auto",
           },
           columnStyles: {
-            0: { cellWidth: 60 },
-            1: { cellWidth: usableWidth - 60 },
+            0: { cellWidth: 15, halign: "center" },
+            1: { cellWidth: (usableWidth - 15) * 0.4 },
+            2: { cellWidth: (usableWidth - 15) * 0.2 },
+            3: { cellWidth: (usableWidth - 15) * 0.2 },
+            4: { cellWidth: (usableWidth - 15) * 0.2 },
           },
-          margin: { left: margin, right: margin, top: 20, bottom: 40 },
-          pageBreak: "auto", // Enable automatic page breaks
-          showHead: "everyPage", // Show header on every page
-          didDrawPage: (data) => {
+          margin: { left: margin, right: margin, top: 10, bottom: signatureSpace },
+          pageBreak: "auto",
+          showHead: "everyPage",
+          didDrawPage: function (data) {
             // Add background image to new pages
             if (data.pageNumber > 1) {
               doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
             }
-          },
+            
+            // Add doctor signature on every page
+            addDoctorSignature(doc, data.pageNumber)
+          }
         })
-
-        currentY = doc.lastAutoTable.finalY + 15
+      
       }
+    }
 
-      // Enhanced prescription parsing for multi-page support
-      const formatPrescriptionForTable = (prescriptionData) => {
-        try {
-          if (!prescriptionData || prescriptionData.trim() === "") return []
+    // Generate filename
+    const safeBranchCode = sanitizeFilename(patientData.branch_code || "Branch")
+    const safePatientName = sanitizeFilename(patientName)
+    const safePatientUID = sanitizeFilename(patientUID)
+    const safeAppointmentDate = sanitizeFilename(appointmentDate.replace(/[-/]/g, "_"))
 
-          let prescriptions = []
+    const filename = `${safeBranchCode}_${safePatientName}_${safePatientUID}_${safeAppointmentDate}.pdf`
+    const finalFilename = filename.endsWith(".pdf") ? filename : `${filename}.pdf`
 
-          if (typeof prescriptionData === "string") {
-            const lines = prescriptionData.split("\n").filter((line) => line.trim() !== "")
-            prescriptions = lines.map((line) => {
-              const parts = line.split(" - ")
-              let medication = "",
-                dosage = "",
-                frequency = "",
-                duration = ""
-
-              parts.forEach((part) => {
-                if (part.startsWith("Prescription:")) {
-                  medication = part.replace("Prescription:", "").trim()
-                } else if (part.startsWith("Dosage:")) {
-                  dosage = part.replace("Dosage:", "").trim()
-                } else if (part.startsWith("Duration:")) {
-                  duration = part.replace("Duration:", "").trim()
-                } else if (part.match(/^[MAEN\s]+$/)) {
-                  frequency = part.trim()
-                }
-              })
-
-              return { medication, dosage, frequency, duration }
-            })
-          }
-
-          return prescriptions
-            .filter((p) => p.medication && p.medication.trim() !== "")
-            .map((prescription, index) => [
-              index + 1,
-              prescription.medication.trim() || "-",
-              prescription.dosage.trim() || "-",
-              prescription.frequency.trim() || "-",
-              prescription.duration.trim() || "-",
-            ])
-        } catch (error) {
-          console.warn("Error formatting prescription:", error)
-          return []
-        }
+    try {
+      doc.save(finalFilename)
+      if (typeof toast !== "undefined") {
+        toast.success(`PDF downloaded for ${patientName}`)
       }
-
-      // Handle prescription section with multi-page support
-      if (patientData.prescription && patientData.prescription.trim() !== "") {
-        const prescriptionTableData = formatPrescriptionForTable(patientData.prescription)
-
-        if (prescriptionTableData.length > 0) {
-          // Check if we need a new page for prescription section
-          if (currentY > pageHeight - 100) {
-            doc.addPage()
-            doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-            currentY = 80
-          }
-
-          doc.setFont("helvetica", "bold")
-          doc.setFontSize(12)
-          doc.setTextColor(40, 40, 40)
-          doc.text("Prescription", margin, currentY)
-
-          currentY += 10
-
-          doc.autoTable({
-            startY: currentY,
-            head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
-            body: prescriptionTableData,
-            theme: "grid",
-            headStyles: {
-              fillColor: [76, 140, 115],
-              textColor: [255, 255, 255],
-              fontStyle: "bold",
-              fontSize: 9,
-            },
-            bodyStyles: {
-              fontSize: 8,
-              textColor: [40, 40, 40],
-              font: "helvetica",
-            },
-            styles: {
-              cellWidth: "wrap",
-              minCellHeight: 8,
-              overflow: "linebreak",
-              tableWidth: "auto",
-            },
-            columnStyles: {
-              0: { cellWidth: 15, halign: "center" },
-              1: { cellWidth: (usableWidth - 15) * 0.4 },
-              2: { cellWidth: (usableWidth - 15) * 0.2 },
-              3: { cellWidth: (usableWidth - 15) * 0.2 },
-              4: { cellWidth: (usableWidth - 15) * 0.2 },
-            },
-            margin: { left: margin, right: margin, top: 20, bottom: 40 },
-            pageBreak: "auto", // Enable automatic page breaks
-            showHead: "everyPage", // Show header on every page
-            didDrawPage: (data) => {
-              // Add background image to new pages
-              if (data.pageNumber > 1) {
-                doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-              }
-            },
-          })
-        }
+    } catch (error) {
+      console.error("Error saving PDF:", error)
+      if (typeof toast !== "undefined") {
+        toast.error("Failed to download PDF")
       }
+    }
+  })
+}
 
-      // Generate filename
-      const safeBranchCode = sanitizeFilename(patientData.branch_code || "Branch")
-      const safePatientName = sanitizeFilename(patientName)
-      const safePatientUID = sanitizeFilename(patientUID)
-      const safeAppointmentDate = sanitizeFilename(appointmentDate.replace(/[-/]/g, "_"))
-
-      const filename = `${safeBranchCode}_${safePatientName}_${safePatientUID}_${safeAppointmentDate}.pdf`
-      const finalFilename = filename.endsWith(".pdf") ? filename : `${filename}.pdf`
-
-      try {
-        doc.save(finalFilename)
-        if (typeof toast !== "undefined") {
-          toast.success(`PDF downloaded for ${patientName}`)
-        }
-      } catch (error) {
-        console.error("Error saving PDF:", error)
-        if (typeof toast !== "undefined") {
-          toast.error("Failed to download PDF")
-        }
-      }
-    })
-  }
 
   const downloadCSV = () => {
     if (!summaryData || summaryData.length === 0) return
