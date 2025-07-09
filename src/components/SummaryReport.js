@@ -287,25 +287,6 @@ const exportPatientToPDF = (patientData) => {
       data.push(["Next Visit Date", nextVisitDate])
     }
 
-    // Handle vitals
-    if (patientData.vital && patientData.vital.trim() !== "" && patientData.vital !== "{}") {
-      try {
-        const vitals = safeParseJSON(patientData.vital)
-        if (vitals && typeof vitals === "object") {
-          const vitalEntries = Object.entries(vitals)
-            .filter(([key, value]) => value && value.trim() !== "")
-            .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
-
-          if (vitalEntries.length > 0) {
-            data = data.concat(createSubTableRows("Vitals", vitalEntries))
-          }
-        }
-      } catch (error) {
-        console.warn("Error parsing vitals:", error)
-        data = data.concat(createSubTableRows("Vitals", [patientData.vital]))
-      }
-    }
-
     // Generate main table for all sections except prescription with multi-page support
     if (data.length > 0) {
       doc.autoTable({

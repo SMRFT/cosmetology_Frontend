@@ -161,6 +161,12 @@ const Header = ({ userRole }) => {
               { to: "/Reception/ProcedureBill", label: "Procedure Bill" },
             ],
           },
+          {
+            id: "pharmacy",
+            title: "Pharmacy",
+            icon: "💊",
+            items: [{ to: "/Reception/Pharmacy", label: "Pharmacy" }],
+          },
         ]
       default:
         return []
