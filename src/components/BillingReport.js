@@ -216,48 +216,54 @@ const BillingReport = () => {
       return;
     }
 
-    const headers = [
-      "Patient Name",
-      "Particulars",
-      "bill Number",
-      "Bill Date",
-      "Doctor Name",
-      "Quantity",
-      "Price",
-      "CGST Percentage",
-      "CGST Value",
-      "SGST Percentage",
-      "SGST Value",
-      "Total",
-    ]
-    const rows = billingData.flatMap((item) =>
-      item.table_data.map((data, index) => [
-        index === 0 ? `"${item.patientName}"` : "",
-        `"${data.particulars}"`,
-        `"${item.billNumber}"`,
-        `"${item.appointmentDate}"`,
-        `"${item.patient_handledby}"`,
-        data.qty,
-        data.price,
-        data.CGST_percentage,
-        data.CGST_value,
-        data.SGST_percentage,
-        data.SGST_value,
-        data.total,
-      ]),
-    )
+const headers = [
+  "Patient Name",
+  "Particulars",
+  "Bill Number",
+  "Bill Date",
+  "Doctor Name",
+  "Quantity",
+  "Price",
+  "CGST Percentage",
+  "CGST Value",
+  "SGST Percentage",
+  "SGST Value",
+  "Total",
+  "Net Total" // ✅ Net total added
+]
 
-    const currentGrandTotal = (billingData || []).reduce((sum, item) => {
-      return (
-        sum +
-        (item.table_data || []).reduce((innerSum, data) => {
-          const total = Number.parseFloat(data.total || 0)
-          return innerSum + (isNaN(total) ? 0 : total)
-        }, 0)
-      )
-    }, 0)
 
-    rows.push(["", "", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2), ""])
+const rows = billingData.flatMap((item) =>
+  item.table_data.map((data, index) => [
+    index === 0 ? `"${item.patientName}"` : "",
+    `"${data.particulars}"`,
+    `"${item.billNumber}"`,
+    `"${item.appointmentDate}"`,
+    `"${item.patient_handledby}"`,
+    data.qty,
+    data.price,
+    data.CGST_percentage,
+    data.CGST_value,
+    data.SGST_percentage,
+    data.SGST_value,
+    data.total,
+    index === 0 ? item.netAmount : "",  // ✅ Show netAmount only once per patient
+  ])
+)
+
+
+  // Append the Grand Total row at the end
+  const currentGrandTotal = billingData.reduce((sum, item) => {
+    return (
+      sum +
+      item.table_data.reduce((innerSum, data) => {
+        const total = Number.parseFloat(data.total || 0);
+        return innerSum + (isNaN(total) ? 0 : total);
+      }, 0)
+    );
+  }, 0);
+
+   rows.push(["", "", "", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2)])
 
     const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
 
@@ -292,157 +298,163 @@ const BillingReport = () => {
     }
   }
 
-  const generatePharmacyPDF = (patientUID, billNumber) => {
-    const patientData = billingData.find((item) => item.patientUID === patientUID && item.billNumber === billNumber)
-    if (!patientData) {
-      toast.error("Patient data not found for PDF generation.")
-      return
+const generatePharmacyPDF = (patientUID, billNumber) => {
+  const patientData = billingData.find((item) => item.patientUID === patientUID && item.billNumber === billNumber)
+  if (!patientData) {
+    toast.error("Patient data not found for PDF generation.")
+    return
+  }
+
+  const doc = new jsPDF("p", "mm", "a4")
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+
+  const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+
+  let PDFMain
+
+  if (branchCode === "SCC002") {
+    PDFMain = Kumarapalayam
+  } else if (branchCode === "SCC001") {
+    PDFMain = Salem
+  } else {
+    PDFMain = Salem // default fallback
+  }
+
+  convertToBase64(PDFMain, (mainImage) => {
+    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+    let startY = 110
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.setTextColor(30, 30, 30)
+    doc.text(`Patient Name:`, 16, startY)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${patientData.patientName.toUpperCase()}`, 50, startY)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text(`Patient UID:`, 16, startY + 8)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${patientData.patientUID}`, 50, startY + 8)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text(`Date:`, 140, startY)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${patientData.appointmentDate}`, 170, startY)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.text(`Bill Number:`, 140, startY + 8)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(`${patientData.billNumber}`, 170, startY + 8)
+
+    startY += 35
+
+    // Filter out consultation fee from table data
+    const medicineData = patientData.table_data.filter(data => 
+      !data.particulars.toLowerCase().includes('consultation') && 
+      !data.particulars.toLowerCase().includes('consult')
+    )
+    
+    // Find consultation fee
+    const consultationFee = patientData.table_data.find(data => 
+      data.particulars.toLowerCase().includes('consultation') || 
+      data.particulars.toLowerCase().includes('consult')
+    )
+
+    // Calculate table total (sum of all medicine items)
+    const tableTotal = medicineData.reduce((sum, data) => {
+      return sum + (parseFloat(data.total) || 0)
+    }, 0)
+
+    const medicineTable = medicineData.map((data) => [
+      data.particulars,
+      data.qty,
+      `${data.price}`,
+      `${data.CGST_percentage || 0}%`,
+      `${data.CGST_value || 0}`,
+      `${data.SGST_percentage || 0}%`,
+      `${data.SGST_value || 0}`,
+      `${data.total || 0}`,
+    ])
+
+    doc.autoTable({
+      head: [["Particulars", "Qty", "Price", "CGST %", "CGST Value", "SGST %", "SGST Value", "Total"]],
+      body: medicineTable,
+      startY: startY,
+      theme: "grid",
+      headStyles: {
+        fillColor: [116, 180, 155],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 10,
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: [40, 40, 40],
+      },
+      margin: { left: 14, right: 14 },
+      didDrawPage: function(data) {
+      }
+    })
+
+    let currentY = doc.previousAutoTable.finalY + 10
+
+    // Display Table Total
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.setTextColor(40, 40, 40)
+    doc.text(`Total : ${tableTotal.toFixed(2)}`, 150, currentY)
+    currentY += 12
+
+    // Display consultation fee separately if it exists
+    if (consultationFee) {
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(40, 40, 40)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`Consultation Fee : ${Number.parseFloat(consultationFee.total || 0).toFixed(2)}`, 150, currentY)
+      currentY += 12
     }
 
-    const doc = new jsPDF("p", "mm", "a4")
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const pageHeight = doc.internal.pageSize.getHeight()
-
-      const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
-
-      let PDFMain
-
-      if (branchCode === "SCC002") {
-      PDFMain = Kumarapalayam
-      } else if (branchCode === "SCC001") {
-      PDFMain = Salem
-      } else {
-      PDFMain = Salem // default fallback
-      }
-
-    convertToBase64(PDFMain, (mainImage) => {
-      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-      let startY = 110
+    // Display Discount separately if it exists
+    if (patientData.discount && patientData.discount !== 0) {
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
-      doc.setTextColor(30, 30, 30)
-      doc.text(`Patient Name:`, 16, startY)
+      doc.setTextColor(40, 40, 40)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
-      doc.text(`${patientData.patientName.toUpperCase()}`, 50, startY)
+      doc.text(`Discount % : ${patientData.discount}`, 150, currentY)
+      currentY += 12
+    }
 
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.text(`Patient UID:`, 16, startY + 8)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${patientData.patientUID}`, 50, startY + 8)
+    // Add spacing before the line
+    currentY += 5
 
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.text(`Date:`, 140, startY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${patientData.appointmentDate}`, 170, startY)
+    // Draw a line before Net Amount
+    doc.setDrawColor(150)
+    doc.setLineWidth(0.5)
+    doc.line(14, currentY, pageWidth - 14, currentY)
 
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.text(`Bill Number:`, 140, startY + 8)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(10)
-      doc.text(`${patientData.billNumber}`, 170, startY + 8)
+    currentY += 8 // Space after the line
 
-      startY += 35
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(12)
+    doc.setTextColor(0, 100, 0)
+    doc.text(`Net Amount : ${patientData.netAmount}`, 150, currentY)
 
-      // Filter out consultation fee from table data
-      const medicineData = patientData.table_data.filter(data => 
-        !data.particulars.toLowerCase().includes('consultation') && 
-        !data.particulars.toLowerCase().includes('consult')
-      )
-      
-      // Find consultation fee
-      const consultationFee = patientData.table_data.find(data => 
-        data.particulars.toLowerCase().includes('consultation') || 
-        data.particulars.toLowerCase().includes('consult')
-      )
-
-      const medicineTable = medicineData.map((data) => [
-        data.particulars,
-        data.qty,
-        `${data.price}`,
-        `${data.CGST_percentage || 0}%`,
-        `${data.CGST_value || 0}`,
-        `${data.SGST_percentage || 0}%`,
-        `${data.SGST_value || 0}`,
-        `${data.total || 0}`,
-      ])
-
-      doc.autoTable({
-        head: [["Particulars", "Qty", "Price", "CGST %", "CGST Value", "SGST %", "SGST Value", "Total"]],
-        body: medicineTable,
-        startY: startY,
-        theme: "grid",
-        headStyles: {
-          fillColor: [116, 180, 155],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 10,
-        },
-        bodyStyles: {
-          fontSize: 9,
-          textColor: [40, 40, 40],
-        },
-        margin: { left: 14, right: 14 },
-        didDrawPage: function(data) {
-        }
-      })
-
-      let currentY = doc.previousAutoTable.finalY + 15
-
-      // Display Discount separately if it exists
-      if (patientData.discount && patientData.discount !== 0) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.setTextColor(40, 40, 40);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.text(`Discount % : ${patientData.discount}`, 150, currentY);
-        currentY += 8;
-      }
-
-      // Display consultation fee separately if it exists
-      if (consultationFee) {
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(12)
-        doc.setTextColor(40, 40, 40)
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.text(`Consultation Fee  : ${Number.parseFloat(consultationFee.total || 0).toFixed(2)}`, 150, currentY)
-        currentY += 16
-      }
-
-      // Add spacing before the line
-      currentY += 5
-
-      // Draw a line before Net Amount
-      doc.setDrawColor(150)
-      doc.setLineWidth(0.5)
-      doc.line(14, currentY, pageWidth - 14, currentY)
-
-      currentY += 8 // Space after the line
-
-      // Calculate and display net total
-      const netTotal = patientData.table_data.reduce(
-        (sum, data) => sum + Number.parseFloat(data.total || 0),
-        0
-      )
-
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(0, 100, 0)
-      doc.text(`Net Amount : ${netTotal.toFixed(2)}`, 150, currentY)
-
-      const pdfBlob = doc.output("blob")
-      const pdfUrl = URL.createObjectURL(pdfBlob)
-      window.open(pdfUrl, "_blank")
-      toast.success("PDF generated successfully!");
-    })
-  }
+    const pdfBlob = doc.output("blob")
+    const pdfUrl = URL.createObjectURL(pdfBlob)
+    window.open(pdfUrl, "_blank")
+    toast.success("PDF generated successfully!")
+  })
+}
 
   const handleDelete = async (patientUID, billNumber) => {
     if (!window.confirm(`Are you sure you want to delete bill ${billNumber} for ${patientUID}?`)) {
@@ -616,6 +628,8 @@ const BillingReport = () => {
                   <th>SGST %</th>
                   <th>SGST Value</th>
                   <th>Total</th>
+                  <th>Discount</th>
+                  <th>Net Amount</th>
                   <th>Action</th>
                 </tr>
               </MDBTableHead>
@@ -639,6 +653,11 @@ const BillingReport = () => {
                           <td>{data.SGST_percentage}</td> 
                           <td>{data.SGST_value}</td>   
                           <td>{Number.parseFloat(data.total || 0).toFixed(2)}</td>
+                          <td>{item.discount || 0}</td>   
+                          {dataIndex === 0 && (
+                            <td rowSpan={item.table_data.length}>{(item.netAmount)}</td>
+                          )}
+                          
                           {dataIndex === 0 && (
                             <td rowSpan={item.table_data.length}>
                               {renderActionButtons(item)}
@@ -659,7 +678,7 @@ const BillingReport = () => {
 
               <tfoot>
                 <tr>
-                  <td colSpan="11" className="text-right">
+                  <td colSpan="13" className="text-right">
                     <strong>Grand Total</strong>
                   </td>
                   <td>

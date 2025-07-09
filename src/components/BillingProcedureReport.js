@@ -230,41 +230,45 @@ const BillingProcedureReport = () => {
       return
     }
 
-    const headers = [
-      "Patient Name",
-      "Patient UID",
-      "Procedure Billnumber",
-      "Appointment Date",
-      "Doctor Name",
-      "Procedure",
-      "Procedure Date",
-      "Price",
-      "GST",
-      "GST Rate",
-      "consultationFee",
-      "Total",
-    ]
+const headers = [
+  "Patient Name",
+  "Patient UID",
+  "Procedure Billnumber",
+  "Appointment Date",
+  "Doctor Name",
+  "Procedure",
+  "Procedure Date",
+  "Price",
+  "GST",
+  "GST Rate",
+  "Consultation Fee",
+  "Total",
+  "Procedure Net Amount", // ✅ Add this header
+]
 
-    const rows = billingData.flatMap((item) => {
-      const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures
-      return procedures.map((proc, index) => [
-        index === 0 ? `"${item.patientName}"` : "",
-        index === 0 ? `"${item.patientUID}"` : "",
-        index === 0 ? `"${item.procedureBillNumber}"` : "",
-        index === 0 ? `"${item.appointmentDate}"` : "",
-        index === 0 ? `"${item.patient_handledby}"` : "",
-        `"${proc.procedure}"`,
-        `"${proc.procedureDate}"`,
-        proc.price,
-        proc.gst,
-        proc.gstRate,
-        proc.consultationFee,
-        proc.total,
-      ])
-    })
+
+const rows = billingData.flatMap((item) => {
+  const procedures = typeof item.procedures === "string" ? JSON.parse(item.procedures) : item.procedures;
+  return procedures.map((proc, index) => [
+    index === 0 ? `"${item.patientName}"` : "",
+    index === 0 ? `"${item.patientUID}"` : "",
+    index === 0 ? `"${item.procedureBillNumber}"` : "",
+    index === 0 ? `"${item.appointmentDate}"` : "",
+    index === 0 ? `"${item.patient_handledby}"` : "",
+    `"${proc.procedure}"`,
+    `"${proc.procedureDate}"`,
+    proc.price,
+    proc.gst,
+    proc.gstRate,
+    proc.consultationFee,
+    proc.total,
+    index === 0 ? item.procedureNetAmount : "", // ✅ Display only on first row
+  ]);
+});
+
 
     const currentGrandTotal = calculateProcedureGrandTotal(billingData)
-    rows.push(["", "", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2)])
+    rows.push(["", "", "", "", "", "", "", "", "", "", "", "Grand Total", currentGrandTotal.toFixed(2)]);
 
     const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
 
@@ -794,16 +798,17 @@ const BillingProcedureReport = () => {
  </tr>
  ))
  ) : (
- <tr>
- <td>{item.patientName}</td>
- <td>{item.patientUID}</td>
- <td>{item.procedureBillNumber}</td>
- <td>{item.appointmentDate}</td>
- <td>{item.patient_handledby}</td>
- <td colSpan="6">No procedures recorded</td>
- <td>{item.procedureNetAmount}</td>
- <td>{renderActionButtons(item.patientUID, "procedure", item.procedureBillNumber)}</td>
- </tr>
+<tr>
+  <td>{item.patientName}</td>
+  <td>{item.patientUID}</td>
+  <td>{item.procedureBillNumber}</td>
+  <td>{item.appointmentDate}</td>
+  <td>{item.patient_handledby}</td>
+  <td colSpan="7" className="text-center text-danger">No procedures recorded</td>
+  <td>{item.procedureNetAmount}</td>
+  <td>{renderActionButtons(item.patientUID, "procedure", item.procedureBillNumber)}</td>
+</tr>
+
  )}
  </React.Fragment>
 ))}
@@ -811,7 +816,7 @@ const BillingProcedureReport = () => {
  </MDBTableBody>
  <tfoot>
  <tr>
- <td colSpan="8" className="text-right">
+ <td colSpan="12" className="text-right">
  <strong>Grand Total</strong>
  </td>
       <td colSpan="3">
