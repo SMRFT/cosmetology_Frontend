@@ -13,6 +13,7 @@ import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
+import Select from "react-select"
 
 const StyledContainer = styled.div`
   padding: 10px;
@@ -522,210 +523,210 @@ const NewBill = () => {
 
       toast.success(`Billing was generated successfully for ${selectedPatient.patientName}`)
       fetchExistingBills()
-    // Navigate back to patient list after successful save
-    setTimeout(() => {
-      handleBackClick()
-    }, 3000) // Wait 2 seconds to show success message
+      // Navigate back to patient list after successful save
+      setTimeout(() => {
+        handleBackClick()
+      }, 3000) // Wait 2 seconds to show success message
     } catch (error) {
       console.error("Error submitting data:", error)
       toast.error("Error submitting data.")
     }
   }
 
-const handleDownloadExisting = (bill) => {
-  // Parse table_data if it's a string
-  let tableData = [];
-  let consultationFee = 0;
-  
-  try {
-    tableData = typeof bill.table_data === "string" ? JSON.parse(bill.table_data) : bill.table_data || [];
-    
-    // Extract consultation fee from table_data and remove it from the array
-    const consultationIndex = tableData.findIndex(item => 
-      item.particulars && item.particulars.toLowerCase().includes('consultation fee')
-    );
-    
-    if (consultationIndex !== -1) {
-      consultationFee = parseFloat(tableData[consultationIndex].total) || 0;
-      tableData.splice(consultationIndex, 1); // Remove consultation fee from table data
+  const handleDownloadExisting = (bill) => {
+    // Parse table_data if it's a string
+    let tableData = []
+    let consultationFee = 0
+
+    try {
+      tableData = typeof bill.table_data === "string" ? JSON.parse(bill.table_data) : bill.table_data || []
+
+      // Extract consultation fee from table_data and remove it from the array
+      const consultationIndex = tableData.findIndex(
+        (item) => item.particulars && item.particulars.toLowerCase().includes("consultation fee"),
+      )
+
+      if (consultationIndex !== -1) {
+        consultationFee = Number.parseFloat(tableData[consultationIndex].total) || 0
+        tableData.splice(consultationIndex, 1) // Remove consultation fee from table data
+      }
+    } catch (e) {
+      console.error("Error parsing table data:", e)
     }
-  } catch (e) {
-    console.error("Error parsing table data:", e);
-  }
 
-  const billData = {
-    patientName: bill.patientName,
-    patientUID: bill.patientUID,
-    table_data: tableData, // Table data without consultation fee
-    consultationFee: consultationFee, // Extracted consultation fee
-    netAmount: bill.netAmount,
-    discount: bill.discount || '0%',
-    paymentType: bill.paymentType,
-  }
-  
-  generatePDF(billData, true)
-}
-
-const handleDownloadNew = () => {
-  const billData = {
-    patientName: selectedPatient.patientName,
-    patientUID: selectedPatient.patientUID,
-    table_data: additionalRows
-      .filter((row) => row.selected)
-      .map((row) => ({
-        particulars: row.particulars,
-        qty: row.quantity,
-        price: row.price,
-        total: row.total.toFixed(2),
-        CGST_percentage: row.CGST_percentage,
-        CGST_value: row.CGST_value,
-        SGST_percentage: row.SGST_percentage,
-        SGST_value: row.SGST_value,
-        batch_number: row.batch_number,
-      })),
-    consultationFee: consultationFee,
-    netAmount: netAmount,
-    discount: `${discount}%`,
-    paymentType: paymentType,
-  }
-  generatePDF(billData, false)
-}
-
-const generatePDF = (billData, isExisting) => {
-  const doc = new jsPDF("p", "mm", "a4")
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const margin = 14
-
-  const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
-  let PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
-
-  const convertToBase64 = (url, callback) => {
-    const img = new Image()
-    img.crossOrigin = "Anonymous"
-    img.src = url
-    img.onload = () => {
-      const canvas = document.createElement("canvas")
-      canvas.width = img.width
-      canvas.height = img.height
-      const ctx = canvas.getContext("2d")
-      ctx.drawImage(img, 0, 0)
-      const dataURL = canvas.toDataURL("image/png")
-      callback(dataURL)
+    const billData = {
+      patientName: bill.patientName,
+      patientUID: bill.patientUID,
+      table_data: tableData, // Table data without consultation fee
+      consultationFee: consultationFee, // Extracted consultation fee
+      netAmount: bill.netAmount,
+      discount: bill.discount || "0%",
+      paymentType: bill.paymentType,
     }
-    img.onerror = (error) => console.error("Error converting image to Base64:", error)
+
+    generatePDF(billData, true)
   }
 
-  convertToBase64(PDFMain, (mainImage) => {
-    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+  const handleDownloadNew = () => {
+    const billData = {
+      patientName: selectedPatient.patientName,
+      patientUID: selectedPatient.patientUID,
+      table_data: additionalRows
+        .filter((row) => row.selected)
+        .map((row) => ({
+          particulars: row.particulars,
+          qty: row.quantity,
+          price: row.price,
+          total: row.total.toFixed(2),
+          CGST_percentage: row.CGST_percentage,
+          CGST_value: row.CGST_value,
+          SGST_percentage: row.SGST_percentage,
+          SGST_value: row.SGST_value,
+          batch_number: row.batch_number,
+        })),
+      consultationFee: consultationFee,
+      netAmount: netAmount,
+      discount: `${discount}%`,
+      paymentType: paymentType,
+    }
+    generatePDF(billData, false)
+  }
 
-    let startY = 110
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(12)
-    doc.setTextColor(30, 30, 30)
-    doc.text(`Patient Name:`, 16, startY)
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(10)
-    doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
+  const generatePDF = (billData, isExisting) => {
+    const doc = new jsPDF("p", "mm", "a4")
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const margin = 14
 
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(12)
-    doc.text(`Patient UID:`, 16, startY + 8)
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(10)
-    doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
+    const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+    const PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
 
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(12)
-    doc.text(`Date:`, 140, startY)
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(10)
-    doc.text(`${selectedDate}`, 170, startY)
+    const convertToBase64 = (url, callback) => {
+      const img = new Image()
+      img.crossOrigin = "Anonymous"
+      img.src = url
+      img.onload = () => {
+        const canvas = document.createElement("canvas")
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext("2d")
+        ctx.drawImage(img, 0, 0)
+        const dataURL = canvas.toDataURL("image/png")
+        callback(dataURL)
+      }
+      img.onerror = (error) => console.error("Error converting image to Base64:", error)
+    }
 
-    startY += 25
+    convertToBase64(PDFMain, (mainImage) => {
+      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
 
-    // ======= Main Table Data with Multi-Page Support =======
-    const tableData = billData.table_data.map((item) => [
-      item.particulars,
-      item.qty,
-      item.price,
-      item.CGST_percentage || "N/A",
-      item.CGST_value || "N/A",
-      item.SGST_percentage || "N/A",
-      item.SGST_value || "N/A",
-      item.batch_number || "N/A",
-      item.total,
-    ])
+      let startY = 110
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(30, 30, 30)
+      doc.text(`Patient Name:`, 16, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
 
-    doc.autoTable({
-      head: [
-        ["Particulars", "Qty", "Price", "CGST (%)", "CGST Value", "SGST (%)", "SGST Value", "Batch No.", "Total"],
-      ],
-      body: tableData,
-      startY: startY,
-      theme: "grid",
-      headStyles: {
-        fillColor: [116, 180, 155],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 10,
-      },
-      bodyStyles: {
-        fontSize: 9,
-        textColor: [40, 40, 40],
-        font: "helvetica",
-      },
-      margin: { left: margin, right: margin, top: 20, bottom: 40 },
-      pageBreak: "auto", // Enable automatic page breaks
-      showHead: "everyPage", // Show header on every page
-      didDrawPage: (data) => {
-        // Add background image to new pages
-        if (data.pageNumber > 1) {
-          doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-        }
-      },
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Patient UID:`, 16, startY + 8)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.text(`Date:`, 140, startY)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.text(`${selectedDate}`, 170, startY)
+
+      startY += 25
+
+      // ======= Main Table Data with Multi-Page Support =======
+      const tableData = billData.table_data.map((item) => [
+        item.particulars,
+        item.qty,
+        item.price,
+        item.CGST_percentage || "N/A",
+        item.CGST_value || "N/A",
+        item.SGST_percentage || "N/A",
+        item.SGST_value || "N/A",
+        item.batch_number || "N/A",
+        item.total,
+      ])
+
+      doc.autoTable({
+        head: [
+          ["Particulars", "Qty", "Price", "CGST (%)", "CGST Value", "SGST (%)", "SGST Value", "Batch No.", "Total"],
+        ],
+        body: tableData,
+        startY: startY,
+        theme: "grid",
+        headStyles: {
+          fillColor: [116, 180, 155],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 10,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [40, 40, 40],
+          font: "helvetica",
+        },
+        margin: { left: margin, right: margin, top: 20, bottom: 40 },
+        pageBreak: "auto", // Enable automatic page breaks
+        showHead: "everyPage", // Show header on every page
+        didDrawPage: (data) => {
+          // Add background image to new pages
+          if (data.pageNumber > 1) {
+            doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+          }
+        },
+      })
+
+      let finalY = doc.lastAutoTable.finalY + 15
+
+      // ======= Consultation Fee - Displayed Separately =======
+      if (billData.consultationFee > 0) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(12)
+        doc.setTextColor(60, 60, 60)
+        doc.text("Consultation Fee:", 130, finalY)
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(12)
+        doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, 170, finalY)
+        finalY += 10
+      }
+
+      if (discount > 0) {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(12)
+        doc.setTextColor(60, 60, 60)
+        doc.text("Discount %", 130, finalY)
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(12)
+        doc.text(`${discount}`, 170, finalY)
+        finalY += 8
+      }
+
+      // ======= Net Amount - Displayed Separately =======
+      doc.setDrawColor(150)
+      doc.setLineWidth(0.5)
+      doc.line(14, finalY, pageWidth - 14, finalY)
+      finalY += 6
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(14)
+      doc.setTextColor(0, 100, 0)
+      doc.text("Net Amount:", 130, finalY)
+      doc.text(`Rs. ${billData.netAmount || "N/A"}`, 170, finalY)
+
+      doc.save(`${billData.patientName}_Bill_${selectedDate}.pdf`)
     })
-
-    let finalY = doc.lastAutoTable.finalY + 15
-
-    // ======= Consultation Fee - Displayed Separately =======
-    if (billData.consultationFee > 0) {
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(60, 60, 60)
-      doc.text("Consultation Fee:", 130, finalY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(12)
-      doc.text(`Rs. ${billData.consultationFee.toFixed(2)}`, 170, finalY)
-      finalY += 10
-    }
-
-    if (discount > 0) {
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(12)
-      doc.setTextColor(60, 60, 60)
-      doc.text("Discount %", 130, finalY)
-      doc.setFont("helvetica", "normal")
-      doc.setFontSize(12)
-      doc.text(`${discount}`, 170, finalY)
-      finalY += 8
-    }
-
-    // ======= Net Amount - Displayed Separately =======
-    doc.setDrawColor(150)
-    doc.setLineWidth(0.5)
-    doc.line(14, finalY, pageWidth - 14, finalY)
-    finalY += 6
-
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(14)
-    doc.setTextColor(0, 100, 0)
-    doc.text("Net Amount:", 130, finalY)
-    doc.text(`Rs. ${billData.netAmount || "N/A"}`, 170, finalY)
-
-    doc.save(`${billData.patientName}_Bill_${selectedDate}.pdf`)
-  })
-}
+  }
   const handleBackClick = () => {
     navigate("/Reception/PatientDetails")
   }
@@ -762,11 +763,10 @@ const generatePDF = (billData, isExisting) => {
         </InfoContainer>
       )}
 
-
       {viewMode === "existing" ? (
         <>
           {existingBills.length > 0 ? (
-            <TableContainer style={{width:"90%",  margin: '0 auto', marginTop:"20px"}}>
+            <TableContainer style={{ width: "90%", margin: "0 auto", marginTop: "20px" }}>
               <StyledTable>
                 <thead>
                   <tr>
@@ -864,19 +864,38 @@ const generatePDF = (billData, isExisting) => {
                       />
                     </td>
                     <td>
-                      <select
+                      <Select
                         value={
-                          row.particulars ? medicineOptions.find((med) => med.label === row.particulars)?.id || "" : ""
+                          row.particulars
+                            ? medicineOptions.find((med) => med.label === row.particulars)
+                              ? {
+                                  value: medicineOptions.find((med) => med.label === row.particulars).id,
+                                  label: row.particulars,
+                                }
+                              : null
+                            : null
                         }
-                        onChange={(e) => handleMedicineSelect(row.id, e.target.value)}
-                      >
-                        <option value="">Select Medicine...</option>
-                        {medicineOptions.map((medicine) => (
-                          <option key={medicine.id} value={medicine.id}>
-                            {medicine.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(selectedOption) => handleMedicineSelect(row.id, selectedOption?.value || "")}
+                        options={medicineOptions.map((medicine) => ({
+                          value: medicine.id,
+                          label: `${medicine.label} - Stock: ${medicine.stock}`,
+                          isDisabled: medicine.stock === 0,
+                        }))}
+                        placeholder="Search and select medicine..."
+                        isClearable
+                        isSearchable
+                        menuPortalTarget={document.body}
+                        styles={{
+                          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                          menu: (base) => ({ ...base, zIndex: 9999 }),
+                          control: (base) => ({ ...base, minHeight: "38px", fontSize: "12px" }),
+                          option: (base, state) => ({
+                            ...base,
+                            backgroundColor: state.isDisabled ? "#f8f9fa" : base.backgroundColor,
+                            color: state.isDisabled ? "#6c757d" : base.color,
+                          }),
+                        }}
+                      />
                     </td>
                     <td>
                       <input
@@ -997,12 +1016,8 @@ const generatePDF = (billData, isExisting) => {
 
           <center style={{ marginTop: "20px" }}>
             <div className="d-flex justify-content-center gap-3">
-              <button onClick={handleSaveData}>
-                Save
-              </button>
-              <button onClick={handleDownloadNew}>
-                Download
-              </button>
+              <button onClick={handleSaveData}>Save</button>
+              <button onClick={handleDownloadNew}>Download</button>
             </div>
           </center>
         </StyledContainer>

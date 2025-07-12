@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useRef } from "react"
 import { useLocation } from "react-router-dom"
 import { Col, Row, Form, Tab, Nav } from "react-bootstrap"
@@ -22,7 +24,7 @@ import "jspdf-autotable"
 import Admin from "./images/SVKprescription.jpg"
 import Doctor from "./images/AllDoctorsprescription.jpg"
 import { FaEdit, FaSave, FaTimes } from "react-icons/fa"
-import Swal from 'sweetalert2'
+import Swal from "sweetalert2"
 
 const darkGray = "#b3a591"
 
@@ -428,6 +430,25 @@ const VitalInput = styled.input`
   font-size: 12px;
 `
 
+// NEW: Styled component for the save button with disabled state
+const SaveButton = styled.button`
+  float: right;
+  margin-top: -40px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
+  background-color: ${(props) => (props.disabled ? "#cccccc" : "#28a745")};
+  color: ${(props) => (props.disabled ? "#666666" : "white")};
+  opacity: ${(props) => (props.disabled ? 0.6 : 1)};
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: ${(props) => (props.disabled ? "#cccccc" : "#218838")};
+  }
+`
+
 const PrescriptionDetails = () => {
   const [selectedDiagnosis, setSelectedDiagnosis] = useState([])
   const [selectedComplaints, setSelectedComplaints] = useState([])
@@ -457,6 +478,11 @@ const PrescriptionDetails = () => {
   const [vitalsLoaded, setVitalsLoaded] = useState(false)
   const [selectedPrescriptions, setSelectedPrescriptions] = useState(new Set())
 
+  // NEW: State management for save functionality
+  const [isSaved, setIsSaved] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+
   const [loadedData, setLoadedData] = useState({
     diagnosis: [],
     complaints: [],
@@ -468,7 +494,6 @@ const PrescriptionDetails = () => {
     nextVisit: null,
   })
 
-  // ADD: New state to track original loaded data for comparison
   const [originalLoadedData, setOriginalLoadedData] = useState({
     diagnosis: [],
     complaints: [],
@@ -480,7 +505,6 @@ const PrescriptionDetails = () => {
     nextVisit: null,
   })
 
-  // ADD: New state to track what data has been modified by user
   const [userModifiedData, setUserModifiedData] = useState({
     diagnosis: false,
     complaints: false,
@@ -495,12 +519,23 @@ const PrescriptionDetails = () => {
   const [stockWarnings, setStockWarnings] = useState({})
   const [loadedPrescriptionIndices, setLoadedPrescriptionIndices] = useState(new Set())
 
-  // ADD: Function to track user modifications
+  // NEW: Function to mark data as modified and enable save button
   const markAsModified = (dataType) => {
-    setUserModifiedData((prev) => ({
-      ...prev,
-      [dataType]: true,
-    }))
+    if (!isInitialLoad) {
+      setUserModifiedData((prev) => ({
+        ...prev,
+        [dataType]: true,
+      }))
+      setHasUnsavedChanges(true)
+      setIsSaved(false)
+    }
+  }
+
+  // NEW: Function to reset save state when data is loaded
+  const resetSaveState = () => {
+    setIsSaved(false)
+    setHasUnsavedChanges(false)
+    setIsInitialLoad(false)
   }
 
   const handleSelectDiagnosis = (diagnosis) => {
@@ -687,6 +722,7 @@ const PrescriptionDetails = () => {
     setVital(editableVitals)
     setIsEditingVitals(false)
     setSuccessMessage("Vitals updated (will be saved with prescription)")
+    markAsModified("vitals") // NEW: Mark vitals as modified
 
     setTimeout(() => {
       setSuccessMessage("")
@@ -714,7 +750,7 @@ const PrescriptionDetails = () => {
     const prescriptionToDelete = prescriptionInputs[index]
     if (prescriptionToDelete.selectedPrescription && prescriptionToDelete.selectedPrescription.length > 0) {
       const medicineName = prescriptionToDelete.selectedPrescription[0].label
-      setSelectedPrescriptions(prev => {
+      setSelectedPrescriptions((prev) => {
         const newSet = new Set(prev)
         newSet.delete(medicineName)
         return newSet
@@ -746,7 +782,7 @@ const PrescriptionDetails = () => {
   const handlePrescriptionChange = (index, key, value) => {
     if (key === "selectedPrescription" && value.length > 0) {
       const medicineName = value[0].label
-      
+
       // Check if this medicine is already selected
       if (selectedPrescriptions.has(medicineName)) {
         setSuccessMessage("Medicine Already selected")
@@ -759,7 +795,7 @@ const PrescriptionDetails = () => {
       // Remove previous selection from set if exists
       const currentPrescription = prescriptionInputs[index].selectedPrescription
       if (currentPrescription && currentPrescription.length > 0) {
-        setSelectedPrescriptions(prev => {
+        setSelectedPrescriptions((prev) => {
           const newSet = new Set(prev)
           newSet.delete(currentPrescription[0].label)
           return newSet
@@ -767,7 +803,7 @@ const PrescriptionDetails = () => {
       }
 
       // Add new selection to set
-      setSelectedPrescriptions(prev => new Set(prev).add(medicineName))
+      setSelectedPrescriptions((prev) => new Set(prev).add(medicineName))
     }
 
     setPrescriptionInputs((prev) => {
@@ -831,11 +867,17 @@ const PrescriptionDetails = () => {
             const plans = parsePlans(data.plans)
             setPlanDetails(plans)
           }
+
+          // NEW: Reset save state when data is loaded from server
+          resetSaveState()
         } else {
           console.log("No summary data found for the given patient and date")
+          // NEW: Reset save state for new records
+          resetSaveState()
         }
       } catch (error) {
         console.error("Error fetching summary data", error)
+        resetSaveState()
       }
     }
 
@@ -933,7 +975,6 @@ const PrescriptionDetails = () => {
       }
 
       if (summaryData.diagnosis) {
-        // ADD: Remove duplicates from diagnosis
         const uniqueDiagnosis = [...new Set(summaryData.diagnosis.split(", ").map((d) => d.trim()))]
         newLoadedData.diagnosis = uniqueDiagnosis.map((d) => ({ diagnosis: d }))
       }
@@ -948,7 +989,6 @@ const PrescriptionDetails = () => {
       }
 
       if (summaryData.findings) {
-        // ADD: Remove duplicates from findings
         const uniqueFindings = [...new Set(summaryData.findings.split(", ").map((f) => f.trim()))]
         newLoadedData.findings = uniqueFindings.map((f) => ({ findings: f }))
       }
@@ -973,7 +1013,6 @@ const PrescriptionDetails = () => {
       }
 
       if (summaryData.tests) {
-        // ADD: Remove duplicates from tests
         const uniqueTests = [...new Set(summaryData.tests.split(", ").map((t) => t.trim()))]
         newLoadedData.tests = uniqueTests.map((t) => ({ test: t }))
       }
@@ -983,7 +1022,6 @@ const PrescriptionDetails = () => {
       }
 
       setLoadedData(newLoadedData)
-      // ADD: Store original loaded data for comparison
       setOriginalLoadedData(JSON.parse(JSON.stringify(newLoadedData)))
 
       if (selectedDiagnosis.length === 0 && newLoadedData.diagnosis.length > 0) {
@@ -1004,104 +1042,108 @@ const PrescriptionDetails = () => {
     }
   }, [summaryData])
 
-// Update the useEffect that fetches vitals to check prescription data first
-useEffect(() => {
-  if (!patientUID || !branchCode) return
+  useEffect(() => {
+    if (!patientUID || !branchCode) return
 
-  const fetchVitals = async () => {
-    let vitalsFound = false
-    setVitalsLoaded(false)
+    const fetchVitals = async () => {
+      let vitalsFound = false
+      setVitalsLoaded(false)
 
-    // First: Check if we have vitals in existing prescription/summary data
-    if (summaryData && summaryData.vital) {
-      try {
-        // Handle both string (JSON) and object formats
-        let prescriptionVitals
-        if (typeof summaryData.vital === 'string') {
-          prescriptionVitals = JSON.parse(summaryData.vital)
-        } else {
-          prescriptionVitals = summaryData.vital
+      if (summaryData && summaryData.vital) {
+        try {
+          let prescriptionVitals
+          if (typeof summaryData.vital === "string") {
+            prescriptionVitals = JSON.parse(summaryData.vital)
+          } else {
+            prescriptionVitals = summaryData.vital
+          }
+
+          if (
+            prescriptionVitals &&
+            (prescriptionVitals.height ||
+              prescriptionVitals.weight ||
+              prescriptionVitals.pulseRate ||
+              prescriptionVitals.bloodPressure)
+          ) {
+            console.log("Loading vitals from summary data:", prescriptionVitals)
+            setVital(prescriptionVitals)
+            setEditableVitals({
+              height: prescriptionVitals.height || "",
+              weight: prescriptionVitals.weight || "",
+              pulseRate: prescriptionVitals.pulseRate || "",
+              bloodPressure: prescriptionVitals.bloodPressure || "",
+            })
+            vitalsFound = true
+            setVitalsLoaded(true)
+            return
+          }
+        } catch (error) {
+          console.error("Error parsing prescription vitals:", error)
         }
-       
-        if (
-          prescriptionVitals &&
-          (prescriptionVitals.height ||
-            prescriptionVitals.weight ||
-            prescriptionVitals.pulseRate ||
-            prescriptionVitals.bloodPressure)
-        ) {
-          console.log("Loading vitals from summary data:", prescriptionVitals)
-          setVital(prescriptionVitals)
-          setEditableVitals({
-            height: prescriptionVitals.height || "",
-            weight: prescriptionVitals.weight || "",
-            pulseRate: prescriptionVitals.pulseRate || "",
-            bloodPressure: prescriptionVitals.bloodPressure || "",
-          })
-          vitalsFound = true
-          setVitalsLoaded(true)
-          return // Don't fetch from vitals API if we have prescription vitals
-        }
-      } catch (error) {
-        console.error("Error parsing prescription vitals:", error)
       }
-    }
 
-    // Second: If no prescription vitals, try fetching from vitals API
-    if (!vitalsFound) {
-      try {
-        const response = await axios.get(`${Cosmetologybaseurl}vitalform/`, {
-          params: {
-            patientUID,
-            branch_code: branchCode,
-          },
+      if (!vitalsFound) {
+        try {
+          const response = await axios.get(`${Cosmetologybaseurl}vitalform/`, {
+            params: {
+              patientUID,
+              branch_code: branchCode,
+            },
+          })
+
+          const vitalData = response.data.vital[0] || {}
+          if (vitalData && (vitalData.height || vitalData.weight || vitalData.pulseRate || vitalData.bloodPressure)) {
+            console.log("Loading vitals from vitals API:", vitalData)
+            setVital(vitalData)
+            setEditableVitals({
+              height: vitalData.height || "",
+              weight: vitalData.weight || "",
+              pulseRate: vitalData.pulseRate || "",
+              bloodPressure: vitalData.bloodPressure || "",
+            })
+            vitalsFound = true
+          }
+        } catch (error) {
+          console.error("Error fetching vital data:", error)
+        }
+      }
+
+      if (!vitalsFound) {
+        console.log("No vitals found, setting as unavailable")
+        setVital({
+          height: "Unavailable",
+          weight: "Unavailable",
+          pulseRate: "Unavailable",
+          bloodPressure: "Unavailable",
         })
-
-        const vitalData = response.data.vital[0] || {}
-        if (vitalData && (vitalData.height || vitalData.weight || vitalData.pulseRate || vitalData.bloodPressure)) {
-          console.log("Loading vitals from vitals API:", vitalData)
-          setVital(vitalData)
-          setEditableVitals({
-            height: vitalData.height || "",
-            weight: vitalData.weight || "",
-            pulseRate: vitalData.pulseRate || "",
-            bloodPressure: vitalData.bloodPressure || "",
-          })
-          vitalsFound = true
-        }
-      } catch (error) {
-        console.error("Error fetching vital data:", error)
+        setEditableVitals({
+          height: "",
+          weight: "",
+          pulseRate: "",
+          bloodPressure: "",
+        })
       }
+
+      setVitalsLoaded(true)
     }
 
-    // Third: If neither source has vitals, set unavailable state
-    if (!vitalsFound) {
-      console.log("No vitals found, setting as unavailable")
-      setVital({
-        height: "Unavailable",
-        weight: "Unavailable",
-        pulseRate: "Unavailable",
-        bloodPressure: "Unavailable",
-      })
-      setEditableVitals({
-        height: "",
-        weight: "",
-        pulseRate: "",
-        bloodPressure: "",
-      })
-    }
+    fetchVitals()
+  }, [patientUID, branchCode, summaryData])
 
-    setVitalsLoaded(true)
-  }
-
-  fetchVitals()
-}, [patientUID, branchCode, summaryData])
-
-
+  // NEW: Enhanced handleSubmit with save state management
   const handleSubmit = async () => {
+    // NEW: Prevent multiple saves if already saved and no changes
+    if (isSaved && !hasUnsavedChanges) {
+      setSuccessMessage("No changes to save")
+      setTimeout(() => {
+        setSuccessMessage("")
+      }, 3000)
+      return
+    }
+
     try {
       const userName = localStorage.getItem("userName") || "Unknown"
-      const userRole = localStorage.getItem("userRole") || "Doctor" // Get user role
+      const userRole = localStorage.getItem("userRole") || "Doctor"
 
       const validPrescriptions = prescriptionInputs.filter(
         (input) => input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "",
@@ -1112,7 +1154,6 @@ useEffect(() => {
         .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
         .join("\n")
 
-      // Helper function to remove duplicates from comma-separated strings
       const removeDuplicates = (str) => {
         if (!str || typeof str !== "string") return str
         return [
@@ -1125,7 +1166,6 @@ useEffect(() => {
         ].join(", ")
       }
 
-      // Helper function to clean and deduplicate array-based data
       const cleanArrayData = (data) => {
         if (!data || !Array.isArray(data)) return data
         return [...new Set(data.map((item) => (typeof item === "string" ? item.trim() : item)))].filter(Boolean)
@@ -1195,11 +1235,9 @@ useEffect(() => {
       if (getResponse.data && getResponse.data.length > 0) {
         const existingData = getResponse.data[0]
 
-        // Enhanced deep comparison function with better normalization
         const normalizeValue = (value) => {
           if (value === null || value === undefined) return ""
           if (typeof value === "string") {
-            // Remove extra spaces and normalize comma-separated values
             const trimmed = value.trim()
             if (trimmed.includes(",")) {
               return removeDuplicates(trimmed)
@@ -1219,7 +1257,6 @@ useEffect(() => {
           const keys1 = Object.keys(obj1)
           const keys2 = Object.keys(obj2)
 
-          // Get all unique keys from both objects
           const allKeys = [...new Set([...keys1, ...keys2])]
 
           for (const key of allKeys) {
@@ -1239,7 +1276,6 @@ useEffect(() => {
           return true
         }
 
-        // Create a comparable version of existingData with same structure as currentSummaryData
         const existingDataComparable = {
           patientName: existingData.patientName || "",
           patientUID: existingData.patientUID || "",
@@ -1258,11 +1294,13 @@ useEffect(() => {
           proceduresList: existingData.proceduresList || "",
         }
 
-        // Check if there are actual changes
         const hasChanges = !areObjectsEqual(currentSummaryData, existingDataComparable)
 
         if (!hasChanges) {
           setSuccessMessage("No changes made")
+          // NEW: Mark as saved even if no changes
+          setIsSaved(true)
+          setHasUnsavedChanges(false)
         } else {
           await axios.patch(`${Cosmetologybaseurl}summary/post/`, {
             ...currentSummaryData,
@@ -1270,17 +1308,20 @@ useEffect(() => {
           })
           setSuccessMessage("Updated successfully")
 
-          // Show confirmation alert after 3 seconds
+          // NEW: Mark as saved after successful update
+          setIsSaved(true)
+          setHasUnsavedChanges(false)
+
           setTimeout(() => {
             Swal.fire({
-              title: 'Go Back?',
-              text: 'Do you want to go back to the appointments page?',
-              icon: 'question',
+              title: "Go Back?",
+              text: "Do you want to go back to the appointments page?",
+              icon: "question",
               showCancelButton: true,
-              confirmButtonText: 'Yes, take me there',
-              cancelButtonText: 'No, stay here',
-              confirmButtonColor: '#3085d6',
-              cancelButtonColor: '#d33',
+              confirmButtonText: "Yes, take me there",
+              cancelButtonText: "No, stay here",
+              confirmButtonColor: "#3085d6",
+              cancelButtonColor: "#d33",
             }).then((result) => {
               if (result.isConfirmed) {
                 const navigationPath = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
@@ -1289,36 +1330,37 @@ useEffect(() => {
               setSuccessMessage("")
             })
           }, 3000)
-          return // Exit early to prevent clearing message immediately
+          return
         }
       } else {
         await axios.post(`${Cosmetologybaseurl}summary/post/`, currentSummaryData)
         setSuccessMessage("Saved successfully")
 
-        // Show confirmation alert after 3 seconds
-          // Show confirmation alert after 3 seconds
-          setTimeout(() => {
-            Swal.fire({
-              title: 'Go Back?',
-              text: 'Do you want to go back to the appointments page?',
-              icon: 'question',
-              showCancelButton: true,
-              confirmButtonText: 'Yes, take me there',
-              cancelButtonText: 'No, stay here',
-              confirmButtonColor: '#3085d6',
-              cancelButtonColor: '#d33',
-            }).then((result) => {
-              if (result.isConfirmed) {
-                const navigationPath = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
-                window.location.href = navigationPath
-              }
-              setSuccessMessage("")
-            })
-          }, 3000)
-        return // Exit early to prevent clearing message immediately
+        // NEW: Mark as saved after successful creation
+        setIsSaved(true)
+        setHasUnsavedChanges(false)
+
+        setTimeout(() => {
+          Swal.fire({
+            title: "Go Back?",
+            text: "Do you want to go back to the appointments page?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Yes, take me there",
+            cancelButtonText: "No, stay here",
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+          }).then((result) => {
+            if (result.isConfirmed) {
+              const navigationPath = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
+              window.location.href = navigationPath
+            }
+            setSuccessMessage("")
+          })
+        }, 3000)
+        return
       }
 
-      // Clear message after 3 seconds (only for "No changes made")
       setTimeout(() => {
         setSuccessMessage("")
       }, 3000)
@@ -1330,6 +1372,7 @@ useEffect(() => {
       }, 3000)
     }
   }
+
   const summaryRef = useRef(null)
 
   const getMergedData = () => {
@@ -1411,16 +1454,13 @@ useEffect(() => {
   const getSummaryDetails = () => {
     const mergedData = getMergedData()
 
-    // Helper function to safely handle both array and string data
     const safeJoin = (data, field) => {
       if (!data || data.length === 0) return ""
 
-      // If it's already a string (from database), return as is
       if (typeof data === "string") {
         return data.trim()
       }
 
-      // If it's an array, extract the field and join
       if (Array.isArray(data)) {
         return data
           .map((item) => {
@@ -1434,7 +1474,6 @@ useEffect(() => {
       return ""
     }
 
-    // Helper function to remove duplicates and clean comma-separated strings
     const cleanString = (str) => {
       if (!str || typeof str !== "string") return ""
       return [
@@ -1451,12 +1490,11 @@ useEffect(() => {
     const complaintssummary = (() => {
       if (!mergedData.complaints || mergedData.complaints.length === 0) return []
 
-      // Handle case where complaints is a string (from database)
       if (typeof mergedData.complaints === "string") {
         try {
           const parsedComplaints = JSON.parse(mergedData.complaints)
           return parsedComplaints
-            .filter(complaint => complaint.complaints && complaint.complaints.trim() !== "") // Filter out empty complaints
+            .filter((complaint) => complaint.complaints && complaint.complaints.trim() !== "")
             .map((complaint, index) => (
               <SummaryListItem key={index}>
                 {complaint.complaints}
@@ -1464,28 +1502,27 @@ useEffect(() => {
               </SummaryListItem>
             ))
         } catch (e) {
-          // If parsing fails, treat as simple string
           const cleanedComplaints = cleanString(mergedData.complaints)
           return cleanedComplaints ? [<SummaryListItem key={0}>{cleanedComplaints}</SummaryListItem>] : []
         }
       }
 
-      // Handle array format (new data)
       return mergedData.complaints
-        .filter(input => {
-          // Filter out entries with no valid complaints
-          return input.selectedComplaints && 
-                input.selectedComplaints.length > 0 && 
-                input.selectedComplaints.some(complaint => complaint.complaints && complaint.complaints.trim() !== "")
+        .filter((input) => {
+          return (
+            input.selectedComplaints &&
+            input.selectedComplaints.length > 0 &&
+            input.selectedComplaints.some((complaint) => complaint.complaints && complaint.complaints.trim() !== "")
+          )
         })
         .map((input, index) => {
           const complaintText = input.selectedComplaints
-            .filter(complaint => complaint.complaints && complaint.complaints.trim() !== "") // Filter out empty complaints
-            .map(complaint => complaint.complaints)
+            .filter((complaint) => complaint.complaints && complaint.complaints.trim() !== "")
+            .map((complaint) => complaint.complaints)
             .join(", ")
-          
+
           const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || "N/A"}` : ""
-          
+
           return (
             <SummaryListItem key={index}>
               {complaintText}
@@ -1500,7 +1537,6 @@ useEffect(() => {
     const proceduresummary = (() => {
       if (!mergedData.procedures || mergedData.procedures.length === 0) return []
 
-      // Handle string format (from database)
       if (typeof mergedData.procedures === "string") {
         const procedureLines = mergedData.procedures.split("\n").filter(Boolean)
         return procedureLines.map((line, index) => (
@@ -1510,7 +1546,6 @@ useEffect(() => {
         ))
       }
 
-      // Handle array format (new data)
       return mergedData.procedures.map((procedure, index) => (
         <SummaryListItem key={index}>
           {procedure.selectedProcedures.map((p) => p.procedure).join(", ")} - Date:{" "}
@@ -1522,12 +1557,10 @@ useEffect(() => {
     const prescriptionSummary = (() => {
       if (!mergedData.prescriptions || mergedData.prescriptions.length === 0) return ""
 
-      // Handle string format (from database)
       if (typeof mergedData.prescriptions === "string") {
         return mergedData.prescriptions
       }
 
-      // Handle array format (new data)
       return mergedData.prescriptions
         .map((input, index) => {
           const times = ["M", "A", "E", "N"]
@@ -1548,12 +1581,10 @@ useEffect(() => {
     const validPlans = (() => {
       if (!mergedData.plans) return []
 
-      // Handle string format (from database)
       if (typeof mergedData.plans === "string") {
         return mergedData.plans.split("\n").filter(Boolean)
       }
 
-      // Handle object format (new data)
       return Object.entries(mergedData.plans)
         .filter(([key, value]) => value && value.trim() !== "")
         .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
@@ -1662,413 +1693,418 @@ useEffect(() => {
       </SummaryDetailsContainer>
     )
 
-// Enhanced Multi-Page PDF Export Function
-// Enhanced Multi-Page PDF Export Function with Doctor Signature Spacing
-const exportToPDF = () => {
-  const doc = new jsPDF("p", "mm", "a4")
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const margin = 14
-  const usableWidth = pageWidth - (margin * 2)
-  const usableHeight = pageHeight - 120 // Reserve more space for header, footer, and signature
-  const signatureSpace = 60 // Space reserved for doctor signature
-  const minSignatureY = pageHeight - signatureSpace // Minimum Y position for signature
+    const exportToPDF = () => {
+      const doc = new jsPDF("p", "mm", "a4")
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
+      const margin = 14
+      const usableWidth = pageWidth - margin * 2
+      const usableHeight = pageHeight - 120
+      const signatureSpace = 60
+      const minSignatureY = pageHeight - signatureSpace
 
-  // Data sanitization helpers
-  const sanitizeFilename = (str) => {
-    if (!str || str === null || str === undefined) return "Unknown"
-    return str.toString()
-      .replace(/[^a-zA-Z0-9\-_]/g, "_")
-      .replace(/_{2,}/g, "_")
-      .replace(/^_|_$/g, "")
-      .substring(0, 50)
-  }
-
-  const safeParseJSON = (jsonString) => {
-    if (!jsonString) return null
-    try {
-      let cleanString = jsonString
-      if (typeof jsonString === 'string' && jsonString.startsWith('"') && jsonString.endsWith('"')) {
-        cleanString = jsonString.slice(1, -1)
-        cleanString = cleanString.replace(/\\"/g, '"')
+      const sanitizeFilename = (str) => {
+        if (!str || str === null || str === undefined) return "Unknown"
+        return str
+          .toString()
+          .replace(/[^a-zA-Z0-9\-_]/g, "_")
+          .replace(/_{2,}/g, "_")
+          .replace(/^_|_$/g, "")
+          .substring(0, 50)
       }
-      return JSON.parse(cleanString)
-    } catch (e) {
-      console.warn("JSON parsing failed:", e)
-      return jsonString
-    }
-  }
 
-  // Helper function to add doctor signature with proper spacing
-  const addDoctorSignature = (doc, pageNumber = 1) => {
-    const doctorName = localStorage.getItem("userName") || "Doctor"
-    
-    // Add signature line
-    const signatureLineY = pageHeight - 55
-    const signatureLineStartX = pageWidth - margin - 80
-    const signatureLineEndX = pageWidth - margin - 10
-    
-    // Add doctor name below signature line
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(10)
-    doc.setTextColor(40, 40, 40)
-    doc.text(`Dr. ${doctorName}`, signatureLineStartX + 40, signatureLineY )
-    
-  }
-
-  // Select PDF background based on branch code
-  const role = localStorage.getItem("userRole")
-  let PDFMain = role === "Doctor" ? Doctor : (role === "Admin" ? Admin : Doctor)
-
-  const convertToBase64 = (url, callback) => {
-    const img = new Image()
-    img.crossOrigin = "Anonymous"
-    img.src = url
-    img.onload = () => {
-      const canvas = document.createElement("canvas")
-      canvas.width = img.width
-      canvas.height = img.height
-      const ctx = canvas.getContext("2d")
-      ctx.drawImage(img, 0, 0)
-      const dataURL = canvas.toDataURL("image/png")
-      callback(dataURL)
-    }
-    img.onerror = (error) => console.error("Error converting image to Base64:", error)
-  }
-
-  convertToBase64(PDFMain, (mainImage) => {
-    // Add background to first page
-    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-    
-    let currentY = 80
-
-    // Header information
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(12)
-    doc.setTextColor(40, 40, 40)
-    
-    const patientName = appointment?.patientName || "Unknown Patient"
-    const patientUID = appointment?.patientUID || "Unknown UID"
-    const appointmentDate = appointment?.appointmentDate || new Date().toISOString().split('T')[0]
-    
-    doc.text(`Patient: ${patientName}`, margin, currentY)
-    doc.text(`Patient UID: ${patientUID}`, margin, currentY + 8)
-    doc.text(`Date: ${appointmentDate}`, pageWidth - margin - 50, currentY)
-
-    currentY += 20
-
-    const createSubTableRows = (label, entries) => {
-      if (!entries || entries.length === 0) return []
-      return entries.map((entry, index) => [index === 0 ? label : "", entry])
-    }
-
-    let data = []
-
-    // Handle diagnosis (can be string or array)
-    if (selectedDiagnosis && selectedDiagnosis.length > 0) {
-      data = data.concat(
-        createSubTableRows(
-          "Diagnosis",
-          selectedDiagnosis.map((diagnosis) => diagnosis.diagnosis || diagnosis),
-        ),
-      )
-    }
-
-    // Handle complaints with proper JSON parsing
-    if (selectedComplaints && selectedComplaints.length > 0) {
-      data = data.concat(
-        createSubTableRows(
-          "Complaints",
-          selectedComplaints.map((input) => {
-            if (typeof input === 'string') {
-              const parsed = safeParseJSON(input)
-              if (Array.isArray(parsed)) {
-                return parsed.map(c => `${c.complaints} - Duration: ${c.duration} ${c.durationUnit}`).join(", ")
-              }
-              return input
-            }
-            const complaintText = input.selectedComplaints?.map((complaint) => complaint.complaints).join(", ") || "No complaint provided"
-            const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || "N/A"}` : ""
-            return `${complaintText}${duration}`
-          }),
-        ),
-      )
-    }
-
-    // Handle findings
-    if (selectedFindings && selectedFindings.length > 0) {
-      data = data.concat(
-        createSubTableRows(
-          "Findings",
-          selectedFindings.map((findings) => findings.findings || findings),
-        ),
-      )
-    }
-
-    // Handle procedures with proper JSON parsing
-    if (selectedProcedure && selectedProcedure.length > 0) {
-      data = data.concat(
-        createSubTableRows(
-          "Procedures",
-          selectedProcedure.map((p) => {
-            if (typeof p === 'string') {
-              return p
-            }
-            return `${p.selectedProcedures?.map((proc) => proc.procedure).join(", ")} - Date: ${p.selectedDate ? formatDate(new Date(p.selectedDate)) : "None"}`
-          }),
-        ),
-      )
-    }
-
-    // Handle plans
-    const validPlans = planDetails ? Object.entries(planDetails)
-      .filter(([key, value]) => value && value.trim() !== "")
-      .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`) : []
-
-    if (validPlans.length > 0) {
-      data.push(["Plans", validPlans.map((plan) => plan.split(":")[1]?.trim()).join("\n")])
-    }
-
-    // Handle tests
-    if (selectedTests && selectedTests.length > 0) {
-      data = data.concat(
-        createSubTableRows(
-          "Tests",
-          selectedTests.map((test) => test.test || test),
-        ),
-      )
-    }
-
-    // Handle next visit date
-    if (selectedDate) {
-      data.push(["Next Visit Date", selectedDate.toLocaleDateString()])
-    }
-
-    // Generate main table for all sections except prescription with multi-page support
-    if (data.length > 0) {
-      doc.autoTable({
-        startY: currentY,
-        head: [["Section", "Details"]],
-        body: data,
-        theme: "grid",
-        headStyles: {
-          fillColor: [116, 180, 155],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 10,
-        },
-        bodyStyles: {
-          fontSize: 9,
-          textColor: [40, 40, 40],
-          font: "helvetica",
-        },
-        styles: {
-          cellWidth: "wrap",
-          minCellHeight: 10,
-          overflow: "linebreak",
-          tableWidth: "auto",
-        },
-        columnStyles: {
-          0: { cellWidth: 60 },
-          1: { cellWidth: usableWidth - 60 },
-        },
-        margin: { left: margin, right: margin, top: 20, bottom: signatureSpace },
-        pageBreak: "auto",
-        showHead: "everyPage",
-        didDrawPage: function (data) {
-          // Add background image to new pages
-          if (data.pageNumber > 1) {
-            doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+      const safeParseJSON = (jsonString) => {
+        if (!jsonString) return null
+        try {
+          let cleanString = jsonString
+          if (typeof jsonString === "string" && jsonString.startsWith('"') && jsonString.endsWith('"')) {
+            cleanString = jsonString.slice(1, -1)
+            cleanString = cleanString.replace(/\\"/g, '"')
           }
-          
-          // Add doctor signature on every page
-          addDoctorSignature(doc, data.pageNumber)
+          return JSON.parse(cleanString)
+        } catch (e) {
+          console.warn("JSON parsing failed:", e)
+          return jsonString
         }
-      })
-      
-      currentY = doc.lastAutoTable.finalY + 20
-    }
-
-    // Enhanced prescription parsing for multi-page support
-    const formatPrescriptionForTable = (prescriptionData, isFromCurrentData = false) => {
-      try {
-        if (!prescriptionData) return []
-
-        let prescriptions = []
-
-        if (isFromCurrentData) {
-          if (Array.isArray(prescriptionData)) {
-            prescriptions = prescriptionData.map((input) => {
-              const times = ["M", "A", "E", "N"]
-                .map((time) => (input[time.toLowerCase()] ? time : ""))
-                .filter(Boolean)
-                .join(" ")
-              
-              const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ") || ""
-              const dosage = input.dosage || ""
-              const frequency = times || ""
-              const duration = input.durationNumber && input.duration 
-                ? `${input.durationNumber} ${input.duration}` 
-                : ""
-
-              return {
-                medication: medicineName,
-                dosage: dosage,
-                frequency: frequency,
-                duration: duration
-              }
-            })
-          }
-        } else {
-          if (typeof prescriptionData === "string") {
-            const lines = prescriptionData.split('\n').filter(line => line.trim() !== "")
-            prescriptions = lines.map(line => {
-              const parts = line.split(' - ')
-              let medication = "", dosage = "", frequency = "", duration = ""
-              
-              parts.forEach(part => {
-                if (part.startsWith('Prescription:')) {
-                  medication = part.replace('Prescription:', '').trim()
-                } else if (part.startsWith('Dosage:')) {
-                  dosage = part.replace('Dosage:', '').trim()
-                } else if (part.startsWith('Duration:')) {
-                  duration = part.replace('Duration:', '').trim()
-                } else if (part.match(/^[MAEN\s]+$/)) {
-                  frequency = part.trim()
-                }
-              })
-              
-              return { medication, dosage, frequency, duration }
-            })
-          }
-        }
-
-        return prescriptions
-          .filter(p => p.medication && p.medication.trim() !== "")
-          .map((prescription, index) => [
-            index + 1,
-            prescription.medication.trim() || "-",
-            prescription.dosage.trim() || "-",
-            prescription.frequency.trim() || "-",
-            prescription.duration.trim() || "-"
-          ])
-
-      } catch (error) {
-        console.warn("Error formatting prescription:", error)
-        return []
       }
-    }
 
-    // Handle prescription section with multi-page support
-    const validPrescriptions = prescriptionInputs?.filter(
-      (input) => input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "",
-    ) || []
+      const addDoctorSignature = (doc, pageNumber = 1) => {
+        const doctorName = localStorage.getItem("userName") || "Doctor"
 
-    if (validPrescriptions.length > 0) {
-      const prescriptionTableData = formatPrescriptionForTable(validPrescriptions, true)
-      
-      if (prescriptionTableData.length > 0) {
-        // Check if we need a new page for prescription section
-        // Consider both current position and space needed for signature
-        const estimatedTableHeight = (prescriptionTableData.length * 15) + 40 // Rough estimate
-        const spaceNeeded = estimatedTableHeight + signatureSpace + 30 // Extra buffer
-        
-        if (currentY + spaceNeeded > pageHeight) {
-          doc.addPage()
-          doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-          currentY = 80
+        // Add signature line
+        const signatureLineY = pageHeight - 55
+        const signatureLineStartX = pageWidth - margin - 80
+        const signatureLineEndX = pageWidth - margin - 10
+
+        // Add doctor name below signature line
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(10)
+        doc.setTextColor(40, 40, 40)
+        doc.text(`Dr. ${doctorName}`, signatureLineStartX + 40, signatureLineY)
+      }
+
+      // Select PDF background based on branch code
+      const role = localStorage.getItem("userRole")
+      const PDFMain = role === "Doctor" ? Doctor : role === "Admin" ? Admin : Doctor
+
+      const convertToBase64 = (url, callback) => {
+        const img = new Image()
+        img.crossOrigin = "Anonymous"
+        img.src = url
+        img.onload = () => {
+          const canvas = document.createElement("canvas")
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext("2d")
+          ctx.drawImage(img, 0, 0)
+          const dataURL = canvas.toDataURL("image/png")
+          callback(dataURL)
         }
-        
+        img.onerror = (error) => console.error("Error converting image to Base64:", error)
+      }
+
+      convertToBase64(PDFMain, (mainImage) => {
+        // Add background to first page
+        doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+
+        let currentY = 80
+
+        // Header information
         doc.setFont("helvetica", "bold")
         doc.setFontSize(12)
         doc.setTextColor(40, 40, 40)
-        doc.text("Prescription", margin, currentY)
-        
-        currentY += 10
 
-        doc.autoTable({
-          startY: currentY,
-          head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
-          body: prescriptionTableData,
-          theme: "grid",
-          headStyles: {
-            fillColor: [76, 140, 115],
-            textColor: [255, 255, 255],
-            fontStyle: "bold",
-            fontSize: 9,
-          },
-          bodyStyles: {
-            fontSize: 8,
-            textColor: [40, 40, 40],
-            font: "helvetica",
-          },
-          styles: {
-            cellWidth: "wrap",
-            minCellHeight: 8,
-            overflow: "linebreak",
-            tableWidth: "auto",
-          },
-          columnStyles: {
-            0: { cellWidth: 15, halign: "center" },
-            1: { cellWidth: (usableWidth - 15) * 0.4 },
-            2: { cellWidth: (usableWidth - 15) * 0.2 },
-            3: { cellWidth: (usableWidth - 15) * 0.2 },
-            4: { cellWidth: (usableWidth - 15) * 0.2 },
-          },
-          margin: { left: margin, right: margin, top: 20, bottom: signatureSpace },
-          pageBreak: "auto",
-          showHead: "everyPage",
-          didDrawPage: function (data) {
-            // Add background image to new pages
-            if (data.pageNumber > 1) {
-              doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+        const patientName = appointment?.patientName || "Unknown Patient"
+        const patientUID = appointment?.patientUID || "Unknown UID"
+        const appointmentDate = appointment?.appointmentDate || new Date().toISOString().split("T")[0]
+
+        doc.text(`Patient: ${patientName}`, margin, currentY)
+        doc.text(`Patient UID: ${patientUID}`, margin, currentY + 8)
+        doc.text(`Date: ${appointmentDate}`, pageWidth - margin - 50, currentY)
+
+        currentY += 20
+
+        const createSubTableRows = (label, entries) => {
+          if (!entries || entries.length === 0) return []
+          return entries.map((entry, index) => [index === 0 ? label : "", entry])
+        }
+
+        let data = []
+
+        // Handle diagnosis (can be string or array)
+        if (selectedDiagnosis && selectedDiagnosis.length > 0) {
+          data = data.concat(
+            createSubTableRows(
+              "Diagnosis",
+              selectedDiagnosis.map((diagnosis) => diagnosis.diagnosis || diagnosis),
+            ),
+          )
+        }
+
+        // Handle complaints with proper JSON parsing
+        if (selectedComplaints && selectedComplaints.length > 0) {
+          data = data.concat(
+            createSubTableRows(
+              "Complaints",
+              selectedComplaints.map((input) => {
+                if (typeof input === "string") {
+                  const parsed = safeParseJSON(input)
+                  if (Array.isArray(parsed)) {
+                    return parsed.map((c) => `${c.complaints} - Duration: ${c.duration} ${c.durationUnit}`).join(", ")
+                  }
+                  return input
+                }
+                const complaintText =
+                  input.selectedComplaints?.map((complaint) => complaint.complaints).join(", ") ||
+                  "No complaint provided"
+                const duration = input.duration ? ` - Duration: ${input.duration} ${input.durationUnit || "N/A"}` : ""
+                return `${complaintText}${duration}`
+              }),
+            ),
+          )
+        }
+
+        // Handle findings
+        if (selectedFindings && selectedFindings.length > 0) {
+          data = data.concat(
+            createSubTableRows(
+              "Findings",
+              selectedFindings.map((findings) => findings.findings || findings),
+            ),
+          )
+        }
+
+        // Handle procedures with proper JSON parsing
+        if (selectedProcedure && selectedProcedure.length > 0) {
+          data = data.concat(
+            createSubTableRows(
+              "Procedures",
+              selectedProcedure.map((p) => {
+                if (typeof p === "string") {
+                  return p
+                }
+                return `${p.selectedProcedures?.map((proc) => proc.procedure).join(", ")} - Date: ${p.selectedDate ? formatDate(new Date(p.selectedDate)) : "None"}`
+              }),
+            ),
+          )
+        }
+
+        // Handle plans
+        const validPlans = planDetails
+          ? Object.entries(planDetails)
+              .filter(([key, value]) => value && value.trim() !== "")
+              .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
+          : []
+
+        if (validPlans.length > 0) {
+          data.push(["Plans", validPlans.map((plan) => plan.split(":")[1]?.trim()).join("\n")])
+        }
+
+        // Handle tests
+        if (selectedTests && selectedTests.length > 0) {
+          data = data.concat(
+            createSubTableRows(
+              "Tests",
+              selectedTests.map((test) => test.test || test),
+            ),
+          )
+        }
+
+        // Handle next visit date
+        if (selectedDate) {
+          data.push(["Next Visit Date", selectedDate.toLocaleDateString()])
+        }
+
+        // Generate main table for all sections except prescription with multi-page support
+        if (data.length > 0) {
+          doc.autoTable({
+            startY: currentY,
+            head: [["Section", "Details"]],
+            body: data,
+            theme: "grid",
+            headStyles: {
+              fillColor: [116, 180, 155],
+              textColor: [255, 255, 255],
+              fontStyle: "bold",
+              fontSize: 10,
+            },
+            bodyStyles: {
+              fontSize: 9,
+              textColor: [40, 40, 40],
+              font: "helvetica",
+            },
+            styles: {
+              cellWidth: "wrap",
+              minCellHeight: 10,
+              overflow: "linebreak",
+              tableWidth: "auto",
+            },
+            columnStyles: {
+              0: { cellWidth: 60 },
+              1: { cellWidth: usableWidth - 60 },
+            },
+            margin: { left: margin, right: margin, top: 20, bottom: signatureSpace },
+            pageBreak: "auto",
+            showHead: "everyPage",
+            didDrawPage: (data) => {
+              // Add background image to new pages
+              if (data.pageNumber > 1) {
+                doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+              }
+
+              // Add doctor signature on every page
+              addDoctorSignature(doc, data.pageNumber)
+            },
+          })
+
+          currentY = doc.lastAutoTable.finalY + 20
+        }
+
+        // Enhanced prescription parsing for multi-page support
+        const formatPrescriptionForTable = (prescriptionData, isFromCurrentData = false) => {
+          try {
+            if (!prescriptionData) return []
+
+            let prescriptions = []
+
+            if (isFromCurrentData) {
+              if (Array.isArray(prescriptionData)) {
+                prescriptions = prescriptionData.map((input) => {
+                  const times = ["M", "A", "E", "N"]
+                    .map((time) => (input[time.toLowerCase()] ? time : ""))
+                    .filter(Boolean)
+                    .join(" ")
+
+                  const medicineName = input.selectedPrescription?.map((p) => p.label).join(", ") || ""
+                  const dosage = input.dosage || ""
+                  const frequency = times || ""
+                  const duration =
+                    input.durationNumber && input.duration ? `${input.durationNumber} ${input.duration}` : ""
+
+                  return {
+                    medication: medicineName,
+                    dosage: dosage,
+                    frequency: frequency,
+                    duration: duration,
+                  }
+                })
+              }
+            } else {
+              if (typeof prescriptionData === "string") {
+                const lines = prescriptionData.split("\n").filter((line) => line.trim() !== "")
+                prescriptions = lines.map((line) => {
+                  const parts = line.split(" - ")
+                  let medication = "",
+                    dosage = "",
+                    frequency = "",
+                    duration = ""
+
+                  parts.forEach((part) => {
+                    if (part.startsWith("Prescription:")) {
+                      medication = part.replace("Prescription:", "").trim()
+                    } else if (part.startsWith("Dosage:")) {
+                      dosage = part.replace("Dosage:", "").trim()
+                    } else if (part.startsWith("Duration:")) {
+                      duration = part.replace("Duration:", "").trim()
+                    } else if (part.match(/^[MAEN\s]+$/)) {
+                      frequency = part.trim()
+                    }
+                  })
+
+                  return { medication, dosage, frequency, duration }
+                })
+              }
             }
-            
-            // Add doctor signature on every page
-            addDoctorSignature(doc, data.pageNumber)
+
+            return prescriptions
+              .filter((p) => p.medication && p.medication.trim() !== "")
+              .map((prescription, index) => [
+                index + 1,
+                prescription.medication.trim() || "-",
+                prescription.dosage.trim() || "-",
+                prescription.frequency.trim() || "-",
+                prescription.duration.trim() || "-",
+              ])
+          } catch (error) {
+            console.warn("Error formatting prescription:", error)
+            return []
           }
-        })
-        
-        // Final check: if the table ended too close to signature area, add new page
-        const finalY = doc.lastAutoTable.finalY
-        if (finalY > minSignatureY - 20) {
-          doc.addPage()
-          doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+        }
+
+        // Handle prescription section with multi-page support
+        const validPrescriptions =
+          prescriptionInputs?.filter(
+            (input) => input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "",
+          ) || []
+
+        if (validPrescriptions.length > 0) {
+          const prescriptionTableData = formatPrescriptionForTable(validPrescriptions, true)
+
+          if (prescriptionTableData.length > 0) {
+            // Check if we need a new page for prescription section
+            // Consider both current position and space needed for signature
+            const estimatedTableHeight = prescriptionTableData.length * 15 + 40 // Rough estimate
+            const spaceNeeded = estimatedTableHeight + signatureSpace + 30 // Extra buffer
+
+            if (currentY + spaceNeeded > pageHeight) {
+              doc.addPage()
+              doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+              currentY = 80
+            }
+
+            doc.setFont("helvetica", "bold")
+            doc.setFontSize(12)
+            doc.setTextColor(40, 40, 40)
+            doc.text("Prescription", margin, currentY)
+
+            currentY += 10
+
+            doc.autoTable({
+              startY: currentY,
+              head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
+              body: prescriptionTableData,
+              theme: "grid",
+              headStyles: {
+                fillColor: [76, 140, 115],
+                textColor: [255, 255, 255],
+                fontStyle: "bold",
+                fontSize: 9,
+              },
+              bodyStyles: {
+                fontSize: 8,
+                textColor: [40, 40, 40],
+                font: "helvetica",
+              },
+              styles: {
+                cellWidth: "wrap",
+                minCellHeight: 8,
+                overflow: "linebreak",
+                tableWidth: "auto",
+              },
+              columnStyles: {
+                0: { cellWidth: 15, halign: "center" },
+                1: { cellWidth: (usableWidth - 15) * 0.4 },
+                2: { cellWidth: (usableWidth - 15) * 0.2 },
+                3: { cellWidth: (usableWidth - 15) * 0.2 },
+                4: { cellWidth: (usableWidth - 15) * 0.2 },
+              },
+              margin: { left: margin, right: margin, top: 20, bottom: signatureSpace },
+              pageBreak: "auto",
+              showHead: "everyPage",
+              didDrawPage: (data) => {
+                // Add background image to new pages
+                if (data.pageNumber > 1) {
+                  doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+                }
+
+                // Add doctor signature on every page
+                addDoctorSignature(doc, data.pageNumber)
+              },
+            })
+
+            // Final check: if the table ended too close to signature area, add new page
+            const finalY = doc.lastAutoTable.finalY
+            if (finalY > minSignatureY - 20) {
+              doc.addPage()
+              doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+              addDoctorSignature(doc, doc.internal.getNumberOfPages())
+            }
+          }
+        } else {
+          // If no prescription section, still add signature to the last page
+          if (currentY > minSignatureY - 20) {
+            doc.addPage()
+            doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+          }
           addDoctorSignature(doc, doc.internal.getNumberOfPages())
         }
-      }
-    } else {
-      // If no prescription section, still add signature to the last page
-      if (currentY > minSignatureY - 20) {
-        doc.addPage()
-        doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-      }
-      addDoctorSignature(doc, doc.internal.getNumberOfPages())
+
+        // Generate filename
+        const safeBranchCode = sanitizeFilename(branchCode || appointment?.branch_code || "Branch")
+        const safePatientName = sanitizeFilename(patientName)
+        const safePatientUID = sanitizeFilename(patientUID)
+        const safeAppointmentDate = sanitizeFilename(appointmentDate.replace(/[-/]/g, "_"))
+
+        const filename = `${safeBranchCode}_${safePatientName}_${safePatientUID}_${safeAppointmentDate}.pdf`
+        const finalFilename = filename.endsWith(".pdf") ? filename : `${filename}.pdf`
+
+        doc.save(finalFilename)
+      })
     }
 
-    // Generate filename
-    const safeBranchCode = sanitizeFilename(branchCode || appointment?.branch_code || "Branch")
-    const safePatientName = sanitizeFilename(patientName)
-    const safePatientUID = sanitizeFilename(patientUID)
-    const safeAppointmentDate = sanitizeFilename(appointmentDate.replace(/[-\/]/g, "_"))
-
-    const filename = `${safeBranchCode}_${safePatientName}_${safePatientUID}_${safeAppointmentDate}.pdf`
-    const finalFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`
-    
-    doc.save(finalFilename)
-  })
-}
-
-
-return (
-  <div ref={summaryRef}>
-    {summaryContent}
-    <button style={{ marginTop: "25px", marginRight: "180px" }} onClick={exportToPDF}>
-      Export to PDF
-    </button>
-  </div>
-)
+    return (
+      <div ref={summaryRef}>
+        {summaryContent}
+        <button style={{ marginTop: "25px", marginRight: "180px" }} onClick={exportToPDF}>
+          Export to PDF
+        </button>
+      </div>
+    )
   }
+
+  // NEW: Determine if save button should be disabled
+  const isSaveDisabled = isSaved && !hasUnsavedChanges
+
   return (
     <StyledContainer>
       {successMessage && (
@@ -2409,8 +2445,15 @@ return (
             <SummaryContainer>
               <center>
                 {getSummaryDetails()}
-                <button style={{ float: "right", marginTop: "-40px" }} onClick={handleSubmit}>
-                  Save
+                {/* NEW: Updated save button with disabled state and tooltip */}
+            
+                <button
+                  disabled={isSaveDisabled}
+                  onClick={handleSubmit}
+                  title={isSaveDisabled ? "No changes to save" : "Save changes"}
+                  style={{ float: "right", marginTop: "-40px"}}
+                >
+                  {isSaved && !hasUnsavedChanges ? "Saved" : "Save"}
                 </button>
               </center>
             </SummaryContainer>
