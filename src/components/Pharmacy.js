@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect, useRef } from "react"
 import styled from "styled-components"
 import { toast, ToastContainer } from "react-toastify"
@@ -19,16 +18,15 @@ import {
   FaPills,
   FaRupeeSign,
   FaSync,
+  FaMinus,
 } from "react-icons/fa"
 
 // Date utility functions for flexible date handling
 const parseFlexibleDate = (dateString) => {
   if (!dateString) return null
-
   try {
     // Remove any extra spaces and normalize separators
     const cleanDate = dateString.toString().trim()
-
     // Try different date formats
     const formats = [
       // ISO format
@@ -100,7 +98,6 @@ const parseFlexibleDate = (dateString) => {
 
 const formatDateForDisplay = (dateString) => {
   if (!dateString) return ""
-
   const parsedDate = parseFlexibleDate(dateString)
   if (!parsedDate) return dateString // Return original if parsing fails
 
@@ -108,13 +105,11 @@ const formatDateForDisplay = (dateString) => {
   const day = parsedDate.getDate().toString().padStart(2, "0")
   const month = (parsedDate.getMonth() + 1).toString().padStart(2, "0")
   const year = parsedDate.getFullYear()
-
   return `${day}-${month}-${year}`
 }
 
 const formatDateForInput = (dateString) => {
   if (!dateString) return ""
-
   const parsedDate = parseFlexibleDate(dateString)
   if (!parsedDate) return ""
 
@@ -122,13 +117,11 @@ const formatDateForInput = (dateString) => {
   const day = parsedDate.getDate().toString().padStart(2, "0")
   const month = (parsedDate.getMonth() + 1).toString().padStart(2, "0")
   const year = parsedDate.getFullYear()
-
   return `${year}-${month}-${day}`
 }
 
 const convertInputDateToDisplay = (inputDate) => {
   if (!inputDate) return ""
-
   // Input date is in YYYY-MM-DD format, convert to DD-MM-YYYY
   const [year, month, day] = inputDate.split("-")
   return `${day}-${month}-${year}`
@@ -146,13 +139,13 @@ const PharmacyComponent = () => {
       SGSTPercentage: "",
       SGSTValue: "",
       newStock: "",
+      decreaseStock: "",
       stock: "",
       receivedDate: "",
       expiryDate: "",
       batchNumber: "",
     },
   ])
-
   const [branchCode, setBranchCode] = useState("")
   const [editedRows, setEditedRows] = useState({})
   const [loading, setLoading] = useState(false)
@@ -161,15 +154,23 @@ const PharmacyComponent = () => {
   const [activeView, setActiveView] = useState("all")
   const [isMobile, setIsMobile] = useState(false)
   const [isTablet, setIsTablet] = useState(false)
+  const [userRole, setUserRole] = useState("")
   const tableRef = useRef(null)
+
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
     const code = localStorage.getItem("selectedBranch")
+    const role = localStorage.getItem("userRole")
+
     if (code) {
       setBranchCode(code)
     } else {
       console.warn("Branch code not found in localStorage")
+    }
+
+    if (role) {
+      setUserRole(role)
     }
 
     if (code) {
@@ -207,6 +208,7 @@ const PharmacyComponent = () => {
             SGSTPercentage: "",
             SGSTValue: "",
             newStock: "",
+            decreaseStock: "",
             stock: "",
             receivedDate: "",
             expiryDate: "",
@@ -217,7 +219,6 @@ const PharmacyComponent = () => {
         setFormData(
           data.map((item) => {
             const stock = item.stock || 0
-
             return {
               _id: item._id,
               medicineName: item.medicine_name || "",
@@ -229,6 +230,7 @@ const PharmacyComponent = () => {
               SGSTPercentage: item.SGST_percentage ? item.SGST_percentage.toString() : "",
               SGSTValue: item.SGST_value ? item.SGST_value.toString() : "",
               newStock: "",
+              decreaseStock: "",
               stock: stock.toString(),
               // Use flexible date parsing and formatting
               receivedDate: formatDateForInput(item.received_date || ""),
@@ -291,7 +293,6 @@ const PharmacyComponent = () => {
     if (field === "receivedDate") {
       newFormData[originalIndex].receivedDateDisplay = convertInputDateToDisplay(value)
     }
-
     if (field === "expiryDate") {
       newFormData[originalIndex].expiryDateDisplay = convertInputDateToDisplay(value)
     }
@@ -416,7 +417,6 @@ const PharmacyComponent = () => {
       }
     } catch (error) {
       console.error("Error updating stock:", error)
-
       const revertedFormData = [...formData]
       revertedFormData[originalIndex].stock = currentStock.toString()
       revertedFormData[originalIndex].newStock = newStockValue.toString()
@@ -427,6 +427,99 @@ const PharmacyComponent = () => {
       setPendingStockUpdates(newPendingUpdates)
 
       toast.error("Error updating stock")
+    }
+  }
+
+  const handleStockDecrease = async (originalIndex) => {
+    const item = formData[originalIndex]
+    const decreaseStockValue = Number.parseInt(item.decreaseStock, 10) || 0
+
+    if (decreaseStockValue <= 0) {
+      toast.warning("Please enter a valid stock quantity to decrease")
+      return
+    }
+
+    if (!item._id) {
+      toast.warning("Please save the item first before updating stock")
+      return
+    }
+
+    const currentStock = Number.parseInt(item.stock, 10) || 0
+
+    if (decreaseStockValue > currentStock) {
+      toast.warning("Cannot decrease stock below zero")
+      return
+    }
+
+    const updatedStock = currentStock - decreaseStockValue
+
+    const newFormData = [...formData]
+    newFormData[originalIndex].stock = updatedStock.toString()
+    newFormData[originalIndex].decreaseStock = ""
+    setFormData(newFormData)
+
+    const updateKey = `${item.medicineName}-${item.batchNumber}-decrease`
+    setPendingStockUpdates({
+      ...pendingStockUpdates,
+      [updateKey]: true,
+    })
+
+    try {
+      const updateData = {
+        _id: item._id,
+        new_stock: -decreaseStockValue, // Negative value to decrease
+      }
+
+      const response = await fetch(
+        `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+          body: JSON.stringify([updateData]),
+        },
+      )
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.length > 0) {
+          const newPendingUpdates = { ...pendingStockUpdates }
+          delete newPendingUpdates[updateKey]
+          setPendingStockUpdates(newPendingUpdates)
+
+          const serverStock = result[0].stock || 0
+          const updatedFormData = [...formData]
+          updatedFormData[originalIndex].stock = serverStock.toString()
+          setFormData(updatedFormData)
+
+          toast.success("Stock decreased successfully!")
+        }
+      } else {
+        const revertedFormData = [...formData]
+        revertedFormData[originalIndex].stock = currentStock.toString()
+        revertedFormData[originalIndex].decreaseStock = decreaseStockValue.toString()
+        setFormData(revertedFormData)
+
+        const newPendingUpdates = { ...pendingStockUpdates }
+        delete newPendingUpdates[updateKey]
+        setPendingStockUpdates(newPendingUpdates)
+
+        toast.error("Failed to decrease stock")
+      }
+    } catch (error) {
+      console.error("Error decreasing stock:", error)
+      const revertedFormData = [...formData]
+      revertedFormData[originalIndex].stock = currentStock.toString()
+      revertedFormData[originalIndex].decreaseStock = decreaseStockValue.toString()
+      setFormData(revertedFormData)
+
+      const newPendingUpdates = { ...pendingStockUpdates }
+      delete newPendingUpdates[updateKey]
+      setPendingStockUpdates(newPendingUpdates)
+
+      toast.error("Error decreasing stock")
     }
   }
 
@@ -527,6 +620,7 @@ const PharmacyComponent = () => {
       SGSTPercentage: "",
       SGSTValue: "",
       newStock: "",
+      decreaseStock: "",
       stock: "",
       receivedDate: "",
       expiryDate: "",
@@ -660,7 +754,8 @@ const PharmacyComponent = () => {
   const hasPendingUpdate = (item) => {
     if (!item.medicineName || !item.batchNumber) return false
     const updateKey = `${item.medicineName}-${item.batchNumber}`
-    return pendingStockUpdates[updateKey] === true
+    const decreaseKey = `${item.medicineName}-${item.batchNumber}-decrease`
+    return pendingStockUpdates[updateKey] === true || pendingStockUpdates[decreaseKey] === true
   }
 
   const getFilteredDataWithIndices = () => {
@@ -686,7 +781,6 @@ const PharmacyComponent = () => {
           today.setHours(0, 0, 0, 0)
           return matchesSearch && expiryDate < today
         }
-
         return matchesSearch
       })
   }
@@ -702,10 +796,8 @@ const PharmacyComponent = () => {
 
   const isExpired = (expiryDate) => {
     if (!expiryDate) return false
-
     const parsedExpiry = parseFlexibleDate(expiryDate)
     if (!parsedExpiry) return false
-
     const today = new Date()
     parsedExpiry.setHours(0, 0, 0, 0)
     today.setHours(0, 0, 0, 0)
@@ -770,6 +862,7 @@ const PharmacyComponent = () => {
                   {!isMobile && "Add Medicine"}
                 </PrimaryButton>
               </ActionsContainer>
+
               <SaveContent>
                 <SaveButton onClick={handleSubmit} disabled={loading}>
                   <FaSave />
@@ -880,6 +973,27 @@ const PharmacyComponent = () => {
                         </SmallButton>
                       )}
                     </StockInputRow>
+
+                    {/* Decrease Stock Row - Only show for existing items */}
+                    {data._id && (
+                      <StockInputRow>
+                        <StyledInput
+                          type="text"
+                          placeholder="Decrease stock"
+                          value={data.decreaseStock || ""}
+                          onChange={(e) => handleChange(originalIndex, "decreaseStock", e.target.value)}
+                          onKeyPress={(e) => handleKeyPress(originalIndex, e)}
+                        />
+                        <SmallButton
+                          onClick={() => handleStockDecrease(originalIndex)}
+                          disabled={!data.decreaseStock || Number.parseInt(data.decreaseStock) <= 0}
+                          $variant="decrease"
+                        >
+                          <FaMinus />
+                        </SmallButton>
+                      </StockInputRow>
+                    )}
+
                     <StockStatusRow>
                       <StockBadge $variant={getStockStatus(data.stock).variant}>
                         {data.stock || "0"} in stock
@@ -930,9 +1044,11 @@ const PharmacyComponent = () => {
                       onChange={(e) => handleChange(originalIndex, "batchNumber", e.target.value)}
                       onKeyPress={(e) => handleKeyPress(originalIndex, e)}
                     />
-                    <DeleteButton onClick={() => removeRow(originalIndex)}>
-                      <FaTrash />
-                    </DeleteButton>
+                    {userRole === "Admin" && (
+                      <DeleteButton onClick={() => removeRow(originalIndex)}>
+                        <FaTrash />
+                      </DeleteButton>
+                    )}
                   </BatchActionsSection>
                 </CardGrid>
               </CardContent>
@@ -1051,7 +1167,6 @@ const HeaderTitle = styled.h1`
 `
 
 // Save Section - Moved to Top
-
 const SaveContent = styled.div`
   padding: 0.5rem;
 
@@ -1490,7 +1605,7 @@ const StyledSelect = styled.select`
 const SmallButton = styled.button`
   padding: 0.75rem;
   border: none;
-  background: #6b4a8f;
+  background: ${(props) => (props.$variant === "decrease" ? "#dc2626" : "#6b4a8f")};
   color: white;
   border-radius: 6px;
   cursor: pointer;
@@ -1501,7 +1616,7 @@ const SmallButton = styled.button`
   min-width: 44px;
 
   &:hover:not(:disabled) {
-    background: #5a3d7a;
+    background: ${(props) => (props.$variant === "decrease" ? "#b91c1c" : "#5a3d7a")};
   }
 
   &:disabled {

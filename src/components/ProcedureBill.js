@@ -16,6 +16,7 @@ import CreatableSelect from "react-select/creatable"
 import { IoMdArrowRoundBack } from "react-icons/io"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import Select from "react-select"
 
 const DatePickerWrapper = styled.div`
  position: relative;
@@ -826,7 +827,7 @@ const ProcedureComponent = () => {
 
  // Clean up procedure name
  procedureName = procedureName.replace(/^-+|−+/, "").trim()
- procedureName = procedureName.replace(/-+$/, "").trim()
+ procedureName = procedureName.procedureName.replace(/-+$/, "").trim()
 
  console.log(`Extracted procedure ${index + 1}:`, { procedure: procedureName, procedureDate })
 
@@ -1427,17 +1428,21 @@ const handleDownload = () => {
  />
  </td>
  <td>
- <ProcedureSelect
- value={procedure.selectedProcedureId || ""}
- onChange={(e) => handleProcedureSelect(procedure.id, e.target.value)}
- >
- <option value="">Select Procedure...</option>
- {proceduresList.map((proc) => (
- <option key={proc.id} value={proc.id}>
- {proc.procedure}
- </option>
- ))}
- </ProcedureSelect>
+ <Select
+  value={proceduresList.find(proc => proc.id.toString() === procedure.selectedProcedureId?.toString()) ? 
+    { value: procedure.selectedProcedureId, label: procedure.procedure } : null}
+  onChange={(selectedOption) => handleProcedureSelect(procedure.id, selectedOption?.value || "")}
+  options={proceduresList.map(proc => ({ value: proc.id, label: proc.procedure }))}
+  placeholder="Search and select procedure..."
+  isClearable
+  isSearchable
+  menuPortalTarget={document.body}
+  styles={{
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+    menu: (base) => ({ ...base, zIndex: 9999 }),
+    control: (base) => ({ ...base, minHeight: '38px' })
+  }}
+/>
  </td>
  <td>
  <input
