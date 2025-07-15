@@ -112,15 +112,15 @@ const SummaryReport = () => {
   }
 
 // Enhanced Multi-Page PDF Export Function for Individual Patient
+// Enhanced Multi-Page PDF Export Function for Individual Patient
 const exportPatientToPDF = (patientData) => {
   const doc = new jsPDF("p", "mm", "a4")
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const margin = 14
   const usableWidth = pageWidth - margin * 2
-  const usableHeight = pageHeight - 120 // Reserve more space for header, footer, and signature
-  const signatureSpace = 60 // Space reserved for doctor signature
-  const minSignatureY = pageHeight - signatureSpace // Minimum Y position for signature
+  const signatureSpace = 25 // Reduced signature space to match exportToPDF
+  const minSignatureY = pageHeight - signatureSpace
 
   // Data sanitization helpers
   const sanitizeFilename = (str) => {
@@ -148,20 +148,15 @@ const exportPatientToPDF = (patientData) => {
     }
   }
 
-  // Helper function to add doctor signature with proper spacing
+  // Helper function to add doctor signature with proper spacing (aligned with exportToPDF)
   const addDoctorSignature = (doc, pageNumber = 1) => {
     const doctorName = patientData?.patient_handledby || "Doctor"
-    
-    // Add signature line
-    const signatureLineY = pageHeight - 55
+    const signatureLineY = pageHeight - 45 // Adjusted signature position to match exportToPDF
     const signatureLineStartX = pageWidth - margin - 80
-    const signatureLineEndX = pageWidth - margin - 10
-    
-    // Add doctor name below signature line
     doc.setFont("helvetica", "bold")
     doc.setFontSize(10)
     doc.setTextColor(40, 40, 40)
-    doc.text(`Dr. ${doctorName}`, signatureLineStartX + 40, signatureLineY )
+    doc.text(`Dr. ${doctorName}`, signatureLineStartX + 40, signatureLineY)
   }
 
   // Select PDF background based on patient_handledby
@@ -169,7 +164,7 @@ const exportPatientToPDF = (patientData) => {
 
   const convertToBase64 = (url, callback) => {
     const img = new Image()
-    img.crossOrigin = "Anonymous"
+    img.crossOrigin = "anonymous"
     img.src = url
     img.onload = () => {
       const canvas = document.createElement("canvas")
@@ -217,29 +212,60 @@ const exportPatientToPDF = (patientData) => {
     }
 
     // Handle complaints with proper JSON parsing
-    if (patientData.complaints && patientData.complaints.trim() !== "" && patientData.complaints !== "[]") {
-      try {
-        const parsed = safeParseJSON(patientData.complaints)
-        if (Array.isArray(parsed)) {
-          const complaintsFormatted = parsed
-            .map((complaint) => {
-              let formatted = complaint.complaints || complaint.complaint || ""
-              if (complaint.duration && complaint.durationUnit) {
-                formatted += ` - Duration: ${complaint.duration} ${complaint.durationUnit}`
-              }
-              return formatted
-            })
-            .filter((item) => item !== "")
-
-          if (complaintsFormatted.length > 0) {
-            data = data.concat(createSubTableRows("Complaints", complaintsFormatted))
+// Handle complaints with proper JSON parsing - FIXED VERSION
+if (patientData.complaints && 
+    patientData.complaints !== null && 
+    patientData.complaints !== undefined &&
+    patientData.complaints !== "[]") {
+  
+  try {
+    // Check if it's already an array
+    if (Array.isArray(patientData.complaints)) {
+      const complaintsFormatted = patientData.complaints
+        .map((complaint) => {
+          let formatted = complaint.complaints || complaint.complaint || ""
+          if (complaint.duration && complaint.durationUnit) {
+            formatted += ` - Duration: ${complaint.duration} ${complaint.durationUnit}`
           }
+          return formatted
+        })
+        .filter((item) => item !== "")
+
+      if (complaintsFormatted.length > 0) {
+        data = data.concat(createSubTableRows("Complaints", complaintsFormatted))
+      }
+    }
+    // If it's a string, check if it's not empty after trimming
+    else if (typeof patientData.complaints === 'string' && patientData.complaints.trim() !== "") {
+      const parsed = safeParseJSON(patientData.complaints)
+      if (Array.isArray(parsed)) {
+        const complaintsFormatted = parsed
+          .map((complaint) => {
+            let formatted = complaint.complaints || complaint.complaint || ""
+            if (complaint.duration && complaint.durationUnit) {
+              formatted += ` - Duration: ${complaint.duration} ${complaint.durationUnit}`
+            }
+            return formatted
+          })
+          .filter((item) => item !== "")
+
+        if (complaintsFormatted.length > 0) {
+          data = data.concat(createSubTableRows("Complaints", complaintsFormatted))
         }
-      } catch (error) {
-        console.warn("Error parsing complaints:", error)
+      } else {
+        // If parsing fails, treat as plain string
         data = data.concat(createSubTableRows("Complaints", [patientData.complaints]))
       }
     }
+  } catch (error) {
+    console.warn("Error parsing complaints:", error)
+    // Fallback: convert to string if it's not already
+    const complaintsStr = typeof patientData.complaints === 'string' 
+      ? patientData.complaints 
+      : JSON.stringify(patientData.complaints)
+    data = data.concat(createSubTableRows("Complaints", [complaintsStr]))
+  }
+}
 
     // Handle findings
     if (patientData.findings && patientData.findings.trim() !== "") {
@@ -282,12 +308,51 @@ const exportPatientToPDF = (patientData) => {
     }
 
     // Handle next visit date
-    if (patientData.nextVisit) {
-      const nextVisitDate = new Date(patientData.nextVisit).toLocaleDateString()
-      data.push(["Next Visit Date", nextVisitDate])
+// Handle next visit date - FIXED VERSION
+if (patientData.nextVisit && patientData.nextVisit.trim() !== "") {
+  try {
+    let nextVisitDate = null;
+    const nextVisitStr = patientData.nextVisit.trim();
+    
+    // Check if it's in DD/MM/YYYY format (like "25/07/2025")
+    if (nextVisitStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      const parts = nextVisitStr.split('/');
+      const day = parts[0];
+      const month = parts[1];
+      const year = parts[2];
+      // Convert to MM/DD/YYYY format for Date parsing
+      const dateStr = `${month}/${day}/${year}`;
+      nextVisitDate = new Date(dateStr);
+    } 
+    // Check if it's in YYYY-MM-DD format (ISO format)
+    else if (nextVisitStr.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+      nextVisitDate = new Date(nextVisitStr);
     }
+    // Try direct parsing as fallback
+    else {
+      nextVisitDate = new Date(nextVisitStr);
+    }
+    
+    // Check if the date is valid
+    if (nextVisitDate && !isNaN(nextVisitDate.getTime())) {
+      const formattedDate = nextVisitDate.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      data.push(["Next Visit Date", formattedDate]);
+    } else {
+      // If date parsing fails, just show the original string
+      data.push(["Next Visit Date", nextVisitStr]);
+    }
+  } catch (error) {
+    console.warn("Error parsing next visit date:", error);
+    // Fallback: show original string
+    data.push(["Next Visit Date", patientData.nextVisit]);
+  }
+}
 
-    // Generate main table for all sections except prescription with multi-page support
+    // Generate main table for all sections except prescription
     if (data.length > 0) {
       doc.autoTable({
         startY: currentY,
@@ -307,32 +372,31 @@ const exportPatientToPDF = (patientData) => {
         },
         styles: {
           cellWidth: "wrap",
-          minCellHeight: 10,
+          minCellHeight: 8, // Reduced cell height to match exportToPDF
           overflow: "linebreak",
           tableWidth: "auto",
         },
         columnStyles: {
-          0: { cellWidth: 60 },
-          1: { cellWidth: usableWidth - 60 },
+          0: { cellWidth: 50 }, // Reduced column width to match exportToPDF
+          1: { cellWidth: usableWidth - 50 },
         },
         margin: { left: margin, right: margin, top: 20, bottom: signatureSpace },
         pageBreak: "auto",
         showHead: "everyPage",
-        didDrawPage: function (data) {
+        didDrawPage: (data) => {
           // Add background image to new pages
           if (data.pageNumber > 1) {
             doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
           }
-          
           // Add doctor signature on every page
           addDoctorSignature(doc, data.pageNumber)
-        }
+        },
       })
 
-      currentY = doc.lastAutoTable.finalY + 20
+      currentY = doc.lastAutoTable.finalY + 10 // Reduced spacing to match exportToPDF
     }
 
-    // Enhanced prescription parsing for multi-page support
+    // Enhanced prescription parsing for multi-page support (aligned with exportToPDF)
     const formatPrescriptionForTable = (prescriptionData) => {
       try {
         if (!prescriptionData || prescriptionData.trim() === "") return []
@@ -379,73 +443,147 @@ const exportPatientToPDF = (patientData) => {
       }
     }
 
-    // Handle prescription section with multi-page support
+    // Handle prescription section with improved space management (aligned with exportToPDF)
     if (patientData.prescription && patientData.prescription.trim() !== "") {
       const prescriptionTableData = formatPrescriptionForTable(patientData.prescription)
 
       if (prescriptionTableData.length > 0) {
-        // Check if we need a new page for prescription section
-        // Consider both current position and space needed for signature
-        const estimatedTableHeight = (prescriptionTableData.length * 15) + 40 // Rough estimate
-        const spaceNeeded = estimatedTableHeight + signatureSpace + 30 // Extra buffer
+        // Calculate available space and items per page
+        const remainingSpace = pageHeight - currentY - signatureSpace
+        const rowHeight = 12 // Estimated row height
+        const headerHeight = 25 // Header space
+        const maxRowsInCurrentPage = Math.floor((remainingSpace - headerHeight) / rowHeight)
         
-        if (currentY + spaceNeeded > pageHeight) {
-          doc.addPage()
-          doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-          currentY = 80
-        }
-
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(12)
-        doc.setTextColor(40, 40, 40)
-        doc.text("Prescription", margin, currentY)
-
-        currentY += 10
-
-        doc.autoTable({
-          startY: currentY,
-          head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
-          body: prescriptionTableData,
-          theme: "grid",
-          headStyles: {
-            fillColor: [76, 140, 115],
-            textColor: [255, 255, 255],
-            fontStyle: "bold",
-            fontSize: 9,
-          },
-          bodyStyles: {
-            fontSize: 8,
-            textColor: [40, 40, 40],
-            font: "helvetica",
-          },
-          styles: {
-            cellWidth: "wrap",
-            minCellHeight: 8,
-            overflow: "linebreak",
-            tableWidth: "auto",
-          },
-          columnStyles: {
-            0: { cellWidth: 15, halign: "center" },
-            1: { cellWidth: (usableWidth - 15) * 0.4 },
-            2: { cellWidth: (usableWidth - 15) * 0.2 },
-            3: { cellWidth: (usableWidth - 15) * 0.2 },
-            4: { cellWidth: (usableWidth - 15) * 0.2 },
-          },
-          margin: { left: margin, right: margin, top: 10, bottom: signatureSpace },
-          pageBreak: "auto",
-          showHead: "everyPage",
-          didDrawPage: function (data) {
-            // Add background image to new pages
-            if (data.pageNumber > 1) {
-              doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-            }
-            
-            // Add doctor signature on every page
-            addDoctorSignature(doc, data.pageNumber)
+        // Smart pagination logic
+        const totalPrescriptions = prescriptionTableData.length
+        let itemsPerPage = []
+        
+        if (totalPrescriptions <= 10) {
+          // For 5-10 items, try to split optimally
+          if (totalPrescriptions <= maxRowsInCurrentPage) {
+            // All fit in current page
+            itemsPerPage = [totalPrescriptions]
+          } else {
+            // Split across pages
+            const firstPageItems = Math.min(maxRowsInCurrentPage, Math.ceil(totalPrescriptions / 2))
+            const secondPageItems = totalPrescriptions - firstPageItems
+            itemsPerPage = [firstPageItems, secondPageItems]
           }
-        })
-      
+        } else {
+          // For more than 10 items, use larger chunks
+          const maxItemsPerPage = 10
+          let remaining = totalPrescriptions
+          let currentPageCapacity = Math.min(maxRowsInCurrentPage, maxItemsPerPage)
+          
+          while (remaining > 0) {
+            const itemsThisPage = Math.min(remaining, currentPageCapacity)
+            itemsPerPage.push(itemsThisPage)
+            remaining -= itemsThisPage
+            currentPageCapacity = maxItemsPerPage // Full capacity for subsequent pages
+          }
+        }
+        
+        // Render prescription tables across pages
+        let dataIndex = 0
+        let pageNumber = 1
+        let isFirstPrescriptionPage = true
+        
+        for (const itemsInThisPage of itemsPerPage) {
+          // Check if we need a new page
+          if (!isFirstPrescriptionPage || (pageNumber > 1)) {
+            doc.addPage()
+            doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+            currentY = 80
+          }
+          
+          // Add prescription header
+          doc.setFont("helvetica", "bold")
+          doc.setFontSize(12)
+          doc.setTextColor(40, 40, 40)
+          
+          if (isFirstPrescriptionPage) {
+            doc.text("Prescription", margin, currentY)
+          } else {
+            doc.text(`Prescription`, margin, currentY)
+          }
+          currentY += 10
+          
+          // Get data for this page
+          const pageData = prescriptionTableData.slice(dataIndex, dataIndex + itemsInThisPage)
+          
+          // Renumber the items for this page if it's a continuation
+          const numberedPageData = pageData.map((row, index) => [
+            dataIndex + index + 1, // Continue numbering from previous page
+            row[1], // medication
+            row[2], // dosage
+            row[3], // frequency
+            row[4]  // duration
+          ])
+          
+          doc.autoTable({
+            startY: currentY,
+            head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
+            body: numberedPageData,
+            theme: "grid",
+            headStyles: {
+              fillColor: [76, 140, 115],
+              textColor: [255, 255, 255],
+              fontStyle: "bold",
+              fontSize: 9,
+            },
+            bodyStyles: {
+              fontSize: 8,
+              textColor: [40, 40, 40],
+              font: "helvetica",
+            },
+            styles: {
+              cellWidth: "wrap",
+              minCellHeight: 6,
+              overflow: "linebreak",
+              tableWidth: "auto",
+            },
+            columnStyles: {
+              0: { cellWidth: 12, halign: "center" },
+              1: { cellWidth: (usableWidth - 12) * 0.4 },
+              2: { cellWidth: (usableWidth - 12) * 0.2 },
+              3: { cellWidth: (usableWidth - 12) * 0.2 },
+              4: { cellWidth: (usableWidth - 12) * 0.2 },
+            },
+            margin: { left: margin, right: margin, top: 10, bottom: signatureSpace },
+            pageBreak: "avoid", // Prevent breaking within this table
+            showHead: "everyPage",
+            didDrawPage: (data) => {
+              // Add background image to new pages
+              if (data.pageNumber > 1) {
+                doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+              }
+              // Add doctor signature on every page
+              addDoctorSignature(doc, data.pageNumber)
+            },
+          })
+          
+          dataIndex += itemsInThisPage
+          pageNumber++
+          isFirstPrescriptionPage = false
+        }
+        
+        // Update currentY for any content that might follow
+        currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : currentY
       }
+    }
+
+    // Ensure signature is always added to the last page (aligned with exportToPDF)
+    const currentPageNumber = doc.internal.getNumberOfPages()
+    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : currentY
+    
+    // If the final content is too close to signature area, add new page
+    if (finalY > minSignatureY - 10) {
+      doc.addPage()
+      doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+      addDoctorSignature(doc, doc.internal.getNumberOfPages())
+    } else {
+      // Add signature to current page if not already added
+      addDoctorSignature(doc, currentPageNumber)
     }
 
     // Generate filename
