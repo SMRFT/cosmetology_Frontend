@@ -17,215 +17,215 @@ import jsPDF from "jspdf"
 import Select from "react-select"
 
 const StyledContainer = styled.div`
- padding: 10px;
- max-width: 90%;
- margin: 20px auto;
- border-collapse: collapse;
+  padding: 10px;
+  max-width: 90%;
+  margin: 20px auto;
+  border-collapse: collapse;
 `
 
 const Container = styled.div`
- margin-top: 65px;
+  margin-top: 65px;
 `
 
 const TableContainer = styled.div`
- position: relative;
- overflow: visible; /* this is crucial */
- z-index: 1;
+  position: relative;
+  overflow: visible; /* this is crucial */
+  z-index: 1;
 `
 
 const StyledTable = styled.table`
- width: 100%;
- border-collapse: collapse;
- margin-bottom: 20px;
- background-color: white;
- box-shadow: 0 2px 4px rgba(0,0,0,0.1);
- 
- th, td {
- border: 1px solid #dee2e6;
- padding: 12px 8px;
- text-align: center;
- font-size: 14px;
- }
- 
- th {
- background-color: #9b85a8;
- color: white;
- font-weight: 600;
- position: sticky;
- top: 0;
- z-index: 10;
- }
- 
- tr:nth-child(even) {
- background-color: #f8f9fa;
- }
- 
- tr:hover {
- background-color: #e9ecef;
- }
- 
- input, select {
- width: 100%;
- padding: 4px;
- border: 1px solid #ddd;
- border-radius: 4px;
- font-size: 12px;
- }
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+  th, td {
+    border: 1px solid #dee2e6;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  th {
+    background-color: #9b85a8;
+    color: white;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  tr:nth-child(even) {
+    background-color: #f8f9fa;
+  }
+
+  tr:hover {
+    background-color: #e9ecef;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+  }
 `
 
 const InfoContainer = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- color: white;
- padding: 15px 25px;
- border-radius: 8px;
- margin-bottom: 20px;
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
- max-width: 90%;
- margin: 0 auto;
- box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
- background: linear-gradient(135deg, #ad97b4 0%, #9b85a8 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 90%;
+  margin: 0 auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #ad97b4 0%, #9b85a8 100%);
 `
 
 const InfoText = styled.div`
- display: flex;
- justify-content: space-between;
- width: 100%;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 `
 
 const PatientInfo = styled.div`
- flex: 1;
- 
- div {
- margin-bottom: 5px;
- font-weight: 500;
- 
- strong {
- font-weight: 600;
- margin-right: 8px;
- }
- }
+  flex: 1;
+
+  div {
+    margin-bottom: 5px;
+    font-weight: 500;
+
+    strong {
+      font-weight: 600;
+      margin-right: 8px;
+    }
+  }
 `
 
 const AddRowButton = styled.button`
- background-color: #9b85a8;
- color: white;
- border: none;
- padding: 8px 16px;
- border-radius: 4px;
- cursor: pointer;
- display: flex;
- align-items: center;
- gap: 8px;
- margin-bottom: 10px;
- 
- &:hover {
- background-color: #218838;
- }
+  background-color: #9b85a8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+
+  &:hover {
+    background-color: #218838;
+  }
 `
 
 const DeleteRowButton = styled.button`
- background-color: #dc3545;
- color: white;
- border: none;
- padding: 4px 8px;
- border-radius: 4px;
- cursor: pointer;
- 
- &:hover {
- background-color: #c82333;
- }
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #c82333;
+  }
 `
 
 const DownloadButton = styled.button`
- background-color: #17a2b8;
- color: white;
- border: none;
- padding: 8px 16px;
- border-radius: 4px;
- cursor: pointer;
- display: flex;
- align-items: center;
- gap: 8px;
- 
- &:hover {
- background-color: #138496;
- }
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &:hover {
+    background-color: #138496;
+  }
 `
 
 const ConsultationSection = styled.div`
- background-color: #f8f9fa;
- padding: 15px;
- border-radius: 8px;
- margin-top: 20px;
- border: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid #dee2e6;
 `
 
 const FlexRow = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
 `
 
 const BackButton = styled.button`
- background: none;
- border: none;
- font-size: 24px;
- cursor: pointer;
- margin-left: 80px;
- margin-bottom: 20px;
- color: #725F83;
- 
- &:hover {
- color: #5a4b69;
- }
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  margin-left: 80px;
+  margin-bottom: 20px;
+  color: #725F83;
+
+  &:hover {
+    color: #5a4b69;
+  }
 `
 
 const DateSelectionContainer = styled.div`
- background-color: #f8f9fa;
- margin-bottom: 20px;
- border: 1px solid #dee2e6;
- display: flex;
- align-items: center;
- padding: 15px 25px;
- border-radius: 8px;
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
- max-width: 90%;
- margin: 0 auto;
- justify-content: space-between;
+  background-color: #f8f9fa;
+  margin-bottom: 20px;
+  border: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  padding: 15px 25px;
+  border-radius: 8px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 90%;
+  margin: 0 auto;
+  justify-content: space-between;
 `
 
 const DateLabel = styled.label`
- font-weight: 600;
- margin-right: 15px;
- font-size: 16px;
- color: #495057;
+  font-weight: 600;
+  margin-right: 15px;
+  font-size: 16px;
+  color: #495057;
 `
 
 const DateInput = styled.input`
- padding: 10px;
- border: 1px solid #ddd;
- border-radius: 4px;
- font-size: 14px;
- width: 200px;
- 
- &:focus {
- outline: none;
- border-color: #9b85a8;
- box-shadow: 0 0 0 2px rgba(155, 133, 168, 0.2);
- }
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 200px;
+
+  &:focus {
+    outline: none;
+    border-color: #9b85a8;
+    box-shadow: 0 0 0 2px rgba(155, 133, 168, 0.2);
+  }
 `
 
 const NoDataMessage = styled.div`
- text-align: center;
- padding: 40px;
- color: #6c757d;
- font-style: italic;
- background-color: #f8f9fa;
- border-radius: 8px;
- margin-bottom: 20px;
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+  font-style: italic;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
 `
 
 const NewProcedureComponent = () => {
@@ -269,7 +269,6 @@ const NewProcedureComponent = () => {
     if (code) {
       setBranchCode(code)
     }
-
     const patientData = sessionStorage.getItem("selectedPatient")
     if (patientData) {
       setSelectedPatient(JSON.parse(patientData))
@@ -304,7 +303,6 @@ const NewProcedureComponent = () => {
       if (response.data && response.data.procedureBillingData) {
         // Parse JSON strings and flatten the data for table display
         const processedBills = []
-
         response.data.procedureBillingData.forEach((bill) => {
           // Parse procedures JSON string
           let procedures = []
@@ -351,8 +349,8 @@ const NewProcedureComponent = () => {
               procedure: "",
               procedureDate: "",
               price: cons.price,
-              gstRate: "",
-              gst: "",
+              gstRate: cons.gstRate || "",
+              gst: cons.gst || "",
               total: cons.total,
               item: cons.item,
               qty: cons.qty,
@@ -425,7 +423,6 @@ const NewProcedureComponent = () => {
     }
 
     const selectedProcedure = proceduresList.find((proc) => proc.id.toString() === selectedValue.toString())
-
     if (selectedProcedure) {
       setAdditionalProcedures((prev) =>
         prev.map((row) =>
@@ -455,7 +452,6 @@ const NewProcedureComponent = () => {
   const calculatePriceFromTotal = (total, gstRate) => {
     const totalValue = Number.parseFloat(total) || 0
     const gstRateValue = Number.parseFloat(gstRate) || 0
-
     if (gstRateValue > 0) {
       // Calculate price from total: price = total / (1 + gstRate/100)
       const calculatedPrice = totalValue / (1 + gstRateValue / 100)
@@ -478,7 +474,6 @@ const NewProcedureComponent = () => {
             updatedRow.gst = calculateGST(price, gstRate)
             updatedRow.total = calculateTotalFromPrice(price, updatedRow.gst)
           }
-
           // Handle total change - calculate price based on total
           else if (field === "total") {
             const total = Number.parseFloat(value) || 0
@@ -487,7 +482,6 @@ const NewProcedureComponent = () => {
             updatedRow.price = calculatedPrice
             updatedRow.gst = calculateGST(calculatedPrice, gstRate)
           }
-
           // Handle GST rate change - recalculate GST and total based on existing price
           else if (field === "gstRate") {
             const price = Number.parseFloat(row.price) || 0
@@ -506,38 +500,65 @@ const NewProcedureComponent = () => {
   const handleShowConsumerTable = () => {
     setShowConsumerTable(true)
     if (consumerRecords.length === 0) {
-      setConsumerRecords([{ item: "", qty: "", price: "", total: "" }])
+      setConsumerRecords([{ item: "", qty: "", price: "", gstRate: 18, gst: "", total: "" }])
     }
   }
 
   const addConsumerRow = () => {
-    setConsumerRecords((prevRecords) => [...prevRecords, { item: "", qty: "", price: "", total: "" }])
+    setConsumerRecords((prevRecords) => [
+      ...prevRecords,
+      { item: "", qty: "", price: "", gstRate: 18, gst: "", total: "" },
+    ])
   }
 
-  // Enhanced handleConsumerChange with bidirectional price/total editing
+  // Enhanced handleConsumerChange with bidirectional price/total editing and GST
   const handleConsumerChange = (index, field, value) => {
     setConsumerRecords((prevRecords) => {
       const updatedRecords = [...prevRecords]
       updatedRecords[index][field] = value
 
-      // Handle quantity or price changes - calculate total
+      // Handle quantity or price changes - calculate GST and total
       if (field === "qty" || field === "price") {
         const qty = Number.parseFloat(updatedRecords[index].qty) || 0
         const price = Number.parseFloat(updatedRecords[index].price) || 0
-        updatedRecords[index].total = (qty * price).toFixed(2)
+        const gstRate = Number.parseFloat(updatedRecords[index].gstRate) || 0
+        const subtotal = qty * price
+        const gstAmount = (subtotal * gstRate) / 100
+        updatedRecords[index].gst = gstAmount.toFixed(2)
+        updatedRecords[index].total = (subtotal + gstAmount).toFixed(2)
       }
-
-      // Handle total change - calculate price based on total and quantity
+      // Handle GST rate change - recalculate GST and total
+      else if (field === "gstRate") {
+        const qty = Number.parseFloat(updatedRecords[index].qty) || 0
+        const price = Number.parseFloat(updatedRecords[index].price) || 0
+        const gstRate = Number.parseFloat(value) || 0
+        const subtotal = qty * price
+        const gstAmount = (subtotal * gstRate) / 100
+        updatedRecords[index].gst = gstAmount.toFixed(2)
+        updatedRecords[index].total = (subtotal + gstAmount).toFixed(2)
+      }
+      // Handle total change - calculate price based on total, quantity and GST rate
       else if (field === "total") {
         const total = Number.parseFloat(value) || 0
         const qty = Number.parseFloat(updatedRecords[index].qty) || 0
+        const gstRate = Number.parseFloat(updatedRecords[index].gstRate) || 0
 
-        if (qty > 0) {
-          // Calculate price from total: price = total / qty
+        if (qty > 0 && gstRate >= 0) {
+          // Calculate subtotal from total: subtotal = total / (1 + gstRate/100)
+          const subtotal = total / (1 + gstRate / 100)
+          const price = subtotal / qty
+          const gstAmount = subtotal * (gstRate / 100)
+
+          updatedRecords[index].price = price.toFixed(2)
+          updatedRecords[index].gst = gstAmount.toFixed(2)
+        } else if (qty > 0) {
+          // If no GST rate, price = total / qty
           updatedRecords[index].price = (total / qty).toFixed(2)
+          updatedRecords[index].gst = "0"
         } else {
           // If no quantity, set price equal to total
           updatedRecords[index].price = total.toFixed(2)
+          updatedRecords[index].gst = "0"
         }
       }
 
@@ -558,7 +579,6 @@ const NewProcedureComponent = () => {
       }
       return acc
     }, 0)
-
     const consultationAmount = Number.parseFloat(consultationFee) || 0
     const total = additionalTotal + consultationAmount
     setProcedureNetAmount(total.toFixed(2))
@@ -569,7 +589,6 @@ const NewProcedureComponent = () => {
       const itemTotal = Number.parseFloat(record.total) || 0
       return acc + itemTotal
     }, 0)
-
     setConsumerNetAmount(total.toFixed(2))
   }
 
@@ -601,7 +620,6 @@ const NewProcedureComponent = () => {
         }))
 
       const allProcedures = [...additionalProceduresData]
-
       if (consultationFee > 0) {
         allProcedures.push({
           procedure: "Consultation Fee",
@@ -613,12 +631,22 @@ const NewProcedureComponent = () => {
         })
       }
 
+      // Update consumer records to include GST data
+      const consumerData = consumerRecords.map((record) => ({
+        item: record.item,
+        qty: record.qty,
+        price: record.price,
+        gstRate: record.gstRate || 0,
+        gst: record.gst || "0",
+        total: record.total,
+      }))
+
       const payload = {
         patientName: selectedPatient.patientName,
         patientUID: selectedPatient.patientUID,
         patient_handledby: selectedPatient.patient_handledby || "N/A",
         procedures: allProcedures,
-        consumer: consumerRecords,
+        consumer: consumerData,
         appointmentDate: selectedDate,
         procedureNetAmount: procedureNetAmount,
         consumerNetAmount: consumerNetAmount,
@@ -635,6 +663,7 @@ const NewProcedureComponent = () => {
           },
           withCredentials: true,
         })
+
         toast.success(`New procedure bill generated successfully for ${selectedPatient.patientName}`)
         fetchExistingProcedureBills()
         // Navigate back to patient list after successful save
@@ -680,7 +709,6 @@ const NewProcedureComponent = () => {
       const consultationIndex = procedures.findIndex(
         (proc) => proc.procedure && proc.procedure.toLowerCase().includes("consultation fee"),
       )
-
       if (consultationIndex !== -1) {
         consultationFee = Number.parseFloat(procedures[consultationIndex].total) || 0
         procedures.splice(consultationIndex, 1) // Remove consultation fee from procedures
@@ -718,6 +746,7 @@ const NewProcedureComponent = () => {
       totalAmount: totalAmount,
       PaymentType: PaymentType,
     }
+
     generateProcedurePDF(billData, false)
   }
 
@@ -817,7 +846,14 @@ const NewProcedureComponent = () => {
       if (billData.consumer && billData.consumer.length > 0 && billData.consumer.some((record) => record.item)) {
         const consumerTableData = billData.consumer
           .filter((record) => record.item)
-          .map((record) => [record.item, record.qty, record.price, record.total])
+          .map((record) => [
+            record.item,
+            record.qty,
+            record.price,
+            `${record.gstRate || 0}%`,
+            record.gst || "0",
+            record.total,
+          ])
 
         if (consumerTableData.length > 0) {
           // Check if we need a new page
@@ -828,7 +864,7 @@ const NewProcedureComponent = () => {
           }
 
           doc.autoTable({
-            head: [["Item", "Qty", "Price", "Total"]],
+            head: [["Item", "Qty", "Price", "GST Rate (%)", "GST", "Total"]],
             body: consumerTableData,
             startY: currentY,
             theme: "grid",
@@ -908,6 +944,7 @@ const NewProcedureComponent = () => {
       doc.save(`${billData.patientName}_ProcedureBill_${selectedDate}.pdf`)
     })
   }
+
   // Helper function for calculating total (if not already defined)
   const calculateTotal = (price, gst) => {
     return (Number.parseFloat(price) + Number.parseFloat(gst)).toFixed(2)
@@ -920,10 +957,10 @@ const NewProcedureComponent = () => {
   return (
     <Container>
       <h3 className="text-center mb-4">Procedure Billing</h3>
-
       <BackButton onClick={handleBackClick}>
         <IoMdArrowRoundBack />
       </BackButton>
+
       <DateSelectionContainer>
         <div style={{ display: "flex", alignItems: "center" }}>
           <FaCalendarAlt style={{ marginRight: "10px", color: "#9b85a8" }} />
@@ -1143,12 +1180,14 @@ const NewProcedureComponent = () => {
           {showConsumerTable && (
             <>
               <TableContainer>
-                <table>
+                <StyledTable>
                   <thead>
                     <tr>
                       <th>Item</th>
                       <th>Quantity</th>
                       <th>Price</th>
+                      <th>GST Rate (%)</th>
+                      <th>GST Amount</th>
                       <th>Total</th>
                     </tr>
                   </thead>
@@ -1183,6 +1222,16 @@ const NewProcedureComponent = () => {
                         <td>
                           <input
                             type="text"
+                            value={record.gstRate}
+                            onChange={(e) => handleConsumerChange(index, "gstRate", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input type="text" value={record.gst} readOnly />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
                             value={record.total}
                             onChange={(e) => handleConsumerChange(index, "total", e.target.value)}
                           />
@@ -1190,7 +1239,7 @@ const NewProcedureComponent = () => {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </StyledTable>
               </TableContainer>
               <AddRowButton onClick={addConsumerRow}>
                 <FaPlus />
@@ -1213,15 +1262,12 @@ const NewProcedureComponent = () => {
                 <option value="Cheque">Cheque</option>
               </select>
             </div>
-
             <div>
               <strong>Procedure Net Amount: ₹{procedureNetAmount}</strong>
             </div>
-
             <div>
               <strong>Consumer Net Amount: ₹{consumerNetAmount}</strong>
             </div>
-
             <div>
               <strong>Total Amount: ₹{totalAmount}</strong>
             </div>

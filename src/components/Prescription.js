@@ -396,8 +396,14 @@ const SaveButton = styled.button`
   color: ${(props) => (props.disabled ? "#666666" : "white")};
   opacity: ${(props) => (props.disabled ? 0.6 : 1)};
   transition: all 0.3s ease;
+  
   &:hover {
     background-color: ${(props) => (props.disabled ? "#cccccc" : "#218838")};
+    transform: ${(props) => (props.disabled ? "none" : "translateY(-1px)")};
+  }
+  
+  &:active {
+    transform: ${(props) => (props.disabled ? "none" : "translateY(0)")};
   }
 `
 const PrescriptionDetails = () => {
@@ -465,6 +471,7 @@ const PrescriptionDetails = () => {
   const [stockWarnings, setStockWarnings] = useState({})
   const [loadedPrescriptionIndices, setLoadedPrescriptionIndices] = useState(new Set())
   // NEW: Function to mark data as modified and enable save button
+  const [isSaving, setIsSaving] = useState(false)
   const markAsModified = (dataType) => {
     if (!isInitialLoad) {
       setUserModifiedData((prev) => ({
@@ -562,7 +569,7 @@ const PrescriptionDetails = () => {
     }
     return <StockIndicator stock={stock}>{text}</StockIndicator>
   }
- 
+
   const checkStockWarnings = (prescriptionInputs) => {
     const warnings = {}
     prescriptionInputs.forEach((input, index) => {
@@ -1000,6 +1007,11 @@ const PrescriptionDetails = () => {
       }, 3000)
       return
     }
+
+    // NEW: Prevent multiple clicks by setting saving state immediately
+    if (isSaving) return
+    setIsSaving(true)
+
     try {
       const userName = localStorage.getItem("userName") || "Unknown"
       const userRole = localStorage.getItem("userRole") || "Doctor"
@@ -1162,7 +1174,7 @@ const PrescriptionDetails = () => {
           setHasUnsavedChanges(false)
           setTimeout(() => {
             Swal.fire({
-              title: "Go Back?",
+              title: "Updated Successfully !",
               text: "Do you want to go back to the appointments page?",
               icon: "question",
               showCancelButton: true,
@@ -1188,7 +1200,7 @@ const PrescriptionDetails = () => {
         setHasUnsavedChanges(false)
         setTimeout(() => {
           Swal.fire({
-            title: "Go Back?",
+            title: "Saved successfully !",
             text: "Do you want to go back to the appointments page?",
             icon: "question",
             showCancelButton: true,
@@ -1212,6 +1224,7 @@ const PrescriptionDetails = () => {
     } catch (error) {
       console.error("Error submitting data", error)
       setSuccessMessage("Error submitting data")
+      setIsSaving(false) // Reset saving state on error
       setTimeout(() => {
         setSuccessMessage("")
       }, 3000)
@@ -1750,138 +1763,138 @@ const PrescriptionDetails = () => {
         }
         // FIXED: Handle prescription section with better space management
 
-      const validPrescriptions =
-        prescriptionInputs?.filter(
-          (input) => input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "",
-        ) || []
+        const validPrescriptions =
+          prescriptionInputs?.filter(
+            (input) => input.selectedPrescription?.length > 0 && input.selectedPrescription[0]?.label?.trim() !== "",
+          ) || []
 
-      if (validPrescriptions.length > 0) {
-        const prescriptionTableData = formatPrescriptionForTable(validPrescriptions, true)
-        
-        if (prescriptionTableData.length > 0) {
-          // Calculate available space and items per page
-          const remainingSpace = pageHeight - currentY - signatureSpace
-          const rowHeight = 12 // Estimated row height
-          const headerHeight = 25 // Header space
-          const maxRowsInCurrentPage = Math.floor((remainingSpace - headerHeight) / rowHeight)
-          
-          // Smart pagination logic
-          const totalPrescriptions = prescriptionTableData.length
-          let itemsPerPage = []
-          
-          if (totalPrescriptions <= 10) {
-            // For 5-10 items, try to split optimally
-            if (totalPrescriptions <= maxRowsInCurrentPage) {
-              // All fit in current page
-              itemsPerPage = [totalPrescriptions]
+        if (validPrescriptions.length > 0) {
+          const prescriptionTableData = formatPrescriptionForTable(validPrescriptions, true)
+
+          if (prescriptionTableData.length > 0) {
+            // Calculate available space and items per page
+            const remainingSpace = pageHeight - currentY - signatureSpace
+            const rowHeight = 12 // Estimated row height
+            const headerHeight = 25 // Header space
+            const maxRowsInCurrentPage = Math.floor((remainingSpace - headerHeight) / rowHeight)
+
+            // Smart pagination logic
+            const totalPrescriptions = prescriptionTableData.length
+            let itemsPerPage = []
+
+            if (totalPrescriptions <= 10) {
+              // For 5-10 items, try to split optimally
+              if (totalPrescriptions <= maxRowsInCurrentPage) {
+                // All fit in current page
+                itemsPerPage = [totalPrescriptions]
+              } else {
+                // Split across pages
+                const firstPageItems = Math.min(maxRowsInCurrentPage, Math.ceil(totalPrescriptions / 2))
+                const secondPageItems = totalPrescriptions - firstPageItems
+                itemsPerPage = [firstPageItems, secondPageItems]
+              }
             } else {
-              // Split across pages
-              const firstPageItems = Math.min(maxRowsInCurrentPage, Math.ceil(totalPrescriptions / 2))
-              const secondPageItems = totalPrescriptions - firstPageItems
-              itemsPerPage = [firstPageItems, secondPageItems]
+              // For more than 10 items, use larger chunks
+              const maxItemsPerPage = 10
+              let remaining = totalPrescriptions
+              let currentPageCapacity = Math.min(maxRowsInCurrentPage, maxItemsPerPage)
+
+              while (remaining > 0) {
+                const itemsThisPage = Math.min(remaining, currentPageCapacity)
+                itemsPerPage.push(itemsThisPage)
+                remaining -= itemsThisPage
+                currentPageCapacity = maxItemsPerPage // Full capacity for subsequent pages
+              }
             }
-          } else {
-            // For more than 10 items, use larger chunks
-            const maxItemsPerPage = 10
-            let remaining = totalPrescriptions
-            let currentPageCapacity = Math.min(maxRowsInCurrentPage, maxItemsPerPage)
-            
-            while (remaining > 0) {
-              const itemsThisPage = Math.min(remaining, currentPageCapacity)
-              itemsPerPage.push(itemsThisPage)
-              remaining -= itemsThisPage
-              currentPageCapacity = maxItemsPerPage // Full capacity for subsequent pages
+
+            // Render prescription tables across pages
+            let dataIndex = 0
+            let pageNumber = 1
+            let isFirstPrescriptionPage = true
+
+            for (const itemsInThisPage of itemsPerPage) {
+              // Check if we need a new page
+              if (!isFirstPrescriptionPage || pageNumber > 1) {
+                doc.addPage()
+                doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+                currentY = 80
+              }
+
+              // Add prescription header
+              doc.setFont("helvetica", "bold")
+              doc.setFontSize(12)
+              doc.setTextColor(40, 40, 40)
+
+              if (isFirstPrescriptionPage) {
+                doc.text("Prescription", margin, currentY)
+              } else {
+                doc.text(`Prescription`, margin, currentY)
+              }
+              currentY += 10
+
+              // Get data for this page
+              const pageData = prescriptionTableData.slice(dataIndex, dataIndex + itemsInThisPage)
+
+              // Renumber the items for this page if it's a continuation
+              const numberedPageData = pageData.map((row, index) => [
+                dataIndex + index + 1, // Continue numbering from previous page
+                row[1], // medication
+                row[2], // dosage
+                row[3], // frequency
+                row[4], // duration
+              ])
+
+              doc.autoTable({
+                startY: currentY,
+                head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
+                body: numberedPageData,
+                theme: "grid",
+                headStyles: {
+                  fillColor: [76, 140, 115],
+                  textColor: [255, 255, 255],
+                  fontStyle: "bold",
+                  fontSize: 9,
+                },
+                bodyStyles: {
+                  fontSize: 8,
+                  textColor: [40, 40, 40],
+                  font: "helvetica",
+                },
+                styles: {
+                  cellWidth: "wrap",
+                  minCellHeight: 6,
+                  overflow: "linebreak",
+                  tableWidth: "auto",
+                },
+                columnStyles: {
+                  0: { cellWidth: 12, halign: "center" },
+                  1: { cellWidth: (usableWidth - 12) * 0.4 },
+                  2: { cellWidth: (usableWidth - 12) * 0.2 },
+                  3: { cellWidth: (usableWidth - 12) * 0.2 },
+                  4: { cellWidth: (usableWidth - 12) * 0.2 },
+                },
+                margin: { left: margin, right: margin, top: 10, bottom: signatureSpace },
+                pageBreak: "avoid", // Prevent breaking within this table
+                showHead: "everyPage",
+                didDrawPage: (data) => {
+                  // Add background image to new pages
+                  if (data.pageNumber > 1) {
+                    doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
+                  }
+                  // Add doctor signature on every page
+                  addDoctorSignature(doc, data.pageNumber)
+                },
+              })
+
+              dataIndex += itemsInThisPage
+              pageNumber++
+              isFirstPrescriptionPage = false
             }
+
+            // Update currentY for any content that might follow
+            currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : currentY
           }
-          
-          // Render prescription tables across pages
-          let dataIndex = 0
-          let pageNumber = 1
-          let isFirstPrescriptionPage = true
-          
-          for (const itemsInThisPage of itemsPerPage) {
-            // Check if we need a new page
-            if (!isFirstPrescriptionPage || (pageNumber > 1)) {
-              doc.addPage()
-              doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-              currentY = 80
-            }
-            
-            // Add prescription header
-            doc.setFont("helvetica", "bold")
-            doc.setFontSize(12)
-            doc.setTextColor(40, 40, 40)
-            
-            if (isFirstPrescriptionPage) {
-              doc.text("Prescription", margin, currentY)
-            } else {
-              doc.text(`Prescription`, margin, currentY)
-            }
-            currentY += 10
-            
-            // Get data for this page
-            const pageData = prescriptionTableData.slice(dataIndex, dataIndex + itemsInThisPage)
-            
-            // Renumber the items for this page if it's a continuation
-            const numberedPageData = pageData.map((row, index) => [
-              dataIndex + index + 1, // Continue numbering from previous page
-              row[1], // medication
-              row[2], // dosage
-              row[3], // frequency
-              row[4]  // duration
-            ])
-            
-            doc.autoTable({
-              startY: currentY,
-              head: [["#", "Medication", "Dosage", "Frequency", "Duration"]],
-              body: numberedPageData,
-              theme: "grid",
-              headStyles: {
-                fillColor: [76, 140, 115],
-                textColor: [255, 255, 255],
-                fontStyle: "bold",
-                fontSize: 9,
-              },
-              bodyStyles: {
-                fontSize: 8,
-                textColor: [40, 40, 40],
-                font: "helvetica",
-              },
-              styles: {
-                cellWidth: "wrap",
-                minCellHeight: 6,
-                overflow: "linebreak",
-                tableWidth: "auto",
-              },
-              columnStyles: {
-                0: { cellWidth: 12, halign: "center" },
-                1: { cellWidth: (usableWidth - 12) * 0.4 },
-                2: { cellWidth: (usableWidth - 12) * 0.2 },
-                3: { cellWidth: (usableWidth - 12) * 0.2 },
-                4: { cellWidth: (usableWidth - 12) * 0.2 },
-              },
-              margin: { left: margin, right: margin, top: 10, bottom: signatureSpace },
-              pageBreak: "avoid", // Prevent breaking within this table
-              showHead: "everyPage",
-              didDrawPage: (data) => {
-                // Add background image to new pages
-                if (data.pageNumber > 1) {
-                  doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-                }
-                // Add doctor signature on every page
-                addDoctorSignature(doc, data.pageNumber)
-              },
-            })
-            
-            dataIndex += itemsInThisPage
-            pageNumber++
-            isFirstPrescriptionPage = false
-          }
-          
-          // Update currentY for any content that might follow
-          currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : currentY
         }
-      }
         // FIXED: Ensure signature is always added to the last page
         const currentPageNumber = doc.internal.getNumberOfPages()
         const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : currentY
@@ -1914,7 +1927,7 @@ const PrescriptionDetails = () => {
     )
   }
   // NEW: Determine if save button should be disabled
-  const isSaveDisabled = isSaved && !hasUnsavedChanges
+  const isSaveDisabled = isSaving || (isSaved && !hasUnsavedChanges)
   return (
     <StyledContainer>
       {successMessage && (
@@ -2078,7 +2091,9 @@ const PrescriptionDetails = () => {
                             if (
                               typedText &&
                               typedText.trim() !== "" &&
-                              (!currentSelection || currentSelection.length === 0 || currentSelection[0].label !== typedText)
+                              (!currentSelection ||
+                                currentSelection.length === 0 ||
+                                currentSelection[0].label !== typedText)
                             ) {
                               handlePrescriptionChange(index, "selectedPrescription", [{ label: typedText }])
                             } else if (typedText.trim() === "" && currentSelection.length > 0) {
@@ -2261,14 +2276,13 @@ const PrescriptionDetails = () => {
               <center>
                 {getSummaryDetails()}
                 {/* NEW: Updated save button with disabled state and tooltip */}
-                <button
+                <SaveButton
                   disabled={isSaveDisabled}
                   onClick={handleSubmit}
-                  title={isSaveDisabled ? "No changes to save" : "Save changes"}
-                  style={{ float: "right", marginTop: "-40px" }}
+                  title={isSaving ? "Saving..." : isSaveDisabled ? "No changes to save" : "Save changes"}
                 >
-                  {isSaved && !hasUnsavedChanges ? "Saved" : "Save"}
-                </button>
+                  {isSaving ? "Saving..." : isSaved && !hasUnsavedChanges ? "Saved ✓" : "Save"}
+                </SaveButton>
               </center>
             </SummaryContainer>
           </Tab.Pane>
