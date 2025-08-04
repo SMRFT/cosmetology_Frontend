@@ -16,7 +16,6 @@ import "jspdf-autotable"
 import Kumarapalayam from "./images/KumarapalayamBill.jpg"
 import Salem from "./images/Salembill.jpg"
 
-
 const BillingProcedureReport = () => {
   const [billingData, setBillingData] = useState(null)
   const [selectedInterval, setSelectedInterval] = useState("day")

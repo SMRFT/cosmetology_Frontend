@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect, forwardRef } from "react"
 import styled from "styled-components"
 import { Row, Col } from "react-bootstrap"
@@ -18,368 +17,393 @@ import axios from "axios"
 import Select from "react-select"
 
 const StyledContainer = styled.div`
- padding: 10px;
- max-width: 90%;
- margin: 20px auto;
- border-collapse: collapse;
+  padding: 10px;
+  max-width: 90%;
+  margin: 20px auto;
+  border-collapse: collapse;
 `
 
 const Container = styled.div`
- margin-top: 65px;
+  margin-top: 65px;
 `
 
 const TableContainer = styled.div`
- overflow-y: auto;
- scrollbar-width: thin;
+  overflow-y: auto;
+  scrollbar-width: thin;
 `
 
 const Patientcardcontainer = styled.div`
- background-color: white;
- border-radius: 10px;
- box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
- width: 500px;
- height: auto;
- padding: 10px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 500px;
+  height: auto;
+  padding: 10px;
 `
 
 const PatientCard = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- background-color: #BCAEC7;
- color: white;
- padding: 8px 15px;
- border-radius: 8px;
- margin-bottom: 10px;
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
- flex-grow: 1;
- flex-shrink: 1;
- width: 50%;
- text-align: center;
- cursor: pointer;
- transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #BCAEC7;
+  color: white;
+  padding: 8px 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  flex-grow: 1;
+  flex-shrink: 1;
+  width: 50%;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
 
- &:hover {
- background-color: #a89bb5;
- transform: translateY(-2px);
- box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
- }
+  &:hover {
+    background-color: #a89bb5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
 
- .patient-name {
- font-size: 18px;
- font-weight: 600;
- letter-spacing: 0.5px;
- text-transform: capitalize;
- }
+  .patient-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: capitalize;
+  }
 
- .patient-details {
- display: flex;
- flex-direction: column;
- align-items: flex-start;
- }
+  .patient-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
- .patient-contact {
- font-size: 14px;
- font-weight: 400;
- opacity: 0.9;
- }
+  .patient-contact {
+    font-size: 14px;
+    font-weight: 400;
+    opacity: 0.9;
+  }
 
- .data-source {
- font-size: 12px;
- font-weight: 400;
- opacity: 0.8;
- margin-top: 4px;
- padding: 2px 6px;
- border-radius: 4px;
- background-color: ${(props) => (props.dataSource === "billing" ? "#28a745" : "#007bff")};
- }
+  .data-source {
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.8;
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: ${(props) => (props.dataSource === "billing" ? "#28a745" : "#007bff")};
+  }
 `
 
 const DatePickerWrapper = styled.div`
- display: flex;
- align-items: center;
+  display: flex;
+  align-items: center;
 
- .react-datepicker-wrapper {
- width: 100%;
- }
+  .react-datepicker-wrapper {
+    width: 100%;
+  }
 
- .custom-date-input {
- display: flex;
- align-items: center;
- justify-content: center;
- border: none;
- border-radius: 0.25rem;
- padding: 0.375rem 0.75rem;
- width: 200px;
- background-color: #fff;
- cursor: pointer;
- margin-right: 10px;
- }
+  .custom-date-input {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    width: 200px;
+    background-color: #fff;
+    cursor: pointer;
+    margin-right: 10px;
+  }
 
- .calendar-icon {
- margin-right: 8px;
- color: #C85C8E;
- }
+  .calendar-icon {
+    margin-right: 8px;
+    color: #C85C8E;
+  }
 `
 
 const InfoContainer = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- color: white;
- padding: 15px 25px;
- border-radius: 8px;
- margin-bottom: 20px;
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
- max-width: 90%;
- margin: 0 auto;
- box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
- background: linear-gradient(135deg, #ad97b4 0%, #9b85a8 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 90%;
+  margin: 0 auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, #ad97b4 0%, #9b85a8 100%);
 `
 
 const InfoText = styled.div`
- display: flex;
- justify-content: space-between;
- width: 100%;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 `
 
 const PatientInfo = styled.div`
- flex: 1;
- 
- div {
- margin-bottom: 5px;
- font-weight: 500;
- 
- strong {
- font-weight: 600;
- margin-right: 8px;
- }
- }
+  flex: 1;
+
+  div {
+    margin-bottom: 5px;
+    font-weight: 500;
+
+    strong {
+      font-weight: 600;
+      margin-right: 8px;
+    }
+  }
 `
 
 const DoctorInfo = styled.div`
- flex: 1;
- text-align: right;
- 
- div {
- font-weight: 500;
- 
- strong {
- font-weight: 600;
- }
- }
+  flex: 1;
+  text-align: right;
+
+  div {
+    font-weight: 500;
+
+    strong {
+      font-weight: 600;
+    }
+  }
 `
 
 const MedicineSelect = styled.select`
- width: 100%;
- padding: 8px;
- border: 1px solid #ddd;
- border-radius: 4px;
- font-size: 14px;
- background-color: white;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
 
- &:focus {
- outline: none;
- border-color: #9b85a8;
- box-shadow: 0 0 0 2px rgba(155, 133, 168, 0.2);
- }
+  &:focus {
+    outline: none;
+    border-color: #9b85a8;
+    box-shadow: 0 0 0 2px rgba(155, 133, 168, 0.2);
+  }
 `
 
 const AddRowButton = styled.button`
- background-color: #9b85a8;
- color: white;
- border: none;
- padding: 8px 16px;
- border-radius: 4px;
- cursor: pointer;
- display: flex;
- align-items: center;
- gap: 8px;
- margin-bottom: 10px;
- 
- &:hover {
- background-color: #218838;
- }
+  background-color: #9b85a8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+
+  &:hover {
+    background-color: #218838;
+  }
+`
+
+const SelectAllButton = styled.button`
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  margin-left: 10px;
+
+  &:hover {
+    background-color: #5a6268;
+  }
 `
 
 const DeleteRowButton = styled.button`
- background-color: #dc3545;
- color: white;
- border: none;
- padding: 4px 8px;
- border-radius: 4px;
- cursor: pointer;
- 
- &:hover {
- background-color: #c82333;
- }
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #c82333;
+  }
 `
 
 const ConsultationSection = styled.div`
- background-color: #f8f9fa;
- padding: 15px;
- border-radius: 8px;
- margin-top: 20px;
- border: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid #dee2e6;
 `
 
 const ConsultationRow = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 `
 
 const ConsultationLabel = styled.label`
- font-weight: 500;
- margin-right: 10px;
+  font-weight: 500;
+  margin-right: 10px;
 `
 
 const ConsultationInput = styled.input`
- padding: 8px;
- border: 1px solid #ddd;
- border-radius: 4px;
- width: 120px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 120px;
 `
 
 const DiscountContainer = styled.div`
- display: flex;
- align-items: center;
+  display: flex;
+  align-items: center;
 `
 
 const DiscountLabel = styled.label`
- margin-right: 10px;
- font-size: 16px;
- font-weight: 500;
+  margin-right: 10px;
+  font-size: 16px;
+  font-weight: 500;
 `
 
 const DiscountInput = styled.input`
- padding: 4px;
- font-size: 16px;
- margin-right: 10px;
- border: 1px solid #ddd;
- border-radius: 4px;
+  padding: 4px;
+  font-size: 16px;
+  margin-right: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 `
 
 const PaymentTypeContainer = styled.div`
- display: flex;
- align-items: center;
+  display: flex;
+  align-items: center;
 `
 
 const PaymentTypeLabel = styled.label`
- margin-right: 10px;
- font-size: 16px;
- font-weight: 500;
+  margin-right: 10px;
+  font-size: 16px;
+  font-weight: 500;
 `
 
 const PaymentTypeInput = styled.select`
- padding: 8px;
- font-size: 16px;
- margin-right: 10px;
- border: 1px solid #ddd;
- border-radius: 4px;
+  padding: 8px;
+  font-size: 16px;
+  margin-right: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 `
 
 const NetContainer = styled.div`
- display: flex;
- align-items: center;
+  display: flex;
+  align-items: center;
 `
 
 const NetLabel = styled.label`
- margin-right: 10px;
- font-size: 16px;
- font-weight: 500;
+  margin-right: 10px;
+  font-size: 16px;
+  font-weight: 500;
 `
 
 const NetInput = styled.input`
- padding: 8px;
- font-size: 16px;
- margin-right: 10px;
- border: 1px solid #ddd;
- border-radius: 4px;
- background-color: #f8f9fa;
+  padding: 8px;
+  font-size: 16px;
+  margin-right: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f8f9fa;
 `
 
 const FlexRow = styled.div`
- display: flex;
- justify-content: space-between;
- align-items: center;
- margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
 `
 
 const NoDataMessage = styled.div`
- text-align: center;
- font-size: 18px;
- color: #888;
- padding: 20px;
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-align: center;
+  font-size: 18px;
+  color: #888;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 `
 
 const EditableInput = styled.input`
- width: 80px;
- padding: 4px;
- border: 1px solid #ddd;
- border-radius: 4px;
- text-align: center;
+  width: 80px;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
 `
 
 const LoadingSpinner = styled.div`
- display: flex;
- flex-direction: column;
- justify-content: center;
- align-items: center;
- height: 300px;
- 
- .spinner {
- border: 4px solid #f3f3f3;
- border-top: 4px solid #9b85a8;
- border-radius: 50%;
- width: 40px;
- height: 40px;
- animation: spin 1s linear infinite;
- }
- 
- @keyframes spin {
- 0% { transform: rotate(0deg); }
- 100% { transform: rotate(360deg); }
- }
- 
- p {
- margin-top: 15px;
- font-size: 16px;
- color: #666;
- font-weight: 500;
- }
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+
+  .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #9b85a8;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  p {
+    margin-top: 15px;
+    font-size: 16px;
+    color: #666;
+    font-weight: 500;
+  }
 `
 
 const DataSourceBadge = styled.span`
- background-color: ${(props) => (props.children === "Billed" ? "#28a745" : "#007bff")};
- color: white;
- padding: 4px 8px;
- border-radius: 4px;
- font-size: 12px;
- font-weight: 500;
- margin-left: 10px;
+  background-color: ${(props) => (props.children === "Billed" ? "#28a745" : "#007bff")};
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 10px;
 `
 
 const ActionButton = styled.button`
- background-color:rgb(183, 129, 208);
- color: white;
- border: none;
- padding: 8px 16px;
- border-radius: 4px;
- cursor: pointer;
- margin: 0 5px;
- transition: all 0.2s ease;
+  background-color: rgb(183, 129, 208);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0 5px;
+  transition: all 0.2s ease;
 
- &:hover {
- background-color:rgb(161, 54, 197);
- }
+  &:hover {
+    background-color: rgb(161, 54, 197);
+  }
 
- &:disabled {
- background-color:rgb(166, 149, 184);
- cursor: not-allowed;
- }
+  &:disabled {
+    background-color: rgb(166, 149, 184);
+    cursor: not-allowed;
+  }
+`
+
+const StockWarning = styled.span`
+  color: #dc3545;
+  font-size: 12px;
+  font-weight: bold;
+  margin-left: 5px;
 `
 
 const Bill = () => {
@@ -402,14 +426,15 @@ const Bill = () => {
   const [medicineErrors, setMedicineErrors] = useState({})
   const [isDataFromStored, setIsDataFromStored] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [tempDiscount, setTempDiscount] = useState(0) // For temporary discount input
-  const [appliedDiscount, setAppliedDiscount] = useState(0) // For applied discount
-
-  // New states for pharmacy dropdown and additional rows
+  const [tempDiscount, setTempDiscount] = useState(0)
+  const [appliedDiscount, setAppliedDiscount] = useState(0)
   const [medicineOptions, setMedicineOptions] = useState([])
   const [additionalRows, setAdditionalRows] = useState([])
   const [consultationFee, setConsultationFee] = useState(0)
   const [savedBillingData, setSavedBillingData] = useState([])
+  const [stockErrors, setStockErrors] = useState({})
+  const [selectAll, setSelectAll] = useState(false)
+
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   // Initialize branch code and fetch current date data
@@ -452,23 +477,17 @@ const Bill = () => {
   // Fetch initial patient data from summary API - only patients with prescription data
   const fetchInitialPatientData = async (date) => {
     if (!branchCode || !date) return
-
     setIsLoading(true)
     const formattedDate = format(date, "yyyy-MM-dd")
-
     try {
       const response = await fetch(
         `${Cosmetologybaseurl}summary/post/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
       )
-
       if (response.ok) {
         const summaryData = await response.json()
         if (summaryData && Array.isArray(summaryData) && summaryData.length > 0) {
-          // Filter patients to only include those with prescription data
           const patientsWithPrescriptions = summaryData.filter((patient) => hasPrescriptionData(patient.prescription))
-
           if (patientsWithPrescriptions.length > 0) {
-            // Transform summary data to patient format
             const transformedPatients = patientsWithPrescriptions.map((patient) => ({
               ...patient,
               dataSource: "summary",
@@ -501,24 +520,18 @@ const Bill = () => {
   // Fetch patient billing data from unified API
   const fetchPatientBillingData = async (patient) => {
     if (!branchCode || !startDate) return
-
     setIsLoading(true)
     const formattedDate = format(startDate, "yyyy-MM-dd")
-
     try {
       const response = await fetch(
         `${Cosmetologybaseurl}get_patientbilling_data/?patientUID=${patient.patientUID}&appointmentDate=${formattedDate}&branch_code=${branchCode}`,
       )
-
       if (response.ok) {
         const result = await response.json()
-
         if (result.source === "billing") {
-          // Data from billing table
           setIsDataFromStored(true)
           loadStoredBillingData(result.data)
         } else if (result.source === "summary") {
-          // Data from summary table - only load if prescription data is present
           if (hasPrescriptionData(result.data.prescription)) {
             setIsDataFromStored(false)
             loadSummaryBillingData(result.data)
@@ -530,7 +543,6 @@ const Bill = () => {
           }
         }
       } else if (response.status === 204) {
-        // No data found
         setIsDataFromStored(false)
         setBillingData([])
         setAdditionalRows([])
@@ -547,16 +559,14 @@ const Bill = () => {
   }
 
   // Load stored billing data
-  // Update the loadStoredBillingData function to set applied discount
   const loadStoredBillingData = (storedData) => {
     const discountValue = Number.parseFloat(storedData.discount?.replace("%", "")) || 0
     setDiscount(discountValue)
-    setTempDiscount(discountValue) // Add this line
-    setAppliedDiscount(discountValue) // Add this line
+    setTempDiscount(discountValue)
+    setAppliedDiscount(discountValue)
     setPaymentType(storedData.paymentType || "Card")
     setNetAmount(storedData.netAmount || "0.00")
 
-    // Parse table_data
     let tableData = []
     try {
       if (typeof storedData.table_data === "string") {
@@ -569,13 +579,11 @@ const Bill = () => {
       tableData = []
     }
 
-    // Load consultation fee
     const consultationItem = tableData.find((item) => item.particulars === "Consultation Fee")
     if (consultationItem) {
       setConsultationFee(Number.parseFloat(consultationItem.price) || 0)
     }
 
-    // Load all items as additional rows (excluding consultation fee)
     const savedRows = tableData
       .filter((item) => item.particulars !== "Consultation Fee")
       .map((item, index) => ({
@@ -608,12 +616,16 @@ const Bill = () => {
     setNetAmount("")
     setSelectedPrescriptions({})
     setQuantity({})
+
+    // Auto-select all prescriptions when loading summary data
+    setTimeout(() => {
+      handleSelectAll()
+    }, 100)
   }
 
   // Fetch medicine options for dropdown
   useEffect(() => {
     if (!branchCode) return
-
     axios
       .get(`${Cosmetologybaseurl}get_medicine_price/`, {
         params: { branch_code: branchCode },
@@ -731,22 +743,16 @@ const Bill = () => {
   const fetchMedicineDetails = async (medicine_name, batch_number = null) => {
     try {
       let url = `${Cosmetologybaseurl}get_medicine_price/?medicine_name=${encodeURIComponent(medicine_name)}&branch_code=${branchCode}`
-
       if (batch_number && batch_number !== "N/A") {
         url += `&batch_number=${encodeURIComponent(batch_number)}`
       }
-
       const response = await fetch(url)
-
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-
       const data = await response.json()
-
       if (Array.isArray(data) && data.length > 0) {
         const medicineData = data[0]
-
         setMedicineErrors((prev) => {
           const newErrors = { ...prev }
           delete newErrors[medicine_name]
@@ -786,7 +792,6 @@ const Bill = () => {
           ...prev,
           [medicine_name]: "Medicine not found or out of stock",
         }))
-
         return {
           price: 0,
           CGST_percentage: 0,
@@ -807,7 +812,6 @@ const Bill = () => {
         ...prev,
         [medicine_name]: "Failed to fetch medicine details",
       }))
-
       return {
         price: 0,
         CGST_percentage: 0,
@@ -865,14 +869,12 @@ const Bill = () => {
   // Handle medicine selection from dropdown
   const handleMedicineSelect = (rowId, medicineId) => {
     const selectedMedicine = medicineOptions.find((med) => med.id === medicineId)
-
     if (selectedMedicine) {
       const { cgstValue, sgstValue } = calculateGSTValues(
         selectedMedicine.price,
         selectedMedicine.CGST_percentage,
         selectedMedicine.SGST_percentage,
       )
-
       setAdditionalRows((prev) =>
         prev.map((row) =>
           row.id === rowId
@@ -900,13 +902,11 @@ const Bill = () => {
       prev.map((row) => {
         if (row.id === rowId) {
           const updatedRow = { ...row, [field]: value }
-
           if (field === "price") {
             const { cgstValue, sgstValue } = calculateGSTValues(value, row.CGST_percentage, row.SGST_percentage)
             updatedRow.CGST_value = cgstValue
             updatedRow.SGST_value = sgstValue
           }
-
           return updatedRow
         }
         return row
@@ -920,13 +920,11 @@ const Bill = () => {
       if (prescription.trim().toUpperCase() === "N/A" || prescription.trim() === "") {
         return []
       }
-
-      // Handle various formats with different separators and spaces
       const cleanPrescription = prescription
-        .replace(/\\+/g, "\n") // Replace multiple backslashes with newlines
-        .replace(/\\\\/g, "\n") // Replace double backslashes
-        .replace(/\\n/g, "\n") // Replace literal \n
-        .replace(/\n+/g, "\n") // Replace multiple newlines with single
+        .replace(/\\+/g, "\n")
+        .replace(/\\\\/g, "\n")
+        .replace(/\\n/g, "\n")
+        .replace(/\n+/g, "\n")
         .trim()
 
       const prescriptions = cleanPrescription
@@ -940,18 +938,14 @@ const Bill = () => {
           const dosageIndex = prescriptionItem.search(/dosage:/i)
           const totalDosageIndex = prescriptionItem.search(/total dosage:/i)
           let totalDosage = "N/A"
-
           if (totalDosageIndex !== -1) {
             const totalDosageSubstring = prescriptionItem.substring(totalDosageIndex + "Total Dosage:".length).trim()
             totalDosage = totalDosageSubstring.split(/\s+/)[0] || "N/A"
           }
-
           let particulars = dosageIndex !== -1 ? prescriptionItem.substring(0, dosageIndex).trim() : prescriptionItem
-
           if (particulars.endsWith("-")) {
             particulars = particulars.slice(0, -1).trim()
           }
-
           return {
             particulars: particulars || "N/A",
             totalDosage,
@@ -974,24 +968,41 @@ const Bill = () => {
     }
   }
 
+  // Handle Select All functionality
+  const handleSelectAll = () => {
+    if (!selectedPatient) return
+
+    const patientBillingData = billingData.filter((item) => item.patientUID === selectedPatient.patientUID)
+    const newSelectedPrescriptions = {}
+
+    patientBillingData.forEach((item, itemIndex) => {
+      const prescriptions = extractPrescriptionDetails(item.prescription)
+      prescriptions.forEach((prescription, prescriptionIndex) => {
+        const key = `${itemIndex}-${prescriptionIndex}`
+        newSelectedPrescriptions[key] = !selectAll
+      })
+    })
+
+    setSelectedPrescriptions(newSelectedPrescriptions)
+    setSelectAll(!selectAll)
+  }
+
   // Reset discount states when selecting new patient in handlePatientCardClick
   const handlePatientCardClick = async (patient) => {
     setSelectedPatient(patient)
     setIsBillingDisplayed(true)
-
-    // Reset states when selecting a new patient
     setAdditionalRows([])
     setConsultationFee(0)
     setDiscount(0)
-    setTempDiscount(0) // Add this line
-    setAppliedDiscount(0) // Add this line
+    setTempDiscount(0)
+    setAppliedDiscount(0)
     setNetAmount("")
     setSelectedPrescriptions({})
     setQuantity({})
     setEditablePrices({})
     setEditableTotals({})
-
-    // Fetch billing data for the selected patient
+    setStockErrors({})
+    setSelectAll(false)
     await fetchPatientBillingData(patient)
   }
 
@@ -1003,13 +1014,15 @@ const Bill = () => {
     setConsultationFee(0)
     setSavedBillingData([])
     setDiscount(0)
-    setTempDiscount(0) // Add this line
-    setAppliedDiscount(0) // Add this line
+    setTempDiscount(0)
+    setAppliedDiscount(0)
     setNetAmount("")
     setSelectedPrescriptions({})
     setQuantity({})
     setEditablePrices({})
     setEditableTotals({})
+    setStockErrors({})
+    setSelectAll(false)
   }
 
   useEffect(() => {
@@ -1053,37 +1066,29 @@ const Bill = () => {
     if (rowId && editableTotals[rowId]) {
       return editableTotals[rowId]
     }
-
     qty = Number.parseFloat(qty)
-
     if (isNaN(Number.parseFloat(price)) || price === "Loading..." || price === "N/A") {
       console.error("Invalid price:", price)
       return 0
     }
-
     const total = (Number.parseFloat(price) * qty).toFixed(2)
     return total
   }
 
   const handleDiscountChange = (e) => {
     const value = e.target.value
-    // Allow empty string or valid numbers
     if (value === "" || (!isNaN(value) && !isNaN(Number.parseFloat(value)))) {
       setTempDiscount(value === "" ? 0 : Number.parseFloat(value))
     }
   }
 
-  // Updated function to apply discount and recalculate net amount
   const handleApplyDiscount = () => {
     const discountValue = Number.parseFloat(tempDiscount) || 0
     setAppliedDiscount(discountValue)
     setDiscount(discountValue)
-
-    // Pass directly to avoid waiting for state update
     calculateNetAmount(discountValue)
   }
 
-  // Update the applyDiscountToTotal function to use appliedDiscount
   const applyDiscountToTotal = (total, discountValue) => {
     const discount = Number.parseFloat(discountValue) || 0
     const discountAmount = (total * discount) / 100
@@ -1095,38 +1100,29 @@ const Bill = () => {
       console.error("No patient selected")
       return
     }
-
     let total = 0
-
     const patientBillingData = billingData.filter((item) => item.patientUID === selectedPatient.patientUID)
 
     patientBillingData.forEach((item, itemIndex) => {
       const prescriptions = extractPrescriptionDetails(item.prescription)
-
       prescriptions.forEach((prescription, prescriptionIndex) => {
         const key = `${itemIndex}-${prescriptionIndex}`
-
         if (selectedPrescriptions[key]) {
           const { particulars } = prescription
           const qty =
             quantity[key] !== undefined ? Number.parseFloat(quantity[key]) : Number.parseFloat(prescription.totalDosage)
-
           if (isNaN(qty) || qty <= 0) {
             console.warn("Invalid quantity:", qty)
             return
           }
-
           const medicineDetail = medicineDetails[particulars] || {}
           let price = editablePrices[key] || medicineDetail.price
-
           if (price === "N/A" || isNaN(Number.parseFloat(price))) {
             console.warn(`Price is not available or invalid for medicine: ${particulars}`)
             return
           }
-
           price = Number.parseFloat(price)
           const totalForMedicine = calculateTotal(price, qty, key)
-
           total += Number.parseFloat(totalForMedicine) || 0
         }
       })
@@ -1147,10 +1143,8 @@ const Bill = () => {
       return
     }
 
-    // Use the custom discount if provided, otherwise use appliedDiscount from state
     const discountToApply = customDiscount !== null ? customDiscount : Number.parseFloat(appliedDiscount)
     const finalAmount = applyDiscountToTotal(total, discountToApply)
-
     if (!isNaN(finalAmount) && typeof finalAmount === "number") {
       setNetAmount(finalAmount.toFixed(2))
     } else {
@@ -1159,77 +1153,133 @@ const Bill = () => {
     }
   }
 
-  const handleSaveData = async () => {
-    const errorMessages = []
+  // Check if any medicine is selected
+  const hasSelectedMedicines = () => {
+    const hasSelectedPrescriptions = Object.values(selectedPrescriptions).some((selected) => selected)
+    const hasSelectedAdditionalRows = additionalRows.some((row) => row.selected)
+    return hasSelectedPrescriptions || hasSelectedAdditionalRows || consultationFee > 0
+  }
 
-    const table_data = billingData
-      .filter((item) => item.patientUID === selectedPatient.patientUID)
-      .flatMap((item, itemIndex) => {
-        const prescriptions = extractPrescriptionDetails(item.prescription)
+  // Validate stock before saving
+  const validateStock = () => {
+    const stockErrors = {}
+    let hasStockIssues = false
 
-        const validPrescriptions = prescriptions.filter((prescription, prescriptionIndex) => {
-          const qty =
-            quantity[`${itemIndex}-${prescriptionIndex}`] !== undefined
-              ? quantity[`${itemIndex}-${prescriptionIndex}`]
-              : prescription.totalDosage
-          const medicineName = prescription.particulars
-
-          if (!selectedPrescriptions[`${itemIndex}-${prescriptionIndex}`]) return false
-
-          if (qty === "") {
-            errorMessages.push(`The quantity for medicine "${medicineName}" is empty.`)
-            return false
-          }
-
-          if (qty <= 0) {
-            errorMessages.push(`The quantity for medicine "${medicineName}" must be greater than zero.`)
-            return false
-          }
-
-          return true
-        })
-
-        return validPrescriptions.map((prescription, prescriptionIndex) => {
+    // Check prescription medicines
+    const patientBillingData = billingData.filter((item) => item.patientUID === selectedPatient.patientUID)
+    patientBillingData.forEach((item, itemIndex) => {
+      const prescriptions = extractPrescriptionDetails(item.prescription)
+      prescriptions.forEach((prescription, prescriptionIndex) => {
+        const key = `${itemIndex}-${prescriptionIndex}`
+        if (selectedPrescriptions[key]) {
           const { particulars } = prescription
           const qty =
-            quantity[`${itemIndex}-${prescriptionIndex}`] !== undefined
-              ? quantity[`${itemIndex}-${prescriptionIndex}`]
-              : prescription.totalDosage
-
+            quantity[key] !== undefined ? Number.parseFloat(quantity[key]) : Number.parseFloat(prescription.totalDosage)
           const medicineDetail = medicineDetails[particulars] || {}
-          const price = editablePrices[`${itemIndex}-${prescriptionIndex}`] || medicineDetail.price || "0.00"
-          const total = editableTotals[`${itemIndex}-${prescriptionIndex}`] || calculateTotal(price, qty)
 
-          return {
-            particulars,
-            qty,
-            price,
-            total,
-            CGST_percentage: medicineDetail.CGST_percentage || "N/A",
-            CGST_value: medicineDetail.CGST_value || "N/A",
-            SGST_percentage: medicineDetail.SGST_percentage || "N/A",
-            SGST_value: medicineDetail.SGST_value || "N/A",
-            batch_number: medicineDetail.batch_number || "N/A",
+          if (medicineDetail.stock !== undefined && medicineDetail.stock < qty) {
+            stockErrors[particulars] = `Low Stock: Available ${medicineDetail.stock}, Required ${qty}`
+            hasStockIssues = true
+          }
+        }
+      })
+    })
+
+    // Check additional rows
+    additionalRows.forEach((row) => {
+      if (row.selected && row.stock !== undefined && row.stock < Number.parseFloat(row.quantity)) {
+        stockErrors[row.particulars] = `Low Stock: Available ${row.stock}, Required ${row.quantity}`
+        hasStockIssues = true
+      }
+    })
+
+    setStockErrors(stockErrors)
+    return !hasStockIssues
+  }
+
+  const handleSaveData = async () => {
+    // Check if any medicines are selected
+    if (!hasSelectedMedicines()) {
+      toast.error("Please select at least one medicine or add consultation fee before saving.")
+      return
+    }
+
+    // Validate stock
+    if (!validateStock()) {
+      toast.error("Cannot save billing due to low stock issues. Please check the highlighted medicines.")
+      return
+    }
+
+    const errorMessages = []
+    const table_data = []
+
+    // Process billing data with correct prescription indices
+    billingData
+      .filter((item) => item.patientUID === selectedPatient.patientUID)
+      .forEach((item, itemIndex) => {
+        const prescriptions = extractPrescriptionDetails(item.prescription)
+        prescriptions.forEach((prescription, originalPrescriptionIndex) => {
+          const key = `${itemIndex}-${originalPrescriptionIndex}`
+
+          // Only process selected prescriptions
+          if (selectedPrescriptions[key]) {
+            const qty = quantity[key] !== undefined ? quantity[key] : prescription.totalDosage
+            const medicineName = prescription.particulars
+
+            // Validate quantity
+            if (qty === "" || qty === null || qty === undefined) {
+              errorMessages.push(`The quantity for medicine "${medicineName}" is empty.`)
+              return
+            }
+
+            if (Number.parseFloat(qty) <= 0) {
+              errorMessages.push(`The quantity for medicine "${medicineName}" must be greater than zero.`)
+              return
+            }
+
+            const { particulars } = prescription
+            const medicineDetail = medicineDetails[particulars] || {}
+            const price = editablePrices[key] || medicineDetail.price || "0.00"
+            const total = editableTotals[key] || calculateTotal(price, qty)
+
+            table_data.push({
+              particulars,
+              qty,
+              price,
+              total,
+              CGST_percentage: medicineDetail.CGST_percentage || "N/A",
+              CGST_value: medicineDetail.CGST_value || "N/A",
+              SGST_percentage: medicineDetail.SGST_percentage || "N/A",
+              SGST_value: medicineDetail.SGST_value || "N/A",
+              batch_number: medicineDetail.batch_number || "N/A",
+            })
           }
         })
       })
 
-    // Add additional rows to table_data
+    // Add additional rows to table_data (only selected ones)
     const additionalRowsData = additionalRows
       .filter((row) => row.selected && !row.isSaved)
-      .map((row) => ({
-        particulars: row.particulars,
-        qty: row.quantity,
-        price: row.price,
-        total: editableTotals[row.id] || (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
-        CGST_percentage: row.CGST_percentage,
-        CGST_value: row.CGST_value,
-        SGST_percentage: row.SGST_percentage,
-        SGST_value: row.SGST_value,
-        batch_number: row.batch_number,
-      }))
+      .map((row) => {
+        if (Number.parseFloat(row.quantity) <= 0) {
+          errorMessages.push(`The quantity for medicine "${row.particulars}" must be greater than zero.`)
+          return null
+        }
+        return {
+          particulars: row.particulars,
+          qty: row.quantity,
+          price: row.price,
+          total: editableTotals[row.id] || (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
+          CGST_percentage: row.CGST_percentage,
+          CGST_value: row.CGST_value,
+          SGST_percentage: row.SGST_percentage,
+          SGST_value: row.SGST_value,
+          batch_number: row.batch_number,
+        }
+      })
+      .filter(Boolean)
 
-    // Add saved billing data to table_data
+    // Add saved billing data to table_data (only selected ones)
     const savedRowsData = additionalRows
       .filter((row) => row.selected && row.isSaved)
       .map((row) => ({
@@ -1262,7 +1312,7 @@ const Bill = () => {
     }
 
     if (errorMessages.length > 0) {
-      console.error(errorMessages.join(" "))
+      toast.error(errorMessages.join(" "))
       return
     }
 
@@ -1273,7 +1323,6 @@ const Bill = () => {
 
     const discountAmount = (calculatedNetAmount * discount) / 100
     const discountedNetAmount = calculatedNetAmount - discountAmount
-
     setNetAmount(discountedNetAmount.toFixed(2))
 
     const dataToSubmit = {
@@ -1298,55 +1347,49 @@ const Bill = () => {
         },
         body: JSON.stringify(dataToSubmit),
       })
-
       if (!response.ok) {
         throw new Error("Failed to submit data")
       }
-
       const data = await response.json()
       toast.success(`Billing was generated successfully for ${selectedPatient.patientName}`)
-
       const stockUpdated = await updateStock()
       if (!stockUpdated) {
         console.error("Stock update failed.")
       }
-
-      // Navigate back to patient list after successful save
       setTimeout(() => {
         handleBackClick()
-      }, 2000) // Wait 2 seconds to show success message
+      }, 2000)
     } catch (error) {
       console.error("Error submitting data:", error)
       toast.error("Error saving billing data. Please try again.")
     }
   }
+
   const updateStock = async () => {
-    const stockUpdates = billingData
+    const stockUpdates = []
+
+    // Process billing data with correct prescription indices
+    billingData
       .filter((item) => item.patientUID === selectedPatient.patientUID)
-      .flatMap((item, itemIndex) => {
+      .forEach((item, itemIndex) => {
         const prescriptions = extractPrescriptionDetails(item.prescription)
+        prescriptions.forEach((prescription, originalPrescriptionIndex) => {
+          const key = `${itemIndex}-${originalPrescriptionIndex}`
 
-        return prescriptions
-          .map((prescription, prescriptionIndex) => {
-            if (!selectedPrescriptions[`${itemIndex}-${prescriptionIndex}`]) return null
-
+          if (selectedPrescriptions[key]) {
             const { particulars } = prescription
-            const qty =
-              quantity[`${itemIndex}-${prescriptionIndex}`] !== undefined
-                ? quantity[`${itemIndex}-${prescriptionIndex}`]
-                : prescription.totalDosage
-
+            const qty = quantity[key] !== undefined ? quantity[key] : prescription.totalDosage
             const medicineDetail = medicineDetails[particulars] || {}
             const actualBatchNumber = medicineDetail.batch_number || "N/A"
 
-            return {
+            stockUpdates.push({
               medicine_name: particulars,
               qty,
               branch_code: branchCode,
               batch_number: actualBatchNumber,
-            }
-          })
-          .filter(Boolean)
+            })
+          }
+        })
       })
 
     const additionalStockUpdates = additionalRows
@@ -1361,7 +1404,6 @@ const Bill = () => {
     const allStockUpdates = [...stockUpdates, ...additionalStockUpdates]
 
     let allStockUpdated = true
-
     for (const stockUpdate of allStockUpdates) {
       try {
         const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
@@ -1371,12 +1413,10 @@ const Bill = () => {
           },
           body: JSON.stringify(stockUpdate),
         })
-
         if (!response.ok) {
           const errorData = await response.json()
           throw new Error(errorData.error || "Failed to update stock")
         }
-
         const data = await response.json()
         toast.success("Stock updated successfully!")
       } catch (error) {
@@ -1385,31 +1425,33 @@ const Bill = () => {
         break
       }
     }
-
     return allStockUpdated
   }
 
   const handleDownload = () => {
+    // Check if any medicines are selected
+    if (!hasSelectedMedicines()) {
+      toast.error("Please select at least one medicine or add consultation fee before downloading PDF.")
+      return
+    }
+
     if (!selectedPatient || (!billingData.length && !additionalRows.length)) {
       console.error("No patient selected or billing data is empty")
       return
     }
 
     const patientBillingData = billingData.filter((item) => item.patientUID === selectedPatient.patientUID)
-
     const procedureTable = patientBillingData.flatMap((item, itemIndex) => {
       const prescriptions = extractPrescriptionDetails(item.prescription)
       return prescriptions
         .map((prescription, prescriptionIndex) => {
           const key = `${itemIndex}-${prescriptionIndex}`
           if (!selectedPrescriptions[key]) return null
-
           const qty = quantity[key] !== undefined ? quantity[key] : prescription.totalDosage
           const medicineDetail = medicineDetails[prescription.particulars] || {}
           const { CGST_percentage, CGST_value, SGST_percentage, SGST_value, batch_number } = medicineDetail
           const price = editablePrices[key] || medicineDetail.price || "0.00"
           const total = editableTotals[key] || calculateTotal(price, qty)
-
           return [
             prescription.particulars || "N/A",
             qty || "N/A",
@@ -1431,7 +1473,6 @@ const Bill = () => {
         const total =
           editableTotals[row.id] ||
           (Number.parseFloat(row.price || 0) * Number.parseFloat(row.quantity || 0)).toFixed(2)
-
         return [
           row.particulars || "N/A",
           row.quantity || "N/A",
@@ -1464,7 +1505,6 @@ const Bill = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
     const margin = 14
-
     const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
     const PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
 
@@ -1486,7 +1526,6 @@ const Bill = () => {
 
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-
       let startY = 90
       doc.setFont("times", "bold")
       doc.setFontSize(12)
@@ -1495,21 +1534,18 @@ const Bill = () => {
       doc.setFont("times", "normal")
       doc.setFontSize(10)
       doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
-
       doc.setFont("times", "bold")
       doc.setFontSize(12)
       doc.text("Patient UID:", 16, startY + 8)
       doc.setFont("times", "normal")
       doc.setFontSize(10)
       doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
-
       doc.setFont("times", "bold")
       doc.setFontSize(12)
       doc.text("Date:", 140, startY)
       doc.setFont("times", "normal")
       doc.setFontSize(10)
       doc.text(`${selectedPatient.appointmentDate}`, 170, startY)
-
       startY += 20
 
       if (allPDFRows.length > 0) {
@@ -1533,12 +1569,10 @@ const Bill = () => {
           },
           margin: { left: 14, right: 14 },
         })
-
         startY = doc.lastAutoTable.finalY
       }
 
       let finalY = startY
-
       if (discount > 0) {
         finalY += 8
         doc.setFont("times", "bold")
@@ -1565,7 +1599,6 @@ const Bill = () => {
       doc.setDrawColor(150)
       doc.setLineWidth(0.5)
       doc.line(14, finalY, pageWidth - 14, finalY)
-
       finalY += 6
       doc.setFont("times", "bold")
       doc.setFontSize(14)
@@ -1574,10 +1607,10 @@ const Bill = () => {
       doc.setFont("times", "normal")
       doc.setFontSize(10)
       doc.text(`Rs. ${netAmount.toFixed(2)}`, 170, finalY)
-
       doc.save(`${selectedPatient.patientName}_Bill.pdf`)
     })
   }
+
   return (
     <Container>
       <ToastContainer position="top-right" autoClose={5000} />
@@ -1587,7 +1620,6 @@ const Bill = () => {
           <IoMdArrowRoundBack />
         </button>
       )}
-
       {!isBillingDisplayed && (
         <center>
           <DatePickerWrapper>
@@ -1660,10 +1692,14 @@ const Bill = () => {
       <StyledContainer>
         {selectedPatient && (
           <>
-            <AddRowButton onClick={handleAddRow}>
-              <FaPlus /> Add Row
-            </AddRowButton>
-
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
+              <AddRowButton onClick={handleAddRow}>
+                <FaPlus /> Add Row
+              </AddRowButton>
+              {!isDataFromStored && (
+                <SelectAllButton onClick={handleSelectAll}>{selectAll ? "Deselect All" : "Select All"}</SelectAllButton>
+              )}
+            </div>
             <TableContainer>
               <table>
                 <thead>
@@ -1699,9 +1735,10 @@ const Bill = () => {
                             medicineDetail || {}
                           const editablePrice = editablePrices[`${itemIndex}-${prescriptionIndex}`] || price
                           const key = `${itemIndex}-${prescriptionIndex}`
+                          const hasStockError = stockErrors[particulars]
 
                           return (
-                            <tr key={key}>
+                            <tr key={key} style={{ backgroundColor: hasStockError ? "#ffe6e6" : "transparent" }}>
                               <td style={{ textAlign: "center" }}>
                                 <input
                                   type="checkbox"
@@ -1714,7 +1751,10 @@ const Bill = () => {
                                   }
                                 />
                               </td>
-                              <td>{particulars}</td>
+                              <td>
+                                {particulars}
+                                {hasStockError && <StockWarning>{hasStockError}</StockWarning>}
+                              </td>
                               <td style={{ textAlign: "center" }}>
                                 <input
                                   style={{ width: "60px" }}
@@ -1750,116 +1790,120 @@ const Bill = () => {
                       })}
 
                   {/* Additional rows */}
-                  {additionalRows.map((row) => (
-                    <tr key={row.id}>
-                      <td style={{ textAlign: "center" }}>
-                        <input
-                          type="checkbox"
-                          checked={row.selected}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "selected", e.target.checked)}
-                        />
-                      </td>
-                      <td>
-                        <Select
-                          value={
-                            row.particulars
-                              ? medicineOptions.find((med) => med.label === row.particulars)
-                                ? {
-                                    value: medicineOptions.find((med) => med.label === row.particulars).id,
-                                    label: row.particulars,
-                                  }
+                  {additionalRows.map((row) => {
+                    const hasStockError = stockErrors[row.particulars]
+                    return (
+                      <tr key={row.id} style={{ backgroundColor: hasStockError ? "#ffe6e6" : "transparent" }}>
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={row.selected}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "selected", e.target.checked)}
+                          />
+                        </td>
+                        <td>
+                          <Select
+                            value={
+                              row.particulars
+                                ? medicineOptions.find((med) => med.label === row.particulars)
+                                  ? {
+                                      value: medicineOptions.find((med) => med.label === row.particulars).id,
+                                      label: row.particulars,
+                                    }
+                                  : null
                                 : null
-                              : null
-                          }
-                          onChange={(selectedOption) => handleMedicineSelect(row.id, selectedOption?.value || "")}
-                          options={medicineOptions.map((medicine) => {
-                            const stockStatus =
-                              medicine.stock === 0
-                                ? " - OUT OF STOCK"
-                                : medicine.stock < 10
-                                  ? ` - LOW STOCK (${medicine.stock})`
-                                  : ` - Stock: ${medicine.stock}`
-                            return {
-                              value: medicine.id,
-                              label: `${medicine.label}${stockStatus}`,
-                              isDisabled: medicine.stock === 0,
                             }
-                          })}
-                          placeholder="Search and select medicine..."
-                          isClearable
-                          isSearchable
-                          menuPortalTarget={document.body}
-                          styles={{
-                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                            menu: (base) => ({ ...base, zIndex: 9999 }),
-                            control: (base) => ({ ...base, minHeight: "38px" }),
-                            option: (base, state) => ({
-                              ...base,
-                              backgroundColor: state.isDisabled ? "#f8f9fa" : base.backgroundColor,
-                              color: state.isDisabled ? "#6c757d" : base.color,
-                            }),
-                          }}
-                        />
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <input
-                          style={{ width: "60px" }}
-                          type="text"
-                          value={row.quantity}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "quantity", e.target.value)}
-                        />
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <input
-                          style={{ width: "80px" }}
-                          type="text"
-                          value={row.price}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "price", e.target.value)}
-                        />
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <input
-                          style={{ width: "60px" }}
-                          type="text"
-                          value={row.CGST_percentage}
-                          onChange={(e) => handleCGSTPercentageChange(row.id, e.target.value)}
-                        />
-                      </td>
-                      <td style={{ textAlign: "center" }}>{row.CGST_value}</td>
-                      <td style={{ textAlign: "center" }}>
-                        <input
-                          style={{ width: "60px" }}
-                          type="text"
-                          value={row.SGST_percentage}
-                          onChange={(e) => handleSGSTPercentageChange(row.id, e.target.value)}
-                        />
-                      </td>
-                      <td style={{ textAlign: "center" }}>{row.SGST_value}</td>
-                      <td style={{ textAlign: "center" }}>
-                        <input
-                          style={{ width: "80px" }}
-                          type="text"
-                          value={row.batch_number}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "batch_number", e.target.value)}
-                        />
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <EditableInput
-                          type="text"
-                          value={
-                            editableTotals[row.id] ||
-                            (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2)
-                          }
-                          onChange={(e) => handleTotalChange(row.id, e.target.value)}
-                        />
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <DeleteRowButton onClick={() => handleDeleteRow(row.id)}>
-                          <FaTrash />
-                        </DeleteRowButton>
-                      </td>
-                    </tr>
-                  ))}
+                            onChange={(selectedOption) => handleMedicineSelect(row.id, selectedOption?.value || "")}
+                            options={medicineOptions.map((medicine) => {
+                              const stockStatus =
+                                medicine.stock === 0
+                                  ? " - OUT OF STOCK"
+                                  : medicine.stock < 10
+                                    ? ` - LOW STOCK (${medicine.stock})`
+                                    : ` - Stock: ${medicine.stock}`
+                              return {
+                                value: medicine.id,
+                                label: `${medicine.label}${stockStatus}`,
+                                isDisabled: medicine.stock === 0,
+                              }
+                            })}
+                            placeholder="Search and select medicine..."
+                            isClearable
+                            isSearchable
+                            menuPortalTarget={document.body}
+                            styles={{
+                              menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                              menu: (base) => ({ ...base, zIndex: 9999 }),
+                              control: (base) => ({ ...base, minHeight: "38px" }),
+                              option: (base, state) => ({
+                                ...base,
+                                backgroundColor: state.isDisabled ? "#f8f9fa" : base.backgroundColor,
+                                color: state.isDisabled ? "#6c757d" : base.color,
+                              }),
+                            }}
+                          />
+                          {hasStockError && <StockWarning>{hasStockError}</StockWarning>}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            style={{ width: "60px" }}
+                            type="text"
+                            value={row.quantity}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "quantity", e.target.value)}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            style={{ width: "80px" }}
+                            type="text"
+                            value={row.price}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "price", e.target.value)}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            style={{ width: "60px" }}
+                            type="text"
+                            value={row.CGST_percentage}
+                            onChange={(e) => handleCGSTPercentageChange(row.id, e.target.value)}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>{row.CGST_value}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            style={{ width: "60px" }}
+                            type="text"
+                            value={row.SGST_percentage}
+                            onChange={(e) => handleSGSTPercentageChange(row.id, e.target.value)}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>{row.SGST_value}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <input
+                            style={{ width: "80px" }}
+                            type="text"
+                            value={row.batch_number}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "batch_number", e.target.value)}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <EditableInput
+                            type="text"
+                            value={
+                              editableTotals[row.id] ||
+                              (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2)
+                            }
+                            onChange={(e) => handleTotalChange(row.id, e.target.value)}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <DeleteRowButton onClick={() => handleDeleteRow(row.id)}>
+                            <FaTrash />
+                          </DeleteRowButton>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </TableContainer>
@@ -1893,7 +1937,6 @@ const Bill = () => {
               />
               <button onClick={handleApplyDiscount}>Apply</button>
             </DiscountContainer>
-
             <PaymentTypeContainer>
               <PaymentTypeLabel>Payment Type : </PaymentTypeLabel>
               <PaymentTypeInput value={paymentType} onChange={handlePaymentTypeChange}>
@@ -1901,7 +1944,6 @@ const Bill = () => {
                 <option value="Cash">Cash</option>
               </PaymentTypeInput>
             </PaymentTypeContainer>
-
             <NetContainer>
               <NetLabel htmlFor="Net">Net Amount:</NetLabel>
               <NetInput type="text" id="Net" value={netAmount} onChange={(e) => setNetAmount(e.target.value)} />

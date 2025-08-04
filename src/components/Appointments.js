@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useRef } from "react"
 import { Button, Container, Modal } from "react-bootstrap"
 import styled, { keyframes } from "styled-components"
@@ -14,6 +16,7 @@ import {
   faStethoscope,
   faClock,
   faGraduationCap,
+  faTrash,
 } from "@fortawesome/free-solid-svg-icons"
 import PatientList from "./PatientList"
 import axios from "axios"
@@ -35,8 +38,12 @@ const Appointment = () => {
   const [errorMessage, setErrorMessage] = useState("")
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [showErrorMessage, setShowErrorMessage] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [appointmentToCancel, setAppointmentToCancel] = useState(null)
   const datePickerRef = useRef(null)
+
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
   useEffect(() => {
     const code = localStorage.getItem("selectedBranch")
     if (code) {
@@ -45,7 +52,6 @@ const Appointment = () => {
     } else {
       console.warn("Branch code not found in localStorage")
     }
-
     const interval = 30
     setTimeSlots(getTimeSlotsForDate(new Date(), interval))
   }, [])
@@ -85,52 +91,48 @@ const Appointment = () => {
       })
   }
 
-const fetchDoctors = () => {
-  const url = `${Cosmetologybaseurl}get_doctors/?branch_code=${branchCode}`;
-  axios
-    .get(url, { withCredentials: true })
-    .then((response) => {
-      if (response.data.success) {
-        setDoctors(response.data.doctors);
-      } else {
-        setErrorMessage("Failed to fetch doctors");
-      }
-    })
-    .catch((error) => {
-      console.error("Error fetching doctors:", error);
-      setErrorMessage("Failed to fetch doctors");
-    });
-};
-
-
-const generateTimeSlots = (startTime, endTime, interval) => {
-  const slots = []
-  let current = startTime
-
-  while (current < endTime) {
-    const next = new Date(current.getTime() + interval * 60000)
-    const formattedSlot = `${current.toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    })} - ${next.toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    })}`
-
-    slots.push(formattedSlot)
-    current = next
+  const fetchDoctors = () => {
+    const url = `${Cosmetologybaseurl}get_doctors/?branch_code=${branchCode}`
+    axios
+      .get(url, { withCredentials: true })
+      .then((response) => {
+        if (response.data.success) {
+          setDoctors(response.data.doctors)
+        } else {
+          setErrorMessage("Failed to fetch doctors")
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching doctors:", error)
+        setErrorMessage("Failed to fetch doctors")
+      })
   }
 
-  return slots
-}
+  const generateTimeSlots = (startTime, endTime, interval) => {
+    const slots = []
+    let current = startTime
+    while (current < endTime) {
+      const next = new Date(current.getTime() + interval * 60000)
+      const formattedSlot = `${current.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })} - ${next.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })}`
+      slots.push(formattedSlot)
+      current = next
+    }
+    return slots
+  }
 
-const getTimeSlotsForDate = (date, interval) => {
-  const startTime = new Date(date.setHours(10, 0, 0, 0))
-  const endTime = new Date(date.setHours(20, 0, 0, 0))
-  return generateTimeSlots(startTime, endTime, interval)
-}
+  const getTimeSlotsForDate = (date, interval) => {
+    const startTime = new Date(date.setHours(10, 0, 0, 0))
+    const endTime = new Date(date.setHours(20, 0, 0, 0))
+    return generateTimeSlots(startTime, endTime, interval)
+  }
 
   const handleBookAppointment = (slot) => {
     setSelectedSlot(slot)
@@ -172,7 +174,6 @@ const getTimeSlotsForDate = (date, interval) => {
 
   const handleSelectDoctor = (doctor) => {
     setSelectedDoctor(doctor)
-
     const appointmentData = {
       patientUID: selectedPatient.patientUID,
       patientName: selectedPatient.patientName,
@@ -192,33 +193,27 @@ const getTimeSlotsForDate = (date, interval) => {
         withCredentials: true,
       })
       .then((response) => {
-
         // Show success message
         setSuccessMessage(
           `Appointment booked successfully! Patient: ${selectedPatient.patientName}, Doctor: Dr. ${doctor.name}, Time: ${selectedSlot}`,
         )
-
         // Close modals and reset state
         setShowDoctorList(false)
         setIsCreatingAppointment(false)
         setSelectedPatient(null)
         setSelectedDoctor(null)
         setSelectedSlot(null)
-
         // Refresh appointments data
         fetchAppointments(branchCode)
       })
       .catch((error) => {
         console.error("Error saving appointment:", error)
         console.error("Error response:", error.response) // Debug log
-
         const errorMessage =
           error.response?.data?.error ||
           error.response?.data?.message ||
           "Failed to book appointment. Please try again."
-
         setErrorMessage(errorMessage)
-
         // Don't close modals on error, allow user to try again
       })
   }
@@ -244,6 +239,60 @@ const getTimeSlotsForDate = (date, interval) => {
     return isBooked
   }
 
+  // Function to get appointment details for a specific slot
+  const getAppointmentForSlot = (slot) => {
+    return appointmentsData.find(
+      (appointment) =>
+        appointment.appointmentDate === selectedDate.toISOString().split("T")[0] &&
+        appointment.appointmentTime === slot,
+    )
+  }
+
+  // Function to handle cancel appointment
+  const handleCancelAppointment = (appointment, event) => {
+    event.stopPropagation() // Prevent slot selection when clicking cancel
+    setAppointmentToCancel(appointment)
+    setShowCancelConfirm(true)
+  }
+
+  // Function to confirm cancellation
+  const confirmCancelAppointment = () => {
+    if (!appointmentToCancel) return
+
+    const cancelData = {
+      patientUID: appointmentToCancel.patientUID,
+      appointmentDate: appointmentToCancel.appointmentDate,
+      appointmentTime: appointmentToCancel.appointmentTime,
+      branch_code: appointmentToCancel.branch_code,
+    }
+
+    axios
+      .delete(`${Cosmetologybaseurl}appointment/cancel/`, {
+        data: cancelData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      })
+      .then((response) => {
+        setSuccessMessage(`Appointment canceled successfully for ${appointmentToCancel.patientName}`)
+        setShowCancelConfirm(false)
+        setAppointmentToCancel(null)
+        // Refresh appointments data
+        fetchAppointments(branchCode)
+      })
+      .catch((error) => {
+        console.error("Error canceling appointment:", error)
+        const errorMessage =
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          "Failed to cancel appointment. Please try again."
+        setErrorMessage(errorMessage)
+        setShowCancelConfirm(false)
+        setAppointmentToCancel(null)
+      })
+  }
+
   const handleCloseSuccessMessage = () => {
     setShowSuccessMessage(false)
     setTimeout(() => setSuccessMessage(""), 300)
@@ -257,7 +306,6 @@ const getTimeSlotsForDate = (date, interval) => {
   return (
     <StyledContainer>
       <h3 className="text-center mb-4">Appointment</h3>
-
       {/* Custom Success Message */}
       {successMessage && (
         <MessageContainer show={showSuccessMessage} type="success">
@@ -315,16 +363,37 @@ const getTimeSlotsForDate = (date, interval) => {
             </CenteredButtonContainer>
           ) : (
             <ListContainer>
-              {timeSlots.map((slot, index) => (
-                <SlotButton
-                  key={index}
-                  onClick={() => handleBookAppointment(slot)}
-                  disabled={isSlotBooked(slot)}
-                  isSelected={selectedSlot === slot}
-                >
-                  {slot}
-                </SlotButton>
-              ))}
+              {timeSlots.map((slot, index) => {
+                const appointment = getAppointmentForSlot(slot)
+                const isBooked = !!appointment
+
+                return (
+                  <SlotContainer key={index}>
+                    <SlotButton
+                      onClick={() => !isBooked && handleBookAppointment(slot)}
+                      disabled={isBooked}
+                      isSelected={selectedSlot === slot}
+                      isBooked={isBooked}
+                    >
+                      <SlotTimeText>{slot}</SlotTimeText>
+                      {isBooked && (
+                        <PatientInfo>
+                          <PatientName>
+                            <FontAwesomeIcon icon={faUser} style={{ marginRight: "5px" }} />
+                            {appointment.patientName}
+                          </PatientName>
+                          <DoctorNameHandledBy>Dr. {appointment.patient_handledby}</DoctorNameHandledBy>
+                        </PatientInfo>
+                      )}
+                    </SlotButton>
+                    {isBooked && (
+                      <CancelButton onClick={(e) => handleCancelAppointment(appointment, e)} title="Cancel Appointment">
+                        <FontAwesomeIcon icon={faTrash} />
+                      </CancelButton>
+                    )}
+                  </SlotContainer>
+                )
+              })}
             </ListContainer>
           )}
         </ListGroupContainer>
@@ -378,12 +447,10 @@ const getTimeSlotsForDate = (date, interval) => {
                 </PatientInfoGrid>
               </EnhancedPatientInfo>
             )}
-
             <DoctorSectionHeader>
               <FontAwesomeIcon icon={faStethoscope} />
               <span>Available Doctors</span>
             </DoctorSectionHeader>
-
             <EnhancedDoctorListContainer>
               {doctors.length > 0 ? (
                 <DoctorGrid>
@@ -403,14 +470,12 @@ const getTimeSlotsForDate = (date, interval) => {
                           )}
                         </DoctorBasicInfo>
                       </DoctorCardHeader>
-
                       {doctor.experience && (
                         <DoctorExperience>
                           <FontAwesomeIcon icon={faGraduationCap} />
                           <span>Experience: {doctor.experience}</span>
                         </DoctorExperience>
                       )}
-
                       <SelectDoctorButton>
                         <FontAwesomeIcon icon={faCheckCircle} />
                         Select Doctor
@@ -427,6 +492,41 @@ const getTimeSlotsForDate = (date, interval) => {
             </EnhancedDoctorListContainer>
           </EnhancedModalBody>
         </EnhancedModal>
+
+        {/* Cancel Confirmation Modal */}
+        <Modal show={showCancelConfirm} onHide={() => setShowCancelConfirm(false)} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>
+              <FontAwesomeIcon icon={faExclamationTriangle} style={{ marginRight: "8px", color: "#dc3545" }} />
+              Cancel Appointment
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {appointmentToCancel && (
+              <div>
+                <p>Are you sure you want to cancel this appointment?</p>
+                <div style={{ background: "#f8f9fa", padding: "15px", borderRadius: "8px", marginTop: "15px" }}>
+                  <strong>Patient:</strong> {appointmentToCancel.patientName}
+                  <br />
+                  <strong>Doctor:</strong> Dr. {appointmentToCancel.patient_handledby}
+                  <br />
+                  <strong>Time:</strong> {appointmentToCancel.appointmentTime}
+                  <br />
+                  <strong>Date:</strong> {new Date(appointmentToCancel.appointmentDate).toLocaleDateString()}
+                </div>
+              </div>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowCancelConfirm(false)}>
+              Keep Appointment
+            </Button>
+            <Button variant="danger" onClick={confirmCancelAppointment}>
+              <FontAwesomeIcon icon={faTrash} style={{ marginRight: "5px" }} />
+              Cancel Appointment
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </AppointmentContainer>
     </StyledContainer>
   )
@@ -609,6 +709,7 @@ const ListContainer = styled.div`
     margin: 0 auto;
     gap: 10px;
     scrollbar-width: none;
+
     &::-webkit-scrollbar {
         display: none;
     }
@@ -639,6 +740,13 @@ const DatePickerWrapper = styled.div`
     padding: 10px;
 `
 
+const SlotContainer = styled.div`
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+`
+
 const SlotButton = styled(Button)`
     padding: 0.5rem 1rem;
     font-size: 16px;
@@ -647,12 +755,21 @@ const SlotButton = styled(Button)`
     color: #BCAEC7;
     border-radius: 20px;
     transition: all 0.3s;
+    flex: 1;
+    min-height: ${(props) => (props.isBooked ? "80px" : "auto")};
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
     ${(props) =>
       props.isSelected &&
       `
         background-color: #BCAEC7;
         color: #fff;
     `}
+
     ${(props) =>
       props.disabled &&
       `
@@ -662,10 +779,63 @@ const SlotButton = styled(Button)`
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         cursor: not-allowed;
     `}
+
     &:hover {
-        background-color: #BCAEC7;
+        background-color: ${(props) => (props.isBooked ? "#BCAEC7" : "#BCAEC7")};
         color: #fff;
         border: 1px solid #BCAEC7;
+    }
+`
+
+const SlotTimeText = styled.div`
+    font-weight: bold;
+    margin-bottom: ${(props) => (props.hasPatient ? "5px" : "0")};
+`
+
+const PatientInfo = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    margin-top: 5px;
+    color: rgb(100, 56, 134);
+`
+
+const PatientName = styled.div`
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    color: #fff;
+`
+
+const DoctorNameHandledBy = styled.div`
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.9);
+`
+
+const CancelButton = styled.button`
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+
+    &:hover {
+        background: #c82333;
+        transform: scale(1.1);
+    }
+
+    &:active {
+        transform: scale(0.95);
     }
 `
 
@@ -681,11 +851,11 @@ const EnhancedModalHeader = styled(Modal.Header)`
     color: white;
     border-bottom: none;
     padding: 20px 30px;
-    
+
     .btn-close {
         filter: brightness(0) invert(1);
         opacity: 0.8;
-        
+
         &:hover {
             opacity: 1;
         }
@@ -734,7 +904,7 @@ const PatientInfoHeader = styled.div`
     color: #C85C8E;
     font-weight: 600;
     font-size: 1.1rem;
-    
+
     svg {
         margin-right: 10px;
         font-size: 1.2rem;
@@ -765,7 +935,7 @@ const PatientInfoValue = styled.span`
     font-weight: 600;
     display: flex;
     align-items: center;
-    
+
     svg {
         color: #C85C8E;
         margin-right: 5px;
@@ -779,7 +949,7 @@ const DoctorSectionHeader = styled.div`
     color: #495057;
     font-weight: 600;
     font-size: 1.2rem;
-    
+
     svg {
         margin-right: 12px;
         color: #C85C8E;
@@ -791,20 +961,20 @@ const EnhancedDoctorListContainer = styled.div`
     max-height: 500px;
     overflow-y: auto;
     padding-right: 10px;
-    
+
     &::-webkit-scrollbar {
         width: 6px;
     }
-    
+
     &::-webkit-scrollbar-track {
         background: #f1f1f1;
         border-radius: 3px;
     }
-    
+
     &::-webkit-scrollbar-thumb {
         background: #C85C8E;
         border-radius: 3px;
-        
+
         &:hover {
             background: #A07BC6;
         }
@@ -827,7 +997,7 @@ const DoctorCard = styled.div`
     position: relative;
     overflow: hidden;
     animation: ${fadeInUp} 0.5s ease-out;
-    
+
     &::before {
         content: '';
         position: absolute;
@@ -839,17 +1009,17 @@ const DoctorCard = styled.div`
         transform: scaleX(0);
         transition: transform 0.3s ease;
     }
-    
+
     &:hover {
         transform: translateY(-8px);
         box-shadow: 0 15px 35px rgba(200, 92, 142, 0.15);
         border-color: #C85C8E;
-        
+
         &::before {
             transform: scaleX(1);
         }
     }
-    
+
     &:active {
         transform: translateY(-4px);
         animation: ${pulse} 0.3s ease;
@@ -894,7 +1064,7 @@ const DoctorSpecialization = styled.div`
     color: #6c757d;
     font-size: 0.95rem;
     font-weight: 500;
-    
+
     svg {
         margin-right: 8px;
         color: #C85C8E;
@@ -912,7 +1082,7 @@ const DoctorExperience = styled.div`
     background: #f8f9fa;
     border-radius: 8px;
     border-left: 3px solid #C85C8E;
-    
+
     svg {
         margin-right: 10px;
         color: #C85C8E;
@@ -930,12 +1100,12 @@ const SelectDoctorButton = styled.div`
     font-weight: 600;
     font-size: 0.95rem;
     transition: all 0.3s ease;
-    
+
     svg {
         margin-right: 8px;
         font-size: 1rem;
     }
-    
+
     &:hover {
         background: linear-gradient(135deg, #A07BC6 0%, #8B5A9F 100%);
         transform: translateY(-2px);
