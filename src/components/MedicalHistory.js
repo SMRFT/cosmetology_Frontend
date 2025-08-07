@@ -3,12 +3,10 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
 import { PiTestTubeThin } from "react-icons/pi";
-import Image2 from './images/diagnosis.png';
-import Image3 from './images/Findings.png';
 
 const Container = styled.div`
     display: flex;
-    height: 75vh;   /* Adjust this height as needed */
+    height: 75vh;
     overflow: hidden;
 `;
 
@@ -32,11 +30,9 @@ const AppointmentItem = styled.div`
     justify-content: space-between;
     align-items: center;
     border-left: 5px solid ${props => props.hasData ? '#9AE6B4' : '#FEB2B2'};
-
     &:hover {
         background-color: #e6f7ff;
     }
-
     &:active {
         background-color: #F1FBFD;
     }
@@ -44,7 +40,7 @@ const AppointmentItem = styled.div`
 
 export const PdfCell = styled.td`
   padding: 10px;
-  background-color: #f0f0f0; // Light background for the PDF section
+  background-color: #f0f0f0;
   border-radius: 5px;
   a {
     color: #007bff;
@@ -348,7 +344,6 @@ const ConsumerItem = styled.li`
     font-size: 0.95em;
 `;
 
-
 const MedicalHistory = ({ patientUID }) => {
     const location = useLocation();
     const id = patientUID;
@@ -357,12 +352,106 @@ const MedicalHistory = ({ patientUID }) => {
     const [branchCode, setBranchCode] = useState('');
     const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
 
-    const parseTests = (testsString) => {
-        if (!testsString) return [];
-        const regex = /([^,(]+(?:\([^)]*\))?)/g;
-        const matches = [...testsString.matchAll(regex)].map((match) => match[0].trim()).filter(Boolean);
-        return matches;
+    // Helper function to safely parse JSON strings
+    const safeJsonParse = (jsonString, fallback = null) => {
+        if (!jsonString || jsonString === '""' || jsonString === "''") return fallback;
+        try {
+            // Handle double-encoded JSON strings
+            let parsed = jsonString;
+            if (typeof jsonString === 'string') {
+                // Remove outer quotes if present
+                if ((jsonString.startsWith('"') && jsonString.endsWith('"')) || 
+                    (jsonString.startsWith("'") && jsonString.endsWith("'"))) {
+                    parsed = jsonString.slice(1, -1);
+                }
+                // Unescape escaped quotes
+                parsed = parsed.replace(/\\"/g, '"').replace(/\\'/g, "'");
+                return JSON.parse(parsed);
+            }
+            return parsed;
+        } catch (error) {
+            console.warn('Failed to parse JSON:', jsonString, error);
+            return fallback;
+        }
     };
+
+    // Helper function to parse complaints data
+    const parseComplaints = (complaintsData) => {
+        if (!complaintsData) return [];
+        
+        // If it's already an array, return it
+        if (Array.isArray(complaintsData)) return complaintsData;
+        
+        // Try to parse as JSON
+        const parsed = safeJsonParse(complaintsData, []);
+        if (Array.isArray(parsed)) return parsed;
+        
+        // If it's a string, try to split it
+        if (typeof complaintsData === 'string') {
+            return [{ complaints: complaintsData, duration: '', durationUnit: '' }];
+        }
+        
+        return [];
+    };
+
+    // Helper function to parse vitals data
+    const parseVitals = (vitalsData) => {
+        if (!vitalsData) return {};
+        
+        // If it's already an object, return it
+        if (typeof vitalsData === 'object' && !Array.isArray(vitalsData)) return vitalsData;
+        
+        // Try to parse as JSON
+        const parsed = safeJsonParse(vitalsData, {});
+        return typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    };
+
+    // Helper function to parse procedures list
+    const parseProceduresList = (proceduresData) => {
+        if (!proceduresData || proceduresData === '""' || proceduresData === "''") return [];
+        
+        // If it's already an array, return it
+        if (Array.isArray(proceduresData)) return proceduresData;
+        
+        // Try to parse as JSON
+        const parsed = safeJsonParse(proceduresData, '');
+        if (Array.isArray(parsed)) return parsed;
+        
+        // If it's a string, split by common delimiters
+        if (typeof parsed === 'string' && parsed.trim()) {
+            return parsed.split(/Procedure:|,|\n/).filter(item => item.trim()).map(item => item.trim());
+        }
+        
+        return [];
+    };
+
+const parseTests = (testsString) => {
+    if (!testsString || testsString.trim() === '') return [];
+
+    // Regex to split on commas not within parentheses
+    const splitByTopLevelComma = (str) => {
+        const result = [];
+        let current = '';
+        let depth = 0;
+
+        for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (char === '(') depth++;
+            if (char === ')') depth--;
+            if (char === ',' && depth === 0) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        if (current.trim()) result.push(current.trim());
+        return result;
+    };
+
+    return splitByTopLevelComma(testsString);
+};
+
 
     const parseProcedures = (proceduresString) => {
         if (!proceduresString) return [];
@@ -372,10 +461,70 @@ const MedicalHistory = ({ patientUID }) => {
             .map((procedure) => `Procedure: ${procedure.trim()}`);
     };
 
+    // Fixed prescription parsing function
+    const parsePrescription = (prescriptionString) => {
+        if (!prescriptionString || prescriptionString.trim() === '') return [];
+        
+        const prescriptions = [];
+        
+        // Split by newlines and commas to handle different formats
+        const lines = prescriptionString.split(/\n|,(?=\s*Prescription:)/).filter(line => line.trim());
+        
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+            
+            // More precise regex to extract prescription details
+            const prescriptionMatch = line.match(/^Prescription:\s*(.+?)\s*-\s*Dosage:\s*(.+?)\s*-\s*(.+?)\s*-\s*Duration:\s*(.+?)\s*-\s*Total Dosage:\s*(.+?)$/);
+            
+            if (prescriptionMatch) {
+                const [, medication, dosage, frequency, duration, totalDosage] = prescriptionMatch;
+                prescriptions.push({
+                    medication: medication.trim() || 'N/A',
+                    dosage: dosage.trim() || 'N/A',
+                    frequency: frequency.trim() || 'N/A',
+                    duration: duration.trim() || 'N/A',
+                    totalDosage: totalDosage.trim() || 'N/A'
+                });
+            } else {
+                // Try alternative parsing for different formats
+                const parts = line.split(' - ');
+                if (parts.length >= 5) {
+                    // Extract medication name after "Prescription:"
+                    const medicationPart = parts[0].replace(/^Prescription:\s*/, '').trim();
+                    const dosagePart = parts[1].replace(/^Dosage:\s*/, '').trim();
+                    const frequencyPart = parts[2].trim();
+                    const durationPart = parts[3].replace(/^Duration:\s*/, '').trim();
+                    const totalDosagePart = parts[4].replace(/^Total Dosage:\s*/, '').trim();
+                    
+                    prescriptions.push({
+                        medication: medicationPart || 'N/A',
+                        dosage: dosagePart || 'N/A',
+                        frequency: frequencyPart || 'N/A',
+                        duration: durationPart || 'N/A',
+                        totalDosage: totalDosagePart || 'N/A'
+                    });
+                } else {
+                    // Fallback for non-standard formats
+                    prescriptions.push({
+                        medication: line.replace(/^Prescription:\s*/, '').trim(),
+                        dosage: 'N/A',
+                        frequency: 'N/A',
+                        duration: 'N/A',
+                        totalDosage: 'N/A'
+                    });
+                }
+            }
+        });
+        
+        return prescriptions;
+    };
+
     const getPatientName = (appointmentData) => {
         if (appointmentData.summary?.patientName) return appointmentData.summary.patientName;
         if (appointmentData.billing?.patientName) return appointmentData.billing.patientName;
         if (appointmentData.procedure?.patientName) return appointmentData.procedure.patientName;
+        if (appointmentData.patientName) return appointmentData.patientName;
         return 'Unknown Patient';
     };
 
@@ -383,6 +532,7 @@ const MedicalHistory = ({ patientUID }) => {
         if (appointmentData.summary?.patientUID) return appointmentData.summary.patientUID;
         if (appointmentData.billing?.patientUID) return appointmentData.billing.patientUID;
         if (appointmentData.procedure?.patientUID) return appointmentData.procedure.patientUID;
+        if (appointmentData.patientUID) return appointmentData.patientUID;
         return id;
     };
 
@@ -405,8 +555,8 @@ const MedicalHistory = ({ patientUID }) => {
         if (id && code) {
             const handleFetchDetails = async () => {
                 try {
-                    const response = await axios.post(`${Cosmetologybaseurl}get_patient_details/`, { 
-                        id,
+                    const response = await axios.post(`${Cosmetologybaseurl}get_patient_details/`, {
+                         id,
                         branch_code: code
                     }, {
                         withCredentials: true
@@ -416,6 +566,7 @@ const MedicalHistory = ({ patientUID }) => {
                     console.error('Error fetching patient history:', error);
                 }
             };
+
             handleFetchDetails();
         }
     }, [id, branchCode, Cosmetologybaseurl]);
@@ -427,31 +578,34 @@ const MedicalHistory = ({ patientUID }) => {
     const renderSummaryData = (summary) => {
         if (!summary) return null;
 
+        const parsedComplaints = parseComplaints(summary.complaints);
+        const parsedVitals = parseVitals(summary.vital);
+        const parsedProceduresList = parseProceduresList(summary.proceduresList);
+        const parsedPrescription = parsePrescription(summary.prescription);
+
         return (
             <>
                 {/* Diagnosis and Findings Row */}
                 <Row>
-                    {summary.diagnosis && (
+                    {summary.diagnosis && summary.diagnosis.trim() && (
                         <DiagnosisContainer>
                             <Section style={{ flex: 1 }}>
-                                <img src={Image2} style={{height: "20%", width: "20%"}} alt="Diagnosis" />
                                 <SectionTitle className='mt-2'>Diagnosis</SectionTitle>
                                 <DiagnosisList>
-                                    {summary.diagnosis.split('\n').map((diagnosis, index) => (
+                                    {summary.diagnosis.split(/\n|,/).filter(d => d.trim()).map((diagnosis, index) => (
                                         <DiagnosisItem key={index}>{diagnosis.trim()}</DiagnosisItem>
                                     ))}
                                 </DiagnosisList>
                             </Section>
                         </DiagnosisContainer>
                     )}
-                    
-                    {summary.findings && (
+                                        
+                    {summary.findings && summary.findings.trim() && (
                         <FindingsContainer>
                             <Section style={{ flex: 1 }}>
-                                <img src={Image3} style={{height:"20%",width:"20%"}} alt="Findings" />
                                 <SectionTitle className='mt-2'>Findings</SectionTitle>
                                 <FindingsList>
-                                    {summary.findings.split('\n').map((findings, index) => (
+                                    {summary.findings.split('\n').filter(f => f.trim()).map((findings, index) => (
                                         <FindingsItem key={index}>{findings.trim()}</FindingsItem>
                                     ))}
                                 </FindingsList>
@@ -461,36 +615,32 @@ const MedicalHistory = ({ patientUID }) => {
                 </Row>
 
                 {/* Complaints */}
-                {summary.complaints && (
+                {parsedComplaints.length > 0 && (
                     <Section style={{ flex: 1 }}>
                         <SectionTitle className='mt-2'>Complaints</SectionTitle>
-                        {Array.isArray(summary.complaints) && summary.complaints.length > 0 ? (
-                            <PrescriptionTable>
-                                <thead>
-                                    <tr>
-                                        <TableHeader>Complaints</TableHeader>
-                                        <TableHeader>Duration</TableHeader>
-                                        <TableHeader>Duration Unit</TableHeader>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {summary.complaints.map((complaint, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{complaint.complaints}</TableCell>
-                                            <TableCell>{complaint.duration}</TableCell>
-                                            <TableCell>{complaint.durationUnit}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </tbody>
-                            </PrescriptionTable>
-                        ) : (
-                            <p>No complaints recorded.</p>
-                        )}
+                        <PrescriptionTable>
+                            <thead>
+                                <tr>
+                                    <TableHeader>Complaints</TableHeader>
+                                    <TableHeader>Duration</TableHeader>
+                                    <TableHeader>Duration Unit</TableHeader>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {parsedComplaints.map((complaint, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell>{complaint.complaints || 'N/A'}</TableCell>
+                                        <TableCell>{complaint.duration || 'N/A'}</TableCell>
+                                        <TableCell>{complaint.durationUnit || 'N/A'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </tbody>
+                        </PrescriptionTable>
                     </Section>
                 )}
 
                 {/* Prescription */}
-                {summary.prescription && (
+                {parsedPrescription.length > 0 && (
                     <Section>
                         <SectionTitle>Prescription:</SectionTitle>
                         <PrescriptionTable>
@@ -504,37 +654,28 @@ const MedicalHistory = ({ patientUID }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {summary.prescription.split('\n').map((line, index) => {
-                                    const parts = line.split('-').map(part => part.trim());
-                                    const medication = parts[0] ? parts[0].split(': ')[1] : 'N/A';
-                                    const dosage = parts[1] ? parts[1].split(': ')[1] : 'N/A';
-                                    const frequency = parts[2] || 'N/A';
-                                    const duration = parts[3] ? parts[3].split(': ')[1] : 'N/A';
-                                    const totalDosage = parts[4] ? parts[4].split(': ')[1] : 'N/A';
-
-                                    return (
-                                        <TableRow key={index}>
-                                            <TableCell>{medication}</TableCell>
-                                            <TableCell>{dosage}</TableCell>
-                                            <TableCell>{frequency}</TableCell>
-                                            <TableCell>{duration}</TableCell>
-                                            <TableCell>{totalDosage}</TableCell>
-                                        </TableRow>
-                                    );
-                                })}
+                                {parsedPrescription.map((prescription, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell>{prescription.medication}</TableCell>
+                                        <TableCell>{prescription.dosage}</TableCell>
+                                        <TableCell>{prescription.frequency}</TableCell>
+                                        <TableCell>{prescription.duration}</TableCell>
+                                        <TableCell>{prescription.totalDosage}</TableCell>
+                                    </TableRow>
+                                ))}
                             </tbody>
                         </PrescriptionTable>
                     </Section>
                 )}
 
                 {/* Plans */}
-                {summary.plans && (
+                {summary.plans && summary.plans.trim() && (
                     <PlansContainer>
                         <Section>
                             <SectionTitle>Plans</SectionTitle>
                             <PlansList>
-                                {summary.plans.split('\n').map((item, index) => (
-                                    <PlansItem key={index}>{item}</PlansItem>
+                                {summary.plans.split('\n').filter(plan => plan.trim()).map((item, index) => (
+                                    <PlansItem key={index}>{item.trim()}</PlansItem>
                                 ))}
                             </PlansList>
                         </Section>
@@ -542,7 +683,7 @@ const MedicalHistory = ({ patientUID }) => {
                 )}
 
                 {/* Tests */}
-                {summary.tests && (
+                {summary.tests && summary.tests.trim() && (
                     <TestContainer>
                         <Section>
                             <PiTestTubeThin style={{ fontSize: "2rem" }} />
@@ -557,12 +698,12 @@ const MedicalHistory = ({ patientUID }) => {
                 )}
 
                 {/* Procedures List */}
-                {summary.proceduresList && (
+                {parsedProceduresList.length > 0 && (
                     <ProceduresContainer>
                         <Section>
                             <SectionTitle>Procedures</SectionTitle>
                             <ProceduresList>
-                                {parseProcedures(summary.proceduresList).map((procedureDetail, index) => (
+                                {parsedProceduresList.map((procedureDetail, index) => (
                                     <ProceduresItem key={index}>{procedureDetail}</ProceduresItem>
                                 ))}
                             </ProceduresList>
@@ -579,21 +720,16 @@ const MedicalHistory = ({ patientUID }) => {
                 )}
 
                 {/* Vitals */}
-                {summary.vital && (
+                {Object.keys(parsedVitals).length > 0 && (
                     <Section>
                         <SectionTitle>Vitals</SectionTitle>
                         <VitalsContainer>
-                            {(() => {
-                                const vitals = typeof summary.vital === "string" 
-                                    ? JSON.parse(summary.vital) 
-                                    : summary.vital;
-                                return Object.entries(vitals).map(([key, value]) => (
-                                    <VitalItem key={key}>
-                                        <SectionContent>{value}</SectionContent>
-                                        <VitalLabel>{key}</VitalLabel>
-                                    </VitalItem>
-                                ));
-                            })()}
+                            {Object.entries(parsedVitals).map(([key, value]) => (
+                                <VitalItem key={key}>
+                                    <SectionContent>{value}</SectionContent>
+                                    <VitalLabel>{key}</VitalLabel>
+                                </VitalItem>
+                            ))}
                         </VitalsContainer>
                     </Section>
                 )}
@@ -601,55 +737,214 @@ const MedicalHistory = ({ patientUID }) => {
         );
     };
 
+    const renderBillingData = (billing) => {
+        if (!billing) return null;
+        return (
+            <>
+                {/* Billing Items */}
+                {billing.table_data && billing.table_data.length > 0 && (
+                    <BillingItemsContainer>
+                        <Section>
+                            <SectionTitle>Prescription:</SectionTitle>
+                            <BillingList>
+                                {billing.table_data.map((item, index) => (
+                                    <BillingItem key={index}>
+                                        <strong>{item.particulars || 'N/A'}</strong> -
+                                         Qty: {item.qty || 'N/A'}
+                                    </BillingItem>
+                                ))}
+                            </BillingList>
+                        </Section>
+                    </BillingItemsContainer>
+                )}
+            </>
+        );
+    };
 
-const renderBillingData = (billing) => {
-    if (!billing) return null;
+    const renderProcedureData = (procedure) => {
+        if (!procedure || !procedure.procedures || procedure.procedures.length === 0) return null;
+        return (
+            <Row>
+                <ProcedureItemsContainer>
+                    <Section>
+                        <SectionTitle>🏥 Procedures</SectionTitle>
+                        <ProcedureDetailsList>
+                            {procedure.procedures
+                                .filter(proc => proc.procedure !== 'Consultation Fee')
+                                .map((proc, index) => (
+                                    <ProcedureDetailItem key={index}>
+                                        Procedure: {proc.procedure} - Date: {new Date(proc.procedureDate).toLocaleDateString('en-GB')}
+                                    </ProcedureDetailItem>
+                            ))}
+                        </ProcedureDetailsList>
+                    </Section>
+                </ProcedureItemsContainer>
+            </Row>
+        );
+    };
 
-    return (
-        <>
-            {/* Billing Items */}
-            {billing.table_data && billing.table_data.length > 0 && (
-                <BillingItemsContainer>
+    // Function to render direct appointment data (for the new format)
+    const renderDirectAppointmentData = (appointmentData) => {
+        if (!appointmentData) return null;
+
+        const parsedComplaints = parseComplaints(appointmentData.complaints);
+        const parsedVitals = parseVitals(appointmentData.vital);
+        const parsedProceduresList = parseProceduresList(appointmentData.proceduresList);
+        const parsedPrescription = parsePrescription(appointmentData.prescription);
+
+        return (
+            <>
+                {/* Diagnosis and Findings Row */}
+                <Row>
+                    {appointmentData.diagnosis && appointmentData.diagnosis.trim() && (
+                        <DiagnosisContainer>
+                            <Section style={{ flex: 1 }}>
+                                <SectionTitle className='mt-2'>Diagnosis</SectionTitle>
+                                <DiagnosisList>
+                                    {appointmentData.diagnosis.split(/\n|,/).filter(d => d.trim()).map((diagnosis, index) => (
+                                        <DiagnosisItem key={index}>{diagnosis.trim()}</DiagnosisItem>
+                                    ))}
+                                </DiagnosisList>
+                            </Section>
+                        </DiagnosisContainer>
+                    )}
+                                        
+                    {appointmentData.findings && appointmentData.findings.trim() && (
+                        <FindingsContainer>
+                            <Section style={{ flex: 1 }}>
+                                <SectionTitle className='mt-2'>Findings</SectionTitle>
+                                <FindingsList>
+                                    {appointmentData.findings.split('\n').filter(f => f.trim()).map((findings, index) => (
+                                        <FindingsItem key={index}>{findings.trim()}</FindingsItem>
+                                    ))}
+                                </FindingsList>
+                            </Section>
+                        </FindingsContainer>
+                    )}
+                </Row>
+
+                {/* Complaints */}
+                {parsedComplaints.length > 0 && (
+                    <Section style={{ flex: 1 }}>
+                        <SectionTitle className='mt-2'>Complaints</SectionTitle>
+                        <PrescriptionTable>
+                            <thead>
+                                <tr>
+                                    <TableHeader>Complaints</TableHeader>
+                                    <TableHeader>Duration</TableHeader>
+                                    <TableHeader>Duration Unit</TableHeader>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {parsedComplaints.map((complaint, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell>{complaint.complaints || 'N/A'}</TableCell>
+                                        <TableCell>{complaint.duration || 'N/A'}</TableCell>
+                                        <TableCell>{complaint.durationUnit || 'N/A'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </tbody>
+                        </PrescriptionTable>
+                    </Section>
+                )}
+
+                {/* Prescription */}
+                {parsedPrescription.length > 0 && (
                     <Section>
                         <SectionTitle>Prescription:</SectionTitle>
-                        <BillingList>
-                            {billing.table_data.map((item, index) => (
-                                <BillingItem key={index}>
-                                    <strong>{item.particulars || 'N/A'}</strong> - 
-                                    Qty: {item.qty || 'N/A'}
-                                </BillingItem>
-                            ))}
-                        </BillingList>
-                        
+                        <PrescriptionTable>
+                            <thead>
+                                <tr>
+                                    <TableHeader>Medication</TableHeader>
+                                    <TableHeader>Dosage</TableHeader>
+                                    <TableHeader>Frequency</TableHeader>
+                                    <TableHeader>Duration</TableHeader>
+                                    <TableHeader>Total Dosage</TableHeader>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {parsedPrescription.map((prescription, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell>{prescription.medication}</TableCell>
+                                        <TableCell>{prescription.dosage}</TableCell>
+                                        <TableCell>{prescription.frequency}</TableCell>
+                                        <TableCell>{prescription.duration}</TableCell>
+                                        <TableCell>{prescription.totalDosage}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </tbody>
+                        </PrescriptionTable>
                     </Section>
-                </BillingItemsContainer>
-            )}
-        </>
-    );
-};
+                )}
 
-const renderProcedureData = (procedure) => {
-    if (!procedure || !procedure.procedures || procedure.procedures.length === 0) return null;
+                {/* Plans */}
+                {appointmentData.plans && appointmentData.plans.trim() && (
+                    <PlansContainer>
+                        <Section>
+                            <SectionTitle>Plans</SectionTitle>
+                            <PlansList>
+                                {appointmentData.plans.split('\n').filter(plan => plan.trim()).map((item, index) => (
+                                    <PlansItem key={index}>{item.trim()}</PlansItem>
+                                ))}
+                            </PlansList>
+                        </Section>
+                    </PlansContainer>
+                )}
 
-    return (
-        <Row>
-            <ProcedureItemsContainer>
-                <Section>
-                    <SectionTitle>🏥 Procedures</SectionTitle>
-                    <ProcedureDetailsList>
-                        {procedure.procedures
-                            .filter(proc => proc.procedure !== 'Consultation Fee') // Exclude Consultation Fee
-                            .map((proc, index) => (
-                                <ProcedureDetailItem key={index}>
-                                    Procedure: {proc.procedure} - Date: {new Date(proc.procedureDate).toLocaleDateString('en-GB')}
-                                </ProcedureDetailItem>
-                        ))}
-                    </ProcedureDetailsList>
-                </Section>
-            </ProcedureItemsContainer>
-        </Row>
-    );
-};
+                {/* Tests */}
+                {appointmentData.tests && appointmentData.tests.trim() && (
+                    <TestContainer>
+                        <Section>
+                            <PiTestTubeThin style={{ fontSize: "2rem" }} />
+                            <SectionTitle className="mt-2">Tests</SectionTitle>
+                            <TestsList>
+                                {parseTests(appointmentData.tests).map((test, index) => (
+                                    <TestItem key={index}>{test}</TestItem>
+                                ))}
+                            </TestsList>
+                        </Section>
+                    </TestContainer>
+                )}
+
+                {/* Procedures List */}
+                {parsedProceduresList.length > 0 && (
+                    <ProceduresContainer>
+                        <Section>
+                            <SectionTitle>Procedures</SectionTitle>
+                            <ProceduresList>
+                                {parsedProceduresList.map((procedureDetail, index) => (
+                                    <ProceduresItem key={index}>{procedureDetail}</ProceduresItem>
+                                ))}
+                            </ProceduresList>
+                        </Section>
+                    </ProceduresContainer>
+                )}
+
+                {/* Next Visit */}
+                {appointmentData.nextVisit && (
+                    <Section>
+                        <SectionTitle>Next Visit:</SectionTitle>
+                        <SectionContent>{appointmentData.nextVisit}</SectionContent>
+                    </Section>
+                )}
+
+                {/* Vitals */}
+                {Object.keys(parsedVitals).length > 0 && (
+                    <Section>
+                        <SectionTitle>Vitals</SectionTitle>
+                        <VitalsContainer>
+                            {Object.entries(parsedVitals).map(([key, value]) => (
+                                <VitalItem key={key}>
+                                    <SectionContent>{value}</SectionContent>
+                                    <VitalLabel>{key}</VitalLabel>
+                                </VitalItem>
+                            ))}
+                        </VitalsContainer>
+                    </Section>
+                )}
+            </>
+        );
+    };
 
     return (
         <Container>
@@ -660,7 +955,7 @@ const renderProcedureData = (procedure) => {
                             key={index}
                             onClick={() => handleAppointmentClick(historyItem)}
                             isActive={selectedAppointment && selectedAppointment.appointmentDate === historyItem.appointmentDate}
-                            hasData={historyItem.summary || historyItem.billing || historyItem.procedure}
+                            hasData={historyItem.summary || historyItem.billing || historyItem.procedure || historyItem.diagnosis || historyItem.prescription}
                         >
                             <PatientInfo>
                                 <PatientDetails>
@@ -681,17 +976,23 @@ const renderProcedureData = (procedure) => {
                 {selectedAppointment ? (
                     <div>
                         <h3>Medical History - {new Date(selectedAppointment.appointmentDate).toLocaleDateString()}</h3>
-                        
+                                                
                         {/* Render Summary Data */}
                         {selectedAppointment.summary && renderSummaryData(selectedAppointment.summary)}
-                        
+                                                
                         {/* Render Billing Data */}
                         {selectedAppointment.billing && renderBillingData(selectedAppointment.billing)}
-                        
+                                                
                         {/* Render Procedure Data */}
                         {selectedAppointment.procedure && renderProcedureData(selectedAppointment.procedure)}
-                        
-                        {!selectedAppointment.summary && !selectedAppointment.billing && !selectedAppointment.procedure && (
+
+                        {/* Render Direct Appointment Data (for new format) */}
+                        {!selectedAppointment.summary && !selectedAppointment.billing && !selectedAppointment.procedure && 
+                         (selectedAppointment.diagnosis || selectedAppointment.prescription || selectedAppointment.complaints) && 
+                         renderDirectAppointmentData(selectedAppointment)}
+                                                
+                        {!selectedAppointment.summary && !selectedAppointment.billing && !selectedAppointment.procedure && 
+                         !selectedAppointment.diagnosis && !selectedAppointment.prescription && !selectedAppointment.complaints && (
                             <p>No data available for this appointment.</p>
                         )}
                     </div>

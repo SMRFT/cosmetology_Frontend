@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import styled from "styled-components"
@@ -24,18 +23,15 @@ const DatePickerWrapper = styled.div`
   position: relative;
   display: inline-flex;
   align-items: center;
-
   .react-datepicker-wrapper {
     width: 0;
     overflow: hidden;
   }
-
   .calendar-icon {
     margin-right: 10px;
     color: #C85C8E;
     cursor: pointer;
   }
-
   .date-display {
     font-size: 16px;
     color: #C85C8E;
@@ -71,13 +67,11 @@ const PatientCard = styled.div`
   min-width: 250px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   cursor: pointer;
-
   &:hover {
     transform: translateY(-3px) scale(1.02);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     background: linear-gradient(135deg, #c8b9d4 0%, #b8a5c7 100%);
   }
-
   .card-title {
     margin-bottom: 12px;
     font-size: 1.3em;
@@ -86,14 +80,12 @@ const PatientCard = styled.div`
     letter-spacing: 0.5px;
     text-align: center;
   }
-
   .card-subtitle {
     margin-bottom: 18px;
     font-size: 1em;
     font-weight: 500;
     opacity: 0.8;
   }
-
   .btn {
     background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
     color: white;
@@ -102,7 +94,6 @@ const PatientCard = styled.div`
     border-radius: 8px;
     font-weight: 500;
     transition: all 0.3s ease;
-
     &:hover {
       background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
       transform: translateY(-1px);
@@ -150,11 +141,9 @@ const InfoText = styled.div`
 
 const PatientInfo = styled.div`
   flex: 1;
-
   div {
     margin-bottom: 5px;
     font-weight: 500;
-
     strong {
       font-weight: 600;
       margin-right: 8px;
@@ -165,10 +154,8 @@ const PatientInfo = styled.div`
 const DoctorInfo = styled.div`
   flex: 1;
   text-align: right;
-
   div {
     font-weight: 500;
-
     strong {
       font-weight: 600;
     }
@@ -186,7 +173,6 @@ const AddRowButton = styled.button`
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-
   &:hover {
     background-color: #8a7497;
   }
@@ -199,7 +185,6 @@ const ProcedureSelect = styled.select`
   border-radius: 4px;
   font-size: 14px;
   background-color: white;
-
   &:focus {
     outline: none;
     border-color: #9b85a8;
@@ -253,7 +238,6 @@ const LoadingSpinner = styled.div`
   justify-content: center;
   align-items: center;
   height: 300px;
-
   .spinner {
     border: 4px solid #f3f3f3;
     border-top: 4px solid #9b85a8;
@@ -262,12 +246,10 @@ const LoadingSpinner = styled.div`
     height: 40px;
     animation: spin 1s linear infinite;
   }
-
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
-
   p {
     margin-top: 15px;
     font-size: 16px;
@@ -287,7 +269,6 @@ const NoDataMessage = styled.div`
 const TableContainer = styled.div`
   overflow-x: auto;
   margin: 20px 0;
-
   table {
     width: 100%;
     border-collapse: collapse;
@@ -295,24 +276,20 @@ const TableContainer = styled.div`
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
     overflow: hidden;
-
     th, td {
       padding: 12px;
       text-align: center;
       border-bottom: 1px solid #ddd;
       overflow: visible;
     }
-
     th {
       background-color: #9b85a8;
       color: white;
       font-weight: 600;
     }
-
     tr {
       overflow: visible;
     }
-
     tr:hover {
       background-color: #f5f5f5;
     }
@@ -335,7 +312,6 @@ const EditableInput = styled.input`
   border: 1px solid #ddd;
   border-radius: 4px;
   text-align: center;
-
   &:focus {
     outline: none;
     border-color: #9b85a8;
@@ -356,7 +332,6 @@ const BackButton = styled.button`
   margin-bottom: 20px;
   font-size: 16px;
   transition: all 0.2s ease;
-
   &:hover {
     background-color: #8a7497;
     transform: translateY(-1px);
@@ -372,11 +347,9 @@ const ActionButton = styled.button`
   cursor: pointer;
   margin: 0 5px;
   transition: all 0.2s ease;
-
   &:hover {
     background-color: rgb(161, 54, 197);
   }
-
   &:disabled {
     background-color: rgb(166, 149, 184);
     cursor: not-allowed;
@@ -440,7 +413,6 @@ const ProcedureComponent = () => {
   // Enhanced function to check if proceduresList data is present and valid
   const hasProceduresListData = (proceduresList) => {
     if (!proceduresList) return false
-
     // Handle string data
     if (typeof proceduresList === "string") {
       const cleanProceduresList = proceduresList.trim().toLowerCase()
@@ -458,7 +430,6 @@ const ProcedureComponent = () => {
       // Check if it contains actual procedure data
       return cleanProceduresList.includes("procedure:") || cleanProceduresList.length > 5 // Basic content check
     }
-
     // Handle array data
     if (Array.isArray(proceduresList)) {
       return (
@@ -468,12 +439,10 @@ const ProcedureComponent = () => {
         )
       )
     }
-
     // Handle object data
     if (typeof proceduresList === "object" && proceduresList !== null) {
       return Object.keys(proceduresList).length > 0
     }
-
     return false
   }
 
@@ -495,10 +464,8 @@ const ProcedureComponent = () => {
   // Fetch patient list from summary API - only patients with proceduresList data
   const fetchPatientList = async (date) => {
     if (!branchCode || !date) return
-
     setIsLoading(true)
     const formattedDate = format(date, "yyyy-MM-dd")
-
     try {
       const response = await axios.get(`${Cosmetologybaseurl}summary/post/`, {
         params: {
@@ -506,11 +473,9 @@ const ProcedureComponent = () => {
           branch_code: branchCode,
         },
       })
-
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         // Filter patients to only include those with proceduresList data
         const patientsWithProcedures = response.data.filter((patient) => hasProceduresListData(patient.proceduresList))
-
         if (patientsWithProcedures.length > 0) {
           setPatients(patientsWithProcedures)
           setHasData(true)
@@ -539,10 +504,8 @@ const ProcedureComponent = () => {
   // Enhanced fetch procedure data function
   const fetchPatientProcedureData = async (patient) => {
     if (!patient || !branchCode) return
-
     setIsLoading(true)
     const formattedDate = format(selectedDate, "yyyy-MM-dd")
-
     try {
       const response = await axios.get(`${Cosmetologybaseurl}get_patient_procedurebill_data/`, {
         params: {
@@ -551,9 +514,7 @@ const ProcedureComponent = () => {
           branch_code: branchCode,
         },
       })
-
       console.log("Full API Response:", response.data)
-
       if (response.data) {
         // Check if it's stored procedure bill data (has procedures array directly)
         if (response.data.procedures && Array.isArray(response.data.procedures)) {
@@ -605,14 +566,12 @@ const ProcedureComponent = () => {
     try {
       console.log("Processing detailedRecords:", data.detailedRecords)
       const allProcedures = []
-
       // Process each detailed record
       data.detailedRecords.forEach((record, recordIndex) => {
         console.log(`Processing record ${recordIndex}:`, record)
         if (record.procedures && Array.isArray(record.procedures)) {
           record.procedures.forEach((procedure, procedureIndex) => {
             console.log(`Processing procedure ${procedureIndex}:`, procedure)
-
             // Convert date from DD/MM/YYYY to YYYY-MM-DD if needed
             let formattedDate = procedure.procedureDate || format(new Date(), "yyyy-MM-dd")
             if (formattedDate && formattedDate.includes("/")) {
@@ -621,13 +580,12 @@ const ProcedureComponent = () => {
                 formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
               }
             }
-
             allProcedures.push({
               id: `detailed-proc-${recordIndex}-${procedureIndex}`,
               procedure: procedure.procedure || "Unknown Procedure",
               procedureDate: formattedDate,
               price: "0", // Will be filled by user
-              gstRate: "18", // Default GST rate
+              gstRate: "0", // Default GST rate
               gst: "0",
               total: "0",
               selected: true, // Auto-select for detailed records
@@ -636,18 +594,16 @@ const ProcedureComponent = () => {
           })
         }
       })
-
       if (consultationFee > 0) {
         allProcedures.push({
           particulars: "Consultation Fee",
           qty: 1,
           price: consultationFee,
           total: consultationFee.toFixed(2),
-          gstRate: "18",
+          gstRate: "0",
           gst: "0",
         })
       }
-
       console.log("Final procedures from detailedRecords:", allProcedures)
       setProcedureData(allProcedures)
       setConsumerData([])
@@ -657,7 +613,6 @@ const ProcedureComponent = () => {
       setPaymentType("Card")
       setConsultationFee(0)
       setShowConsumerTable(false)
-
       if (allProcedures.length > 0) {
         toast.success(`Loaded ${allProcedures.length} procedures from detailed records`)
       } else {
@@ -679,7 +634,6 @@ const ProcedureComponent = () => {
       } else if (Array.isArray(data.procedures)) {
         parsedProcedures = data.procedures
       }
-
       // Parse consumer data if it's a string
       let parsedConsumer = []
       if (data.consumer) {
@@ -689,7 +643,6 @@ const ProcedureComponent = () => {
           parsedConsumer = data.consumer
         }
       }
-
       // Format procedure data for table
       const formattedProcedureData = parsedProcedures.map((procedure, index) => {
         // Convert date from DD/MM/YYYY to YYYY-MM-DD if needed
@@ -698,33 +651,30 @@ const ProcedureComponent = () => {
           const [day, month, year] = formattedDate.split("/")
           formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
         }
-
         return {
           id: `stored-proc-${index}`,
           procedure: procedure.procedure,
           procedureDate: formattedDate || format(new Date(), "yyyy-MM-dd"),
           price: procedure.price || "0",
-          gstRate: procedure.gstRate || "18",
+          gstRate: procedure.gstRate || "0",
           gst: procedure.gst || "0",
           total: procedure.total || "0",
           selected: true,
           isStored: true,
         }
       })
-
       // Format consumer data for table with GST fields
       const formattedConsumerData = parsedConsumer.map((consumer, index) => ({
         id: `stored-cons-${index}`,
         item: consumer.item,
         qty: consumer.qty,
         price: consumer.price,
-        gstRate: consumer.gstRate || "18", // Default GST rate if not present
+        gstRate: consumer.gstRate || "0", // Default GST rate if not present
         gst: consumer.gst || "0", // Default GST if not present
         total: consumer.total,
         selected: true,
         isStored: true,
       }))
-
       setProcedureData(formattedProcedureData)
       setConsumerData(formattedConsumerData)
       setProcedureNetAmount(data.procedureNetAmount || "0")
@@ -744,21 +694,18 @@ const ProcedureComponent = () => {
     try {
       console.log("Processing summary data for patient:", patient.patientName)
       console.log("Patient proceduresList:", patient.proceduresList)
-
       const allProcedures = []
-
       // Extract procedures from proceduresList string
       if (patient.proceduresList && typeof patient.proceduresList === "string") {
         const proceduresFromList = extractProceduresFromList(patient.proceduresList)
         console.log("Extracted procedures:", proceduresFromList)
-
         proceduresFromList.forEach((procedure, index) => {
           allProcedures.push({
             id: `summary-list-${index}`,
             procedure: procedure.procedure,
             procedureDate: procedure.procedureDate,
             price: "0", // Will be filled by user
-            gstRate: "18", // Default GST rate
+            gstRate: "0", // Default GST rate
             gst: "0",
             total: "0",
             selected: true, // Auto-select for summary data
@@ -766,7 +713,6 @@ const ProcedureComponent = () => {
           })
         })
       }
-
       console.log("Final procedures array:", allProcedures)
       setProcedureData(allProcedures)
       setConsumerData([])
@@ -776,7 +722,6 @@ const ProcedureComponent = () => {
       setPaymentType("Card")
       setConsultationFee(0)
       setShowConsumerTable(false)
-
       if (allProcedures.length > 0) {
         toast.success(`Loaded ${allProcedures.length} procedures from summary data`)
       } else {
@@ -791,48 +736,38 @@ const ProcedureComponent = () => {
   // Enhanced extract procedures from proceduresList string
   const extractProceduresFromList = (proceduresList) => {
     console.log("Extracting procedures from:", proceduresList)
-
     if (typeof proceduresList === "string") {
       const cleanList = proceduresList.trim()
-
       // Handle empty or N/A cases
       if (cleanList.toUpperCase() === "N/A" || cleanList === "" || cleanList === "null") {
         return []
       }
-
       // Split by "Procedure:" and process each item
       const procedureItems = cleanList
         .split(/Procedure\s*:/i)
         .filter(Boolean)
         .map((item) => item.trim())
         .filter((item) => item.length > 0)
-
       console.log("Split procedure items:", procedureItems)
-
       return procedureItems
         .map((procedureItem, index) => {
           let procedureName = procedureItem
           let procedureDate = format(new Date(), "yyyy-MM-dd")
-
           // Look for date pattern
           const dateMatch = procedureItem.match(/Date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i)
           if (dateMatch) {
             const datePart = dateMatch[1]
             procedureName = procedureItem.replace(/\s*-?\s*Date\s*:\s*\d{1,2}\/\d{1,2}\/\d{4}/i, "").trim()
-
             // Convert DD/MM/YYYY to YYYY-MM-DD
             const [day, month, year] = datePart.split("/")
             if (day && month && year) {
               procedureDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
             }
           }
-
           // Clean up procedure name
           procedureName = procedureName.replace(/^-+|−+/, "").trim()
           procedureName = procedureName.replace(/-+$/, "").trim()
-
           console.log(`Extracted procedure ${index + 1}:`, { procedure: procedureName, procedureDate })
-
           return {
             procedure: procedureName || `Procedure ${index + 1}`,
             procedureDate,
@@ -840,7 +775,6 @@ const ProcedureComponent = () => {
         })
         .filter((item) => item.procedure && item.procedure !== "")
     }
-
     return []
   }
 
@@ -892,7 +826,7 @@ const ProcedureComponent = () => {
         selectedProcedureId: "",
         procedureDate: format(new Date(), "yyyy-MM-dd"),
         price: "",
-        gstRate: 18,
+        gstRate: "",
         gst: "",
         total: "",
         selected: true,
@@ -922,9 +856,7 @@ const ProcedureComponent = () => {
       )
       return
     }
-
     const selectedProcedure = proceduresList.find((proc) => proc.id.toString() === selectedValue.toString())
-
     if (selectedProcedure) {
       setAdditionalProcedures((prev) =>
         prev.map((row) =>
@@ -940,39 +872,44 @@ const ProcedureComponent = () => {
     }
   }
 
-  // Enhanced handleAdditionalProcedureChange function with bidirectional price/total editing
+  // Enhanced handleAdditionalProcedureChange function with correct GST logic
   const handleAdditionalProcedureChange = (rowId, field, value) => {
     setAdditionalProcedures((prev) =>
       prev.map((row) => {
         if (row.id === rowId) {
           const updatedRow = { ...row, [field]: value }
-
-          // Handle price change - calculate GST and total
+          
+          // Handle price change - calculate total including GST
           if (field === "price") {
             const price = Number.parseFloat(value) || 0
             const gstRate = Number.parseFloat(row.gstRate) || 0
-            updatedRow.gst = calculateGST(price, gstRate)
-            updatedRow.total = calculateTotal(price, updatedRow.gst)
+            const gst = (price * gstRate) / 100
+            const total = price + gst
+            updatedRow.gst = gst.toFixed(2)
+            updatedRow.total = total.toFixed(2)
           }
-
-          // Handle total change - calculate price based on total
+          // Handle total change - calculate price and GST from total (GST included within total)
           else if (field === "total") {
             const total = Number.parseFloat(value) || 0
             const gstRate = Number.parseFloat(row.gstRate) || 0
             // Calculate price from total: price = total / (1 + gstRate/100)
-            const calculatedPrice = gstRate > 0 ? total / (1 + gstRate / 100) : total
-            updatedRow.price = calculatedPrice.toFixed(2)
-            updatedRow.gst = calculateGST(calculatedPrice, gstRate)
+            const price = gstRate > 0 ? total / (1 + gstRate / 100) : total
+            const gst = total - price
+            updatedRow.price = price.toFixed(2)
+            updatedRow.gst = gst.toFixed(2)
           }
-
-          // Handle GST rate change - recalculate GST and total based on existing price
+          // Handle GST rate change - keep total same, adjust price accordingly
           else if (field === "gstRate") {
-            const price = Number.parseFloat(row.price) || 0
+            const currentTotal = Number.parseFloat(row.total) || 0
             const gstRate = Number.parseFloat(value) || 0
-            updatedRow.gst = calculateGST(price, gstRate)
-            updatedRow.total = calculateTotal(price, updatedRow.gst)
+            if (currentTotal > 0) {
+              // Calculate new price from existing total
+              const price = gstRate > 0 ? currentTotal / (1 + gstRate / 100) : currentTotal
+              const gst = currentTotal - price
+              updatedRow.price = price.toFixed(2)
+              updatedRow.gst = gst.toFixed(2)
+            }
           }
-
           return updatedRow
         }
         return row
@@ -980,39 +917,44 @@ const ProcedureComponent = () => {
     )
   }
 
-  // Enhanced handleProcedureDataChange function with bidirectional price/total editing
+  // Enhanced handleProcedureDataChange function with correct GST logic
   const handleProcedureDataChange = (index, field, value) => {
     setProcedureData((prev) =>
       prev.map((item, idx) => {
         if (idx === index) {
           const updatedItem = { ...item, [field]: value }
-
-          // Handle price change - calculate GST and total
+          
+          // Handle price change - calculate total including GST
           if (field === "price") {
             const price = Number.parseFloat(value) || 0
             const gstRate = Number.parseFloat(item.gstRate) || 0
-            updatedItem.gst = calculateGST(price, gstRate)
-            updatedItem.total = calculateTotal(price, updatedItem.gst)
+            const gst = (price * gstRate) / 100
+            const total = price + gst
+            updatedItem.gst = gst.toFixed(2)
+            updatedItem.total = total.toFixed(2)
           }
-
-          // Handle total change - calculate price based on total
+          // Handle total change - calculate price and GST from total (GST included within total)
           else if (field === "total") {
             const total = Number.parseFloat(value) || 0
             const gstRate = Number.parseFloat(item.gstRate) || 0
             // Calculate price from total: price = total / (1 + gstRate/100)
-            const calculatedPrice = gstRate > 0 ? total / (1 + gstRate / 100) : total
-            updatedItem.price = calculatedPrice.toFixed(2)
-            updatedItem.gst = calculateGST(calculatedPrice, gstRate)
+            const price = gstRate > 0 ? total / (1 + gstRate / 100) : total
+            const gst = total - price
+            updatedItem.price = price.toFixed(2)
+            updatedItem.gst = gst.toFixed(2)
           }
-
-          // Handle GST rate change - recalculate GST and total based on existing price
+          // Handle GST rate change - keep total same, adjust price accordingly
           else if (field === "gstRate") {
-            const price = Number.parseFloat(item.price) || 0
+            const currentTotal = Number.parseFloat(item.total) || 0
             const gstRate = Number.parseFloat(value) || 0
-            updatedItem.gst = calculateGST(price, gstRate)
-            updatedItem.total = calculateTotal(price, updatedItem.gst)
+            if (currentTotal > 0) {
+              // Calculate new price from existing total
+              const price = gstRate > 0 ? currentTotal / (1 + gstRate / 100) : currentTotal
+              const gst = currentTotal - price
+              updatedItem.price = price.toFixed(2)
+              updatedItem.gst = gst.toFixed(2)
+            }
           }
-
           return updatedItem
         }
         return item
@@ -1020,49 +962,56 @@ const ProcedureComponent = () => {
     )
   }
 
-  // Enhanced handle consumer data changes with GST calculation
+  // Modified handle consumer data changes with correct GST logic
   const handleConsumerChange = (index, field, value) => {
     setConsumerData((prevRecords) => {
       const updatedRecords = [...prevRecords]
       updatedRecords[index][field] = value
-
-      // Handle quantity or price change
+      
+      // Handle quantity or price change - calculate total including GST
       if (field === "qty" || field === "price") {
         const qty = Number.parseFloat(updatedRecords[index].qty) || 0
         const price = Number.parseFloat(updatedRecords[index].price) || 0
-        const subtotal = qty * price
         const gstRate = Number.parseFloat(updatedRecords[index].gstRate) || 0
-        const gst = (subtotal * gstRate) / 100
-        updatedRecords[index].gst = gst.toFixed(2)
-        updatedRecords[index].total = (subtotal + gst).toFixed(2)
-      }
-
-      // Handle GST rate change
-      else if (field === "gstRate") {
-        const qty = Number.parseFloat(updatedRecords[index].qty) || 0
-        const price = Number.parseFloat(updatedRecords[index].price) || 0
+        
         const subtotal = qty * price
-        const gstRate = Number.parseFloat(value) || 0
         const gst = (subtotal * gstRate) / 100
+        const total = subtotal + gst
+        
         updatedRecords[index].gst = gst.toFixed(2)
-        updatedRecords[index].total = (subtotal + gst).toFixed(2)
+        updatedRecords[index].total = total.toFixed(2)
       }
-
-      // Handle total change - calculate price based on total
+      // Handle GST rate change - keep total same, adjust price accordingly
+      else if (field === "gstRate") {
+        const currentTotal = Number.parseFloat(updatedRecords[index].total) || 0
+        const qty = Number.parseFloat(updatedRecords[index].qty) || 1
+        const gstRate = Number.parseFloat(value) || 0
+        
+        if (currentTotal > 0 && qty > 0) {
+          // Calculate new price from existing total
+          const price = gstRate > 0 ? (currentTotal / qty) / (1 + gstRate / 100) : currentTotal / qty
+          const subtotal = price * qty
+          const gst = currentTotal - subtotal
+          
+          updatedRecords[index].price = price.toFixed(2)
+          updatedRecords[index].gst = gst.toFixed(2)
+        }
+      }
+      // Handle total change - calculate price and GST from total (GST included within total)
       else if (field === "total") {
         const total = Number.parseFloat(value) || 0
         const qty = Number.parseFloat(updatedRecords[index].qty) || 1
         const gstRate = Number.parseFloat(updatedRecords[index].gstRate) || 0
-
-        // Calculate price from total: price = (total / qty) / (1 + gstRate/100)
-        const calculatedPrice = gstRate > 0 ? total / qty / (1 + gstRate / 100) : total / qty
-        updatedRecords[index].price = calculatedPrice.toFixed(2)
-
-        const subtotal = qty * calculatedPrice
-        const gst = (subtotal * gstRate) / 100
+        
+        // Calculate price from total (GST included within total)
+        const price = gstRate > 0 ? (total / qty) / (1 + gstRate / 100) : total / qty
+        const subtotal = price * qty
+        const gst = total - subtotal
+        
+        updatedRecords[index].price = price.toFixed(2)
         updatedRecords[index].gst = gst.toFixed(2)
       }
-
+      
       return updatedRecords
     })
   }
@@ -1082,7 +1031,7 @@ const ProcedureComponent = () => {
           item: "",
           qty: "",
           price: "",
-          gstRate: "18", // Default GST rate
+          gstRate: "0", // Default GST rate
           gst: "0",
           total: "",
           selected: true,
@@ -1100,7 +1049,7 @@ const ProcedureComponent = () => {
         item: "",
         qty: "",
         price: "",
-        gstRate: "18", // Default GST rate
+        gstRate: "0", // Default GST rate
         gst: "0",
         total: "",
         selected: true,
@@ -1122,20 +1071,17 @@ const ProcedureComponent = () => {
     const selectedProcedures = procedureData.filter((item) => item.selected)
     const selectedAdditionalProcedures = additionalProcedures.filter((item) => item.selected)
     const selectedConsumers = consumerData.filter((item) => item.selected)
-
     const procedureTotal = selectedProcedures.reduce((sum, item) => sum + (Number.parseFloat(item.total) || 0), 0)
     const additionalProcedureTotal = selectedAdditionalProcedures.reduce(
       (sum, item) => sum + (Number.parseFloat(item.total) || 0),
       0,
     )
     const consumerTotal = selectedConsumers.reduce((sum, item) => sum + (Number.parseFloat(item.total) || 0), 0)
-
     const newProcedureNetAmount = (procedureTotal + additionalProcedureTotal + consultationFee).toFixed(2)
     const newConsumerNetAmount = consumerTotal.toFixed(2)
     const newTotalAmount = (Number.parseFloat(newProcedureNetAmount) + Number.parseFloat(newConsumerNetAmount)).toFixed(
       2,
     )
-
     setProcedureNetAmount(newProcedureNetAmount)
     setConsumerNetAmount(newConsumerNetAmount)
     setTotalAmount(newTotalAmount)
@@ -1146,17 +1092,14 @@ const ProcedureComponent = () => {
       toast.error("No patient selected")
       return
     }
-
     try {
       // Prepare selected procedures
       const selectedProcedures = [
         ...procedureData.filter((item) => item.selected),
         ...additionalProcedures.filter((item) => item.selected),
       ]
-
       // Prepare selected consumers
       const selectedConsumers = consumerData.filter((item) => item.selected)
-
       const payload = {
         patientName: selectedPatient.patientName,
         patientUID: selectedPatient.patientUID,
@@ -1171,22 +1114,17 @@ const ProcedureComponent = () => {
         consultationFee: consultationFee,
         branch_code: branchCode,
       }
-
       console.log("Saving payload:", payload)
-
       const response = await axios.post(`${Cosmetologybaseurl}Post_Procedure_Bill/`, payload, {
         headers: {
           "Content-Type": "application/json",
         },
       })
-
       toast.success(`Procedure bill saved successfully for ${selectedPatient.patientName}`)
-
       // Navigate back to patient list after successful save
       setTimeout(() => {
         handleBackClick()
       }, 2000) // Wait 2 seconds to show success message
-
       // Refresh data after save
       fetchPatientProcedureData(selectedPatient)
     } catch (error) {
@@ -1200,15 +1138,12 @@ const ProcedureComponent = () => {
       toast.error("No patient selected for download")
       return
     }
-
     const doc = new jsPDF("p", "mm", "a4")
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
     const margin = 14
-
     const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
     const PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
-
     const convertToBase64 = (url, callback) => {
       const img = new Image()
       img.crossOrigin = "Anonymous"
@@ -1224,12 +1159,9 @@ const ProcedureComponent = () => {
       }
       img.onerror = (error) => console.error("Error converting image to Base64:", error)
     }
-
     convertToBase64(PDFMain, (mainImage) => {
       doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
-
       const startY = 110
-
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.setTextColor(30, 30, 30)
@@ -1237,29 +1169,24 @@ const ProcedureComponent = () => {
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       doc.text(`${selectedPatient.patientName.toUpperCase()}`, 50, startY)
-
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.text(`Patient UID:`, 16, startY + 8)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       doc.text(`${selectedPatient.patientUID}`, 50, startY + 8)
-
       doc.setFont("helvetica", "bold")
       doc.setFontSize(12)
       doc.text(`Date:`, 140, startY)
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       doc.text(`${selectedPatient.appointmentDate}`, 170, startY)
-
       let yOffset = startY + 20
-
       // ======= Procedure Table with Multi-Page Support =======
       const selectedProcedures = [
         ...procedureData.filter((item) => item.selected),
         ...additionalProcedures.filter((item) => item.selected),
       ]
-
       if (selectedProcedures.length > 0) {
         const procedureTable = selectedProcedures.map((procedure) => [
           procedure.procedure,
@@ -1269,7 +1196,6 @@ const ProcedureComponent = () => {
           `${procedure.gst}`,
           `${procedure.total}`,
         ])
-
         doc.autoTable({
           head: [["Procedure", "Date", "Price", "GST Rate", "GST", "Total"]],
           body: procedureTable,
@@ -1287,13 +1213,10 @@ const ProcedureComponent = () => {
           },
           margin: { left: 14, right: 14 },
         })
-
         yOffset = doc.lastAutoTable.finalY + 10
       }
-
       // ======= Consumer Table with Multi-Page Support =======
       const selectedConsumers = consumerData.filter((item) => item.selected && item.item)
-
       if (selectedConsumers.length > 0) {
         // Check if we need a new page
         if (yOffset > pageHeight - 100) {
@@ -1301,7 +1224,6 @@ const ProcedureComponent = () => {
           doc.addImage(mainImage, "PNG", 0, 0, pageWidth, pageHeight)
           yOffset = 80
         }
-
         const consumerTable = selectedConsumers.map((record) => [
           record.item,
           record.qty,
@@ -1310,7 +1232,6 @@ const ProcedureComponent = () => {
           `${record.gst}`,
           `${record.total}`,
         ])
-
         doc.autoTable({
           head: [["Item", "Qty", "Price", "GST Rate", "GST", "Total"]],
           body: consumerTable,
@@ -1336,10 +1257,8 @@ const ProcedureComponent = () => {
             }
           },
         })
-
         yOffset = doc.lastAutoTable.finalY + 10
       }
-
       // ======= Summary Information =======
       if (consultationFee > 0) {
         doc.setFont("helvetica", "bold")
@@ -1347,13 +1266,11 @@ const ProcedureComponent = () => {
         doc.text(`Consultation Fee: ${consultationFee.toFixed(2)}`, 150, yOffset)
         yOffset += 10
       }
-
       // Net Total
       doc.setFont("helvetica", "bold")
       doc.setFontSize(14)
       doc.setTextColor(0, 100, 0)
       doc.text(`Net Total: ${totalAmount}`, 150, yOffset + 5)
-
       // Save the PDF
       doc.save(`${selectedPatient.patientName}_Final_Bill.pdf`)
       toast.success(`PDF downloaded for ${selectedPatient.patientName}`)
@@ -1369,14 +1286,12 @@ const ProcedureComponent = () => {
     <Container className="container">
       <ToastContainer position="top-right" autoClose={5000} />
       <h3 className="text-center mb-4">Procedure Bill</h3>
-
       {viewDetails ? (
         <div>
           <BackButton onClick={handleBackClick}>
             <IoMdArrowRoundBack />
             Back to Patient List
           </BackButton>
-
           {selectedPatient && (
             <InfoContainer className="mt-2">
               <InfoText>
@@ -1397,9 +1312,7 @@ const ProcedureComponent = () => {
               </InfoText>
             </InfoContainer>
           )}
-
           <br />
-
           {isLoading ? (
             <LoadingSpinner>
               <div className="spinner"></div>
@@ -1415,7 +1328,6 @@ const ProcedureComponent = () => {
                   Add Procedure
                 </AddRowButton>
               </div>
-
               {(procedureData.length > 0 || additionalProcedures.length > 0) && (
                 <TableContainer>
                   <table>
@@ -1472,7 +1384,6 @@ const ProcedureComponent = () => {
                           <td>-</td>
                         </tr>
                       ))}
-
                       {/* Additional procedures */}
                       {additionalProcedures.map((procedure) => (
                         <tr key={procedure.id}>
@@ -1556,12 +1467,10 @@ const ProcedureComponent = () => {
                   </table>
                 </TableContainer>
               )}
-
               {/* Show message if no procedures found */}
               {procedureData.length === 0 && additionalProcedures.length === 0 && (
                 <NoDataMessage>No procedures found. Click "Add Procedure" to add new procedures.</NoDataMessage>
               )}
-
               {/* Consultation Fee Section */}
               <ConsultationSection>
                 <h5>Consultation Fee</h5>
@@ -1576,7 +1485,6 @@ const ProcedureComponent = () => {
                   />
                 </ConsultationRow>
               </ConsultationSection>
-
               <div style={{ textAlign: "right", marginTop: "20px" }}>
                 <label>Procedure Net Amount: </label>
                 <input
@@ -1586,7 +1494,6 @@ const ProcedureComponent = () => {
                   style={{ width: "120px", padding: "8px", marginLeft: "10px" }}
                 />
               </div>
-
               {/* Consumer section */}
               <SectionHeader>
                 <SectionTitle>Consumable Bill</SectionTitle>
@@ -1602,7 +1509,6 @@ const ProcedureComponent = () => {
                   </AddRowButton>
                 )}
               </SectionHeader>
-
               {(showConsumerTable || consumerData.length > 0) && (
                 <>
                   <TableContainer>
@@ -1712,7 +1618,6 @@ const ProcedureComponent = () => {
                       </tbody>
                     </table>
                   </TableContainer>
-
                   <div style={{ textAlign: "right", marginTop: "10px" }}>
                     <label>Consumer Net Amount: </label>
                     <input
@@ -1724,7 +1629,6 @@ const ProcedureComponent = () => {
                   </div>
                 </>
               )}
-
               <FlexRow>
                 <div>
                   <label>Total Amount: </label>
@@ -1748,7 +1652,6 @@ const ProcedureComponent = () => {
                   </select>
                 </div>
               </FlexRow>
-
               <div className="d-flex flex-column align-items-center mt-4">
                 <Row className="g-3">
                   <Col xs="auto">
@@ -1783,7 +1686,6 @@ const ProcedureComponent = () => {
             </DatePickerWrapper>
           </center>
           <br />
-
           <PatientProcedureContainer>
             {isLoading ? (
               <LoadingSpinner>

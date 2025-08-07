@@ -849,7 +849,7 @@ const Bill = () => {
         SGST_percentage: 0,
         SGST_value: 0,
         batch_number: "",
-        selected: false,
+        selected: true, // Default selected
         total: 0,
         isSaved: false,
       },
@@ -1352,6 +1352,10 @@ const Bill = () => {
       }
       const data = await response.json()
       toast.success(`Billing was generated successfully for ${selectedPatient.patientName}`)
+      
+      // After successful save, make fields non-editable by setting isDataFromStored to true
+      setIsDataFromStored(true)
+      
       const stockUpdated = await updateStock()
       if (!stockUpdated) {
         console.error("Stock update failed.")
@@ -1749,6 +1753,7 @@ const Bill = () => {
                                       [key]: e.target.checked,
                                     }))
                                   }
+                                  disabled={isDataFromStored}
                                 />
                               </td>
                               <td>
@@ -1761,6 +1766,7 @@ const Bill = () => {
                                   type="text"
                                   value={qty}
                                   onChange={(e) => handleQuantityChange(itemIndex, prescriptionIndex, e.target.value)}
+                                  readOnly={isDataFromStored}
                                 />
                               </td>
                               <td style={{ textAlign: "center" }}>
@@ -1769,6 +1775,7 @@ const Bill = () => {
                                   type="text"
                                   value={editablePrice}
                                   onChange={(e) => handlePriceChange(itemIndex, prescriptionIndex, e.target.value)}
+                                  readOnly={isDataFromStored}
                                 />
                               </td>
                               <td style={{ textAlign: "center" }}>{CGST_percentage || "N/A"}</td>
@@ -1781,6 +1788,7 @@ const Bill = () => {
                                   type="text"
                                   value={editableTotals[key] || calculateTotal(editablePrice, qty)}
                                   onChange={(e) => handleTotalChange(key, e.target.value)}
+                                  readOnly={isDataFromStored}
                                 />
                               </td>
                               <td style={{ textAlign: "center" }}>-</td>
@@ -1799,6 +1807,7 @@ const Bill = () => {
                             type="checkbox"
                             checked={row.selected}
                             onChange={(e) => handleAdditionalRowChange(row.id, "selected", e.target.checked)}
+                            disabled={isDataFromStored}
                           />
                         </td>
                         <td>
@@ -1830,6 +1839,7 @@ const Bill = () => {
                             placeholder="Search and select medicine..."
                             isClearable
                             isSearchable
+                            isDisabled={isDataFromStored}
                             menuPortalTarget={document.body}
                             styles={{
                               menuPortal: (base) => ({ ...base, zIndex: 9999 }),
@@ -1850,6 +1860,7 @@ const Bill = () => {
                             type="text"
                             value={row.quantity}
                             onChange={(e) => handleAdditionalRowChange(row.id, "quantity", e.target.value)}
+                            readOnly={isDataFromStored}
                           />
                         </td>
                         <td style={{ textAlign: "center" }}>
@@ -1858,6 +1869,7 @@ const Bill = () => {
                             type="text"
                             value={row.price}
                             onChange={(e) => handleAdditionalRowChange(row.id, "price", e.target.value)}
+                            readOnly={isDataFromStored}
                           />
                         </td>
                         <td style={{ textAlign: "center" }}>
@@ -1866,6 +1878,7 @@ const Bill = () => {
                             type="text"
                             value={row.CGST_percentage}
                             onChange={(e) => handleCGSTPercentageChange(row.id, e.target.value)}
+                            readOnly={isDataFromStored}
                           />
                         </td>
                         <td style={{ textAlign: "center" }}>{row.CGST_value}</td>
@@ -1875,6 +1888,7 @@ const Bill = () => {
                             type="text"
                             value={row.SGST_percentage}
                             onChange={(e) => handleSGSTPercentageChange(row.id, e.target.value)}
+                            readOnly={isDataFromStored}
                           />
                         </td>
                         <td style={{ textAlign: "center" }}>{row.SGST_value}</td>
@@ -1884,6 +1898,7 @@ const Bill = () => {
                             type="text"
                             value={row.batch_number}
                             onChange={(e) => handleAdditionalRowChange(row.id, "batch_number", e.target.value)}
+                            readOnly={isDataFromStored}
                           />
                         </td>
                         <td style={{ textAlign: "center" }}>
@@ -1894,12 +1909,15 @@ const Bill = () => {
                               (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2)
                             }
                             onChange={(e) => handleTotalChange(row.id, e.target.value)}
+                            readOnly={isDataFromStored}
                           />
                         </td>
                         <td style={{ textAlign: "center" }}>
-                          <DeleteRowButton onClick={() => handleDeleteRow(row.id)}>
-                            <FaTrash />
-                          </DeleteRowButton>
+                          {!isDataFromStored && (
+                            <DeleteRowButton onClick={() => handleDeleteRow(row.id)}>
+                              <FaTrash />
+                            </DeleteRowButton>
+                          )}
                         </td>
                       </tr>
                     )
@@ -1918,6 +1936,7 @@ const Bill = () => {
                   value={consultationFee}
                   onChange={(e) => setConsultationFee(Number.parseFloat(e.target.value) || 0)}
                   placeholder="Enter consultation fee"
+                  readOnly={isDataFromStored}
                 />
               </ConsultationRow>
             </ConsultationSection>
@@ -1934,19 +1953,24 @@ const Bill = () => {
                 value={tempDiscount}
                 placeholder="Discount %"
                 onChange={handleDiscountChange}
+                readOnly={isDataFromStored}
               />
-              <button onClick={handleApplyDiscount}>Apply</button>
+              {!isDataFromStored && <button onClick={handleApplyDiscount}>Apply</button>}
             </DiscountContainer>
             <PaymentTypeContainer>
               <PaymentTypeLabel>Payment Type : </PaymentTypeLabel>
-              <PaymentTypeInput value={paymentType} onChange={handlePaymentTypeChange}>
+              <PaymentTypeInput 
+                value={paymentType} 
+                onChange={handlePaymentTypeChange}
+                disabled={isDataFromStored}
+              >
                 <option value="Card">Card</option>
                 <option value="Cash">Cash</option>
               </PaymentTypeInput>
             </PaymentTypeContainer>
             <NetContainer>
               <NetLabel htmlFor="Net">Net Amount:</NetLabel>
-              <NetInput type="text" id="Net" value={netAmount} onChange={(e) => setNetAmount(e.target.value)} />
+              <NetInput type="text" id="Net" value={netAmount} onChange={(e) => setNetAmount(e.target.value)} readOnly />
             </NetContainer>
           </FlexRow>
         )}
