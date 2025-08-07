@@ -15,6 +15,8 @@ import "react-toastify/dist/ReactToastify.css"
 import { useNavigate } from "react-router-dom"
 import jsPDF from "jspdf"
 import Select from "react-select"
+import CreatableSelect from "react-select/creatable"
+import { consumerItems } from "./constant" // Assuming constant.js exists and is accessible
 
 const StyledContainer = styled.div`
   padding: 10px;
@@ -70,6 +72,11 @@ const StyledTable = styled.table`
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 12px;
+    &[readOnly] {
+      background-color: #f5f5f5;
+      border-color: #e0e0e0;
+      cursor: default;
+    }
   }
 `
 
@@ -107,6 +114,29 @@ const PatientInfo = styled.div`
     }
   }
 `
+const ActionGroup = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: auto;
+  gap: 10px;
+  margin-bottom: 10px;
+`
+
+const SelectAllCheckboxContainer = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    margin-right: 5px;
+    width: 18px;
+    height: 18px;
+    accent-color: #9b85a8; /* Apply accent color to checkbox */
+  }
+`;
 
 const AddRowButton = styled.button`
   background-color: #9b85a8;
@@ -121,7 +151,7 @@ const AddRowButton = styled.button`
   margin-bottom: 10px;
 
   &:hover {
-    background-color: #218838;
+    background-color: #8a7497;
   }
 `
 
@@ -230,7 +260,7 @@ const NoDataMessage = styled.div`
 
 const NewProcedureComponent = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
-  const [consumerRecords, setConsumerRecords] = useState([])
+  const [consumerRecords, setConsumerRecords] = useState([]) // Renamed from consumerRecords for clarity
   const [procedureNetAmount, setProcedureNetAmount] = useState("0")
   const [consumerNetAmount, setConsumerNetAmount] = useState("0")
   const [totalAmount, setTotalAmount] = useState("0")
@@ -244,6 +274,9 @@ const NewProcedureComponent = () => {
   const [additionalProcedures, setAdditionalProcedures] = useState([])
   const [consultationFee, setConsultationFee] = useState(0)
   const [showConsumerTable, setShowConsumerTable] = useState(false)
+  const [selectAllProcedures, setSelectAllProcedures] = useState(false)
+  const [selectAllConsumers, setSelectAllConsumers] = useState(false)
+
 
   const navigate = useNavigate()
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
@@ -394,10 +427,10 @@ const NewProcedureComponent = () => {
         selectedProcedureId: "",
         procedureDate: selectedDate,
         price: "",
-        gstRate: 18,
+        gstRate: "",
         gst: "",
         total: "",
-        selected: true,
+        selected: true, // Default selected
       },
     ])
   }
@@ -438,28 +471,6 @@ const NewProcedureComponent = () => {
     }
   }
 
-  // Enhanced calculation functions for bidirectional price/total editing
-  const calculateGST = (price, gstRate) => {
-    return price && gstRate ? ((price * gstRate) / 100).toFixed(2) : "0"
-  }
-
-  const calculateTotalFromPrice = (price, gst) => {
-    const priceValue = Number.parseFloat(price) || 0
-    const gstValue = Number.parseFloat(gst) || 0
-    return (priceValue + gstValue).toFixed(2)
-  }
-
-  const calculatePriceFromTotal = (total, gstRate) => {
-    const totalValue = Number.parseFloat(total) || 0
-    const gstRateValue = Number.parseFloat(gstRate) || 0
-    if (gstRateValue > 0) {
-      // Calculate price from total: price = total / (1 + gstRate/100)
-      const calculatedPrice = totalValue / (1 + gstRateValue / 100)
-      return calculatedPrice.toFixed(2)
-    }
-    return totalValue.toFixed(2)
-  }
-
   // Enhanced handleAdditionalProcedureChange with bidirectional editing
   const handleAdditionalProcedureChange = (rowId, field, value) => {
     setAdditionalProcedures((prev) =>
@@ -467,27 +478,36 @@ const NewProcedureComponent = () => {
         if (row.id === rowId) {
           const updatedRow = { ...row, [field]: value }
 
-          // Handle price change - calculate GST and total
+          // Handle price change - calculate total including GST
           if (field === "price") {
             const price = Number.parseFloat(value) || 0
             const gstRate = Number.parseFloat(row.gstRate) || 0
-            updatedRow.gst = calculateGST(price, gstRate)
-            updatedRow.total = calculateTotalFromPrice(price, updatedRow.gst)
+            const gst = (price * gstRate) / 100
+            const total = price + gst
+            updatedRow.gst = gst.toFixed(2)
+            updatedRow.total = total.toFixed(2)
           }
-          // Handle total change - calculate price based on total
+          // Handle total change - calculate price and GST from total (GST included within total)
           else if (field === "total") {
             const total = Number.parseFloat(value) || 0
             const gstRate = Number.parseFloat(row.gstRate) || 0
-            const calculatedPrice = calculatePriceFromTotal(total, gstRate)
-            updatedRow.price = calculatedPrice
-            updatedRow.gst = calculateGST(calculatedPrice, gstRate)
+            // Calculate price from total: price = total / (1 + gstRate/100)
+            const price = gstRate > 0 ? total / (1 + gstRate / 100) : total
+            const gst = total - price
+            updatedRow.price = price.toFixed(2)
+            updatedRow.gst = gst.toFixed(2)
           }
-          // Handle GST rate change - recalculate GST and total based on existing price
+          // Handle GST rate change - keep total same, adjust price accordingly
           else if (field === "gstRate") {
-            const price = Number.parseFloat(row.price) || 0
+            const currentTotal = Number.parseFloat(row.total) || 0
             const gstRate = Number.parseFloat(value) || 0
-            updatedRow.gst = calculateGST(price, gstRate)
-            updatedRow.total = calculateTotalFromPrice(price, updatedRow.gst)
+            if (currentTotal > 0) {
+              // Calculate new price from existing total
+              const price = gstRate > 0 ? currentTotal / (1 + gstRate / 100) : currentTotal
+              const gst = currentTotal - price
+              updatedRow.price = price.toFixed(2)
+              updatedRow.gst = gst.toFixed(2)
+            }
           }
 
           return updatedRow
@@ -500,14 +520,32 @@ const NewProcedureComponent = () => {
   const handleShowConsumerTable = () => {
     setShowConsumerTable(true)
     if (consumerRecords.length === 0) {
-      setConsumerRecords([{ item: "", qty: "", price: "", gstRate: 18, gst: "", total: "" }])
+      setConsumerRecords([{ 
+        id: `consumer-${Date.now()}`,
+        item: "", 
+        qty: "", 
+        price: "", 
+        gstRate: "", 
+        gst: "", 
+        total: "",
+        selected: true, // Default selected
+      }])
     }
   }
 
   const addConsumerRow = () => {
     setConsumerRecords((prevRecords) => [
       ...prevRecords,
-      { item: "", qty: "", price: "", gstRate: 18, gst: "", total: "" },
+      { 
+        id: `consumer-${Date.now()}`,
+        item: "", 
+        qty: "", 
+        price: "", 
+        gstRate: "", 
+        gst: "", 
+        total: "",
+        selected: true, // Default selected
+      },
     ])
   }
 
@@ -517,49 +555,48 @@ const NewProcedureComponent = () => {
       const updatedRecords = [...prevRecords]
       updatedRecords[index][field] = value
 
-      // Handle quantity or price changes - calculate GST and total
+      // Handle quantity or price change - calculate total including GST
       if (field === "qty" || field === "price") {
         const qty = Number.parseFloat(updatedRecords[index].qty) || 0
         const price = Number.parseFloat(updatedRecords[index].price) || 0
         const gstRate = Number.parseFloat(updatedRecords[index].gstRate) || 0
-        const subtotal = qty * price
-        const gstAmount = (subtotal * gstRate) / 100
-        updatedRecords[index].gst = gstAmount.toFixed(2)
-        updatedRecords[index].total = (subtotal + gstAmount).toFixed(2)
-      }
-      // Handle GST rate change - recalculate GST and total
-      else if (field === "gstRate") {
-        const qty = Number.parseFloat(updatedRecords[index].qty) || 0
-        const price = Number.parseFloat(updatedRecords[index].price) || 0
-        const gstRate = Number.parseFloat(value) || 0
-        const subtotal = qty * price
-        const gstAmount = (subtotal * gstRate) / 100
-        updatedRecords[index].gst = gstAmount.toFixed(2)
-        updatedRecords[index].total = (subtotal + gstAmount).toFixed(2)
-      }
-      // Handle total change - calculate price based on total, quantity and GST rate
-      else if (field === "total") {
-        const total = Number.parseFloat(value) || 0
-        const qty = Number.parseFloat(updatedRecords[index].qty) || 0
-        const gstRate = Number.parseFloat(updatedRecords[index].gstRate) || 0
 
-        if (qty > 0 && gstRate >= 0) {
-          // Calculate subtotal from total: subtotal = total / (1 + gstRate/100)
-          const subtotal = total / (1 + gstRate / 100)
-          const price = subtotal / qty
-          const gstAmount = subtotal * (gstRate / 100)
+        const subtotal = qty * price
+        const gst = (subtotal * gstRate) / 100
+        const total = subtotal + gst
+
+        updatedRecords[index].gst = gst.toFixed(2)
+        updatedRecords[index].total = total.toFixed(2)
+      }
+      // Handle GST rate change - keep total same, adjust price accordingly
+      else if (field === "gstRate") {
+        const currentTotal = Number.parseFloat(updatedRecords[index].total) || 0
+        const qty = Number.parseFloat(updatedRecords[index].qty) || 1
+        const gstRate = Number.parseFloat(value) || 0
+
+        if (currentTotal > 0 && qty > 0) {
+          // Calculate new price from existing total
+          const price = gstRate > 0 ? (currentTotal / qty) / (1 + gstRate / 100) : currentTotal / qty
+          const subtotal = price * qty
+          const gst = currentTotal - subtotal
 
           updatedRecords[index].price = price.toFixed(2)
-          updatedRecords[index].gst = gstAmount.toFixed(2)
-        } else if (qty > 0) {
-          // If no GST rate, price = total / qty
-          updatedRecords[index].price = (total / qty).toFixed(2)
-          updatedRecords[index].gst = "0"
-        } else {
-          // If no quantity, set price equal to total
-          updatedRecords[index].price = total.toFixed(2)
-          updatedRecords[index].gst = "0"
+          updatedRecords[index].gst = gst.toFixed(2)
         }
+      }
+      // Handle total change - calculate price and GST from total (GST included within total)
+      else if (field === "total") {
+        const total = Number.parseFloat(value) || 0
+        const qty = Number.parseFloat(updatedRecords[index].qty) || 1
+        const gstRate = Number.parseFloat(updatedRecords[index].gstRate) || 0
+
+        // Calculate price from total (GST included within total)
+        const price = gstRate > 0 ? (total / qty) / (1 + gstRate / 100) : total / qty
+        const subtotal = price * qty
+        const gst = total - subtotal
+
+        updatedRecords[index].price = price.toFixed(2)
+        updatedRecords[index].gst = gst.toFixed(2)
       }
 
       return updatedRecords
@@ -571,6 +608,27 @@ const NewProcedureComponent = () => {
     newRecords[index].item = selectedOption ? selectedOption.value : ""
     setConsumerRecords(newRecords)
   }
+
+  // Handle Select All for Procedures
+  const handleSelectAllProcedures = () => {
+    const newSelectAll = !selectAllProcedures
+    setSelectAllProcedures(newSelectAll)
+    
+    setAdditionalProcedures(prev => prev.map(item => ({ ...item, selected: newSelectAll })))
+  }
+
+  // Handle Select All for Consumers
+  const handleSelectAllConsumers = () => {
+    const newSelectAll = !selectAllConsumers
+    setSelectAllConsumers(newSelectAll)
+    
+    setConsumerRecords(prev => prev.map(item => ({ ...item, selected: newSelectAll })))
+  }
+
+  const consumerOptions = consumerItems.map((item) => ({
+    value: item,
+    label: item,
+  }))
 
   const calculateProcedureTotal = () => {
     const additionalTotal = additionalProcedures.reduce((acc, procedure) => {
@@ -586,8 +644,11 @@ const NewProcedureComponent = () => {
 
   const calculateConsumerTotal = () => {
     const total = consumerRecords.reduce((acc, record) => {
-      const itemTotal = Number.parseFloat(record.total) || 0
-      return acc + itemTotal
+      if (record.selected) {
+        const itemTotal = Number.parseFloat(record.total) || 0
+        return acc + itemTotal
+      }
+      return acc;
     }, 0)
     setConsumerNetAmount(total.toFixed(2))
   }
@@ -631,22 +692,24 @@ const NewProcedureComponent = () => {
         })
       }
 
-      // Update consumer records to include GST data
-      const consumerData = consumerRecords.map((record) => ({
-        item: record.item,
-        qty: record.qty,
-        price: record.price,
-        gstRate: record.gstRate || 0,
-        gst: record.gst || "0",
-        total: record.total,
-      }))
+      // Update consumer records to include GST data and filter selected ones
+      const consumerDataToSave = consumerRecords
+        .filter((record) => record.selected)
+        .map((record) => ({
+          item: record.item,
+          qty: record.qty,
+          price: record.price,
+          gstRate: record.gstRate || 0,
+          gst: record.gst || "0",
+          total: record.total,
+        }))
 
       const payload = {
         patientName: selectedPatient.patientName,
         patientUID: selectedPatient.patientUID,
         patient_handledby: selectedPatient.patient_handledby || "N/A",
         procedures: allProcedures,
-        consumer: consumerData,
+        consumer: consumerDataToSave, // Use the filtered consumer data
         appointmentDate: selectedDate,
         procedureNetAmount: procedureNetAmount,
         consumerNetAmount: consumerNetAmount,
@@ -739,7 +802,7 @@ const NewProcedureComponent = () => {
       patientName: selectedPatient.patientName,
       patientUID: selectedPatient.patientUID,
       procedures: additionalProcedures.filter((proc) => proc.selected),
-      consumer: consumerRecords,
+      consumer: consumerRecords.filter((rec) => rec.selected), // Filter selected consumer records for download
       consultationFee: consultationFee,
       procedureNetAmount: procedureNetAmount,
       consumerNetAmount: consumerNetAmount,
@@ -1063,11 +1126,13 @@ const NewProcedureComponent = () => {
         <StyledContainer>
           {/* Procedure Section */}
           <div style={{ marginBottom: "20px" }}>
-            <h4>Procedures</h4>
-            <AddRowButton onClick={handleAddProcedureRow}>
-              <FaPlus />
-              Add Procedure
-            </AddRowButton>
+            <h4 style={{ fontWeight: "600" }}>Procedures</h4>
+            <ActionGroup>
+              <AddRowButton onClick={handleAddProcedureRow}>
+                <FaPlus />
+                Add Procedure
+              </AddRowButton>
+            </ActionGroup>
           </div>
 
           {additionalProcedures.length > 0 && (
@@ -1170,39 +1235,68 @@ const NewProcedureComponent = () => {
 
           {/* Consumer Section */}
           <div style={{ marginTop: "30px", marginBottom: "20px" }}>
-            <h4>Consumer Items</h4>
-            <AddRowButton onClick={handleShowConsumerTable}>
-              <FaPlus />
-              Add Consumer Item
-            </AddRowButton>
+            <h4 style={{ fontWeight: "600" }}>Consumable Bill</h4>
+            <ActionGroup>
+              {!showConsumerTable ? (
+                <AddRowButton onClick={handleShowConsumerTable}>
+                  <FaPlus />
+                  Add Consumer Items
+                </AddRowButton>
+              ) : (
+                <AddRowButton onClick={addConsumerRow}>
+                  <FaPlus />
+                  Add Row
+                </AddRowButton>
+              )}
+            </ActionGroup>
           </div>
 
-          {showConsumerTable && (
+          {(showConsumerTable || consumerRecords.length > 0) && (
             <>
               <TableContainer>
                 <StyledTable>
                   <thead>
                     <tr>
+                      <th>Select</th>
                       <th>Item</th>
                       <th>Quantity</th>
                       <th>Price</th>
                       <th>GST Rate (%)</th>
                       <th>GST Amount</th>
                       <th>Total</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {consumerRecords.map((record, index) => (
-                      <tr key={index}>
+                      <tr key={record.id || index}>
                         <td>
                           <input
-                            type="text"
-                            value={record.item || ""}
-                            onChange={(e) =>
-                              handleSelectChange({ value: e.target.value, label: e.target.value }, index)
+                            type="checkbox"
+                            checked={record.selected}
+                            onChange={(e) => handleConsumerChange(index, "selected", e.target.checked)}
+                          />
+                        </td>
+                        <td>
+                          <CreatableSelect
+                            options={consumerOptions}
+                            isClearable
+                            isSearchable
+                            onChange={(selectedOption) => handleSelectChange(selectedOption, index)}
+                            value={
+                              record?.item
+                                ? consumerOptions.find((option) => option.value === record.item) || {
+                                    value: record.item,
+                                    label: record.item,
+                                  }
+                                : null
                             }
-                            placeholder="Enter item"
-                            disabled={record.isStored}
+                            placeholder="Select or enter item"
+                            menuPortalTarget={document.body}
+                            styles={{
+                              menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                              menu: (base) => ({ ...base, zIndex: 9999 }),
+                            }}
                           />
                         </td>
                         <td>
@@ -1236,15 +1330,16 @@ const NewProcedureComponent = () => {
                             onChange={(e) => handleConsumerChange(index, "total", e.target.value)}
                           />
                         </td>
+                        <td>
+                          <DeleteRowButton onClick={() => setConsumerRecords((prev) => prev.filter((_, i) => i !== index))}>
+                            <FaTrash />
+                          </DeleteRowButton>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </StyledTable>
               </TableContainer>
-              <AddRowButton onClick={addConsumerRow}>
-                <FaPlus />
-                Add Item
-              </AddRowButton>
             </>
           )}
 

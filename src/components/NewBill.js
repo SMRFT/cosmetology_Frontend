@@ -1,17 +1,19 @@
 "use client"
+
 import { useState, useEffect } from "react"
+import axios from "axios"
 import styled from "styled-components"
-import { FaPlus, FaTrash, FaCalendarAlt, FaDownload } from "react-icons/fa"
 import { format } from "date-fns"
-import { IoMdArrowRoundBack } from "react-icons/io"
-import jsPDF from "jspdf"
+import { FaPlus, FaTrash, FaDownload, FaCalendarAlt } from "react-icons/fa"
+import "bootstrap/dist/css/bootstrap.min.css"
 import "jspdf-autotable"
+import { IoMdArrowRoundBack } from "react-icons/io"
+import { ToastContainer, toast } from "react-toastify"
 import Kumarapalayam from "./images/KumarapalayamBill.jpg"
 import Salem from "./images/Salembill.jpg"
-import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import axios from "axios"
 import { useNavigate } from "react-router-dom"
+import jsPDF from "jspdf"
 import Select from "react-select"
 
 const StyledContainer = styled.div`
@@ -26,11 +28,9 @@ const Container = styled.div`
 `
 
 const TableContainer = styled.div`
-  overflow-y: auto;
-  scrollbar-width: thin;
-  margin-bottom: 20px;
-  border-radius: 8px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+  overflow: visible; /* this is crucial */
+  z-index: 1;
 `
 
 const StyledTable = styled.table`
@@ -39,14 +39,14 @@ const StyledTable = styled.table`
   margin-bottom: 20px;
   background-color: white;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  
+
   th, td {
     border: 1px solid #dee2e6;
     padding: 12px 8px;
     text-align: center;
     font-size: 14px;
   }
-  
+
   th {
     background-color: #9b85a8;
     color: white;
@@ -55,21 +55,26 @@ const StyledTable = styled.table`
     top: 0;
     z-index: 10;
   }
-  
+
   tr:nth-child(even) {
     background-color: #f8f9fa;
   }
-  
+
   tr:hover {
     background-color: #e9ecef;
   }
-  
+
   input, select {
     width: 100%;
     padding: 4px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 12px;
+    &[readOnly] {
+      background-color: #f5f5f5;
+      border-color: #e0e0e0;
+      cursor: default;
+    }
   }
 `
 
@@ -96,17 +101,40 @@ const InfoText = styled.div`
 
 const PatientInfo = styled.div`
   flex: 1;
-  
+
   div {
     margin-bottom: 5px;
     font-weight: 500;
-    
+
     strong {
       font-weight: 600;
       margin-right: 8px;
     }
   }
 `
+const ActionGroup = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: auto;
+  gap: 10px;
+  margin-bottom: 10px;
+`
+
+const SelectAllCheckboxContainer = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    margin-right: 5px;
+    width: 18px;
+    height: 18px;
+    accent-color: #9b85a8; /* Apply accent color to checkbox */
+  }
+`;
 
 const AddRowButton = styled.button`
   background-color: #9b85a8;
@@ -119,9 +147,9 @@ const AddRowButton = styled.button`
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  
+
   &:hover {
-    background-color: #218838;
+    background-color: #8a7497;
   }
 `
 
@@ -132,7 +160,7 @@ const DeleteRowButton = styled.button`
   padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
-  
+
   &:hover {
     background-color: #c82333;
   }
@@ -148,7 +176,7 @@ const DownloadButton = styled.button`
   display: flex;
   align-items: center;
   gap: 8px;
-  
+
   &:hover {
     background-color: #138496;
   }
@@ -160,25 +188,6 @@ const ConsultationSection = styled.div`
   border-radius: 8px;
   margin-top: 20px;
   border: 1px solid #dee2e6;
-`
-
-const ConsultationRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-`
-
-const ConsultationLabel = styled.label`
-  font-weight: 500;
-  margin-right: 10px;
-`
-
-const ConsultationInput = styled.input`
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  width: 120px;
 `
 
 const FlexRow = styled.div`
@@ -196,7 +205,7 @@ const BackButton = styled.button`
   margin-left: 80px;
   margin-bottom: 20px;
   color: #725F83;
-  
+
   &:hover {
     color: #5a4b69;
   }
@@ -231,7 +240,7 @@ const DateInput = styled.input`
   border-radius: 4px;
   font-size: 14px;
   width: 200px;
-  
+
   &:focus {
     outline: none;
     border-color: #9b85a8;
@@ -258,7 +267,6 @@ const StockWarning = styled.span`
 
 const NewBill = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
-  const [medicineOptions, setMedicineOptions] = useState([])
   const [additionalRows, setAdditionalRows] = useState([])
   const [consultationFee, setConsultationFee] = useState(0)
   const [discount, setDiscount] = useState(0)
@@ -271,9 +279,29 @@ const NewBill = () => {
   const [isLoadingBills, setIsLoadingBills] = useState(false)
   const [viewMode, setViewMode] = useState("existing") // "existing" or "create"
   const [stockErrors, setStockErrors] = useState({})
+  const [selectAll, setSelectAll] = useState(false) // State for select all checkbox
+  const [medicineOptions, setMedicineOptions] = useState()
 
   const navigate = useNavigate()
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
+  useEffect(() => {
+    axios
+      .get(`${Cosmetologybaseurl}Procedure/`)
+      .then((response) => {
+        // This seems to fetch procedures, but NewBill is for pharmacy.
+        // Keeping it as is, but it might be a copy-paste artifact.
+        const formattedProceduresList = response.data.map((procedure, index) => ({
+          id: procedure.id || `proc_${index}`,
+          procedure: procedure.procedure || "",
+        }))
+        // setProceduresList(formattedProceduresList) // Not used in this component
+      })
+      .catch((error) => {
+        console.error("Error fetching procedures data:", error)
+        toast.error("Error fetching procedures data")
+      })
+  }, [])
 
   useEffect(() => {
     const code = localStorage.getItem("selectedBranch")
@@ -376,7 +404,7 @@ const NewBill = () => {
         SGST_percentage: 0,
         SGST_value: 0,
         batch_number: "",
-        selected: true,
+        selected: true, // Default selected
         stock: 0,
       },
     ])
@@ -585,6 +613,7 @@ const NewBill = () => {
         },
         body: JSON.stringify(dataToSubmit),
       })
+
       if (!response.ok) {
         throw new Error("Failed to submit data")
       }
@@ -611,8 +640,24 @@ const NewBill = () => {
     }
   }
 
+  const convertToBase64 = (url, callback) => {
+    const img = new Image()
+    img.crossOrigin = "Anonymous"
+    img.src = url
+    img.onload = () => {
+      const canvas = document.createElement("canvas")
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext("2d")
+      ctx.drawImage(img, 0, 0)
+      const dataURL = canvas.toDataURL("image/png")
+      callback(dataURL)
+    }
+    img.onerror = (error) => console.error("Error converting image to Base64:", error)
+  }
+
   const handleDownloadExisting = (bill) => {
-    // Parse table_data if it's a string
+    // Reconstruct the original bill structure for PDF generation
     let tableData = []
     let consultationFee = 0
     try {
@@ -822,6 +867,7 @@ const NewBill = () => {
     })
   }
 
+
   const handleBackClick = () => {
     navigate("/Reception/PatientDetails")
   }
@@ -903,7 +949,12 @@ const NewBill = () => {
                           <td>₹{item.total}</td>
                           {itemIndex === 0 && (
                             <>
-                              <td rowSpan={bill.table_data.length}>₹{bill.netAmount}</td>
+                              <td rowSpan={bill.table_data.length}>
+                                ₹
+                                {(
+                                  Number.parseFloat(bill.netAmount || 0)
+                                ).toFixed(2)}
+                              </td>
                               <td rowSpan={bill.table_data.length}>{bill.paymentType}</td>
                               <td rowSpan={bill.table_data.length}>
                                 <DownloadButton onClick={() => handleDownloadExisting(bill)}>
@@ -920,169 +971,272 @@ const NewBill = () => {
             </TableContainer>
           ) : (
             <NoDataMessage>
-              {isLoadingBills ? "Loading bills..." : "No existing bills found for the selected date"}
+              {isLoadingBills
+                ? "Loading bills..."
+                : "No existing bills found for the selected date"}
             </NoDataMessage>
           )}
         </>
       ) : (
         <StyledContainer>
-          <AddRowButton onClick={handleAddRow}>
-            <FaPlus /> Add Medicine
-          </AddRowButton>
-          <TableContainer>
-            <StyledTable>
-              <thead>
-                <tr>
-                  <th>Select</th>
-                  <th>Particulars</th>
-                  <th>Quantity</th>
-                  <th>Price</th>
-                  <th>Total</th>
-                  <th>CGST %</th>
-                  <th>CGST Value</th>
-                  <th>SGST %</th>
-                  <th>SGST Value</th>
-                  <th>Batch Number</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {additionalRows.map((row) => {
-                  const hasStockError = stockErrors[row.id]
-                  return (
-                    <tr key={row.id} style={{ backgroundColor: hasStockError ? "#ffe6e6" : "transparent" }}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={row.selected}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "selected", e.target.checked)}
-                        />
-                      </td>
-                      <td>
-                        <Select
-                          value={
-                            row.particulars
-                              ? medicineOptions.find((med) => med.label === row.particulars)
-                                ? {
-                                    value: medicineOptions.find((med) => med.label === row.particulars).id,
-                                    label: row.particulars,
-                                  }
+          <ActionGroup>
+            <AddRowButton onClick={handleAddRow}>
+              <FaPlus /> Add Medicine
+            </AddRowButton>
+          </ActionGroup>
+
+          {additionalRows.length > 0 && (
+            <TableContainer>
+              <StyledTable>
+                <thead>
+                  <tr>
+                    <th>Select</th>
+                    <th>Particulars</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                    <th>CGST %</th>
+                    <th>CGST Value</th>
+                    <th>SGST %</th>
+                    <th>SGST Value</th>
+                    <th>Batch Number</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {additionalRows.map((row) => {
+                    const hasStockError = stockErrors[row.id]
+                    return (
+                      <tr key={row.id} style={{ backgroundColor: hasStockError ? "#ffe6e6" : "transparent" }}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={row.selected}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "selected", e.target.checked)}
+                          />
+                        </td>
+                        <td>
+                          <Select
+                            value={
+                              row.particulars
+                                ? medicineOptions.find((med) => med.label === row.particulars)
+                                  ? {
+                                      value: medicineOptions.find((med) => med.label === row.particulars).id,
+                                      label: row.particulars,
+                                    }
+                                  : null
                                 : null
-                              : null
-                          }
-                          onChange={(selectedOption) => handleMedicineSelect(row.id, selectedOption?.value || "")}
-                          options={medicineOptions.map((medicine) => {
-                            const stockStatus =
-                              medicine.stock === 0
-                                ? " - OUT OF STOCK"
-                                : medicine.stock < 10
-                                  ? ` - LOW STOCK (${medicine.stock})`
-                                  : ` - Stock: ${medicine.stock}`
-                            return {
-                              value: medicine.id,
-                              label: `${medicine.label}${stockStatus}`,
-                              isDisabled: medicine.stock === 0,
                             }
-                          })}
-                          placeholder="Search and select medicine..."
-                          isClearable
-                          isSearchable
-                          menuPortalTarget={document.body}
-                          styles={{
-                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                            menu: (base) => ({ ...base, zIndex: 9999 }),
-                            control: (base) => ({ ...base, minHeight: "38px", fontSize: "12px" }),
-                            option: (base, state) => ({
-                              ...base,
-                              backgroundColor: state.isDisabled ? "#f8f9fa" : base.backgroundColor,
-                              color: state.isDisabled ? "#6c757d" : base.color,
-                            }),
-                          }}
-                        />
-                        {hasStockError && <StockWarning>{hasStockError}</StockWarning>}
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.quantity}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "quantity", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.price}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "price", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.total}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "total", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.CGST_percentage}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "CGST_percentage", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.CGST_value}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "CGST_value", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.SGST_percentage}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "SGST_percentage", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.SGST_value}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "SGST_value", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={row.batch_number}
-                          onChange={(e) => handleAdditionalRowChange(row.id, "batch_number", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <DeleteRowButton onClick={() => handleDeleteRow(row.id)}>
-                          <FaTrash />
-                        </DeleteRowButton>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </StyledTable>
-          </TableContainer>
+                            onChange={(selectedOption) => handleMedicineSelect(row.id, selectedOption?.value || "")}
+                            options={medicineOptions.map((medicine) => {
+                              const stockStatus =
+                                medicine.stock === 0
+                                  ? " - OUT OF STOCK"
+                                  : medicine.stock < 10
+                                    ? ` - LOW STOCK (${medicine.stock})`
+                                    : ` - Stock: ${medicine.stock}`
+                              return {
+                                value: medicine.id,
+                                label: `${medicine.label}${stockStatus}`,
+                                isDisabled: medicine.stock === 0,
+                              }
+                            })}
+                            placeholder="Search and select medicine..."
+                            isClearable
+                            isSearchable
+                            menuPortalTarget={document.body}
+                            styles={{
+                              menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                              menu: (base) => ({ ...base, zIndex: 9999 }),
+                              control: (base) => ({ ...base, minHeight: "38px", fontSize: "12px" }),
+                              option: (base, state) => ({
+                                ...base,
+                                backgroundColor: state.isDisabled ? "#f8f9fa" : base.backgroundColor,
+                                color: state.isDisabled ? "#6c757d" : base.color,
+                              }),
+                            }}
+                          />
+                          {hasStockError && <StockWarning>{hasStockError}</StockWarning>}
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={row.quantity}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "quantity", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={row.price}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "price", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={row.total}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "total", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={row.CGST_percentage}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "CGST_percentage", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={row.CGST_value}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "CGST_value", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={row.SGST_percentage}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "SGST_percentage", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={row.SGST_value}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "SGST_value", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={row.batch_number}
+                            onChange={(e) => handleAdditionalRowChange(row.id, "batch_number", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <DeleteRowButton onClick={() => handleDeleteRow(row.id)}>
+                            <FaTrash />
+                          </DeleteRowButton>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </StyledTable>
+            </TableContainer>
+          )}
 
           <ConsultationSection>
             <h5>Consultation Fee</h5>
-            <ConsultationRow>
-              <ConsultationLabel>Consultation Fee:</ConsultationLabel>
-              <ConsultationInput
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <label>Consultation Fee:</label>
+              <input
                 type="text"
                 value={consultationFee}
                 onChange={(e) => setConsultationFee(Number.parseFloat(e.target.value) || 0)}
-                placeholder="Enter consultation fee"
+                style={{ padding: "8px", width: "120px" }}
               />
-            </ConsultationRow>
+            </div>
           </ConsultationSection>
 
+          {/* Consumer Section - Removed as per clarification */}
+          {/* <div style={{ marginTop: "30px", marginBottom: "20px" }}>
+            <h4>Consumer Items</h4>
+            <AddRowButton onClick={handleShowConsumerTable}>
+              <FaPlus />
+              Add Consumer Item
+            </AddRowButton>
+          </div>
+
+          {showConsumerTable && (
+            <>
+              <TableContainer>
+                <StyledTable>
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Quantity</th>
+                      <th>Price</th>
+                      <th>GST Rate (%)</th>
+                      <th>GST Amount</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {consumerRecords.map((record, index) => (
+                      <tr key={index}>
+                        <td>
+                          <input
+                            type="text"
+                            value={record.item || ""}
+                            onChange={(e) =>
+                              handleSelectChange({ value: e.target.value, label: e.target.value }, index)
+                            }
+                            placeholder="Enter item"
+                            disabled={record.isStored}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={record.qty}
+                            onChange={(e) => handleConsumerChange(index, "qty", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={record.price}
+                            onChange={(e) => handleConsumerChange(index, "price", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={record.gstRate}
+                            onChange={(e) => handleConsumerChange(index, "gstRate", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input type="text" value={record.gst} readOnly />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={record.total}
+                            onChange={(e) => handleConsumerChange(index, "total", e.target.value)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </StyledTable>
+              </TableContainer>
+              <AddRowButton onClick={addConsumerRow}>
+                <FaPlus />
+                Add Item
+              </AddRowButton>
+            </>
+          )} */}
+
+          {/* Payment and Totals */}
           <FlexRow>
+            <div>
+              <label>Payment Type:</label>
+              <select
+                value={paymentType}
+                onChange={(e) => setPaymentType(e.target.value)}
+                style={{ padding: "8px", marginLeft: "10px" }}
+              >
+                <option value="Card">Card</option>
+                <option value="Cash">Cash</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+            <div>
+              <strong>Net Amount: ₹{netAmount}</strong>
+            </div>
             <div>
               <label htmlFor="discount">Discount % : </label>
               <input
@@ -1094,29 +1248,9 @@ const NewBill = () => {
                 style={{ padding: "8px", marginLeft: "10px", width: "100px" }}
               />
             </div>
-            <div>
-              <label>Payment Type : </label>
-              <select
-                value={paymentType}
-                onChange={(e) => setPaymentType(e.target.value)}
-                style={{ padding: "8px", marginLeft: "10px" }}
-              >
-                <option value="Card">Card</option>
-                <option value="Cash">Cash</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="Net">Net Amount:</label>
-              <input
-                type="text"
-                id="Net"
-                value={netAmount}
-                readOnly
-                style={{ padding: "8px", marginLeft: "10px", backgroundColor: "#f8f9fa" }}
-              />
-            </div>
           </FlexRow>
 
+          {/* Action Buttons */}
           <center style={{ marginTop: "20px" }}>
             <div className="d-flex justify-content-center gap-3">
               <button onClick={handleSaveData}>Save</button>
@@ -1125,6 +1259,8 @@ const NewBill = () => {
           </center>
         </StyledContainer>
       )}
+
+      <ToastContainer />
     </Container>
   )
 }
