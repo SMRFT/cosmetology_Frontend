@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import styled from "styled-components"
 import { IoCall } from "react-icons/io5"
-import axios from "axios"
+import apiRequest from "./apiRequest"
 import { useNavigate } from "react-router-dom"
 import maleIcon from "./images/male-gender.png"
 import femaleIcon from "./images/femenine.png"
@@ -21,7 +21,7 @@ function BookedAppointments() {
   const cardsPerPage = 8
 
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
+    const code = localStorage.getItem("selected_branch")
     if (code) {
       setBranchCode(code)
       fetchAppointments(code)
@@ -35,35 +35,25 @@ function BookedAppointments() {
     filterAppointments()
   }, [selectedDate, selectedDoctor, appointments])
 
-  const fetchDoctors = () => {
-    const branchCode = localStorage.getItem("selectedBranch")
-    const url = branchCode
-      ? `${Cosmetologybaseurl}get_doctors/?branch_code=${branchCode}`
-      : `${Cosmetologybaseurl}get_doctors/`
+  const fetchDoctors = async () => {
+    const branchCode = localStorage.getItem("selected_branch")
+    const url = `${Cosmetologybaseurl}get_doctors/`
 
-    axios
-      .get(url, {
-        withCredentials: true,
-      })
-      .then((response) => {
-        if (response.data.success) {
-          setDoctors(response.data.doctors)
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching doctors:", error)
-      })
+    const response = await apiRequest(url, "GET")
+    if (response.success && response.data.success) {
+      setDoctors(response.data.doctors)
+    } else {
+      console.error("Error fetching doctors:", response.error)
+    }
   }
 
-const fetchAppointments = () => {
-  const branchCode = localStorage.getItem("selectedBranch");
+const fetchAppointments = async () => {
+  const branchCode = localStorage.getItem("selected_branch");
   const loggedInRole = localStorage.getItem("userRole"); // e.g. 'Admin' or 'Doctor'
   const loggedInDoctor = localStorage.getItem("userName"); // assuming you store doctor name here
 
   let url = `${Cosmetologybaseurl}AppointmentView/`;
   const params = [];
-
-  if (branchCode) params.push(`branch_code=${branchCode}`);
 
   // Only send doctor_name if role is Doctor
   if (loggedInRole === "Doctor") {
@@ -77,14 +67,12 @@ const fetchAppointments = () => {
     url += "?" + params.join("&");
   }
 
-  axios
-    .get(url, { withCredentials: true })
-    .then((response) => {
-      setAppointments(response.data);
-    })
-    .catch((error) => {
-      console.error("Error fetching appointments:", error);
-    });
+  const response = await apiRequest(url, "GET")
+  if (response.success) {
+    setAppointments(response.data);
+  } else {
+    console.error("Error fetching appointments:", response.error);
+  }
 };
 
   const filterAppointments = () => {

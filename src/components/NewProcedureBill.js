@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import axios from "axios"
+import apiRequest from "./apiRequest"
 import styled from "styled-components"
 import { format } from "date-fns"
 import { FaPlus, FaTrash, FaDownload, FaCalendarAlt } from "react-icons/fa"
@@ -282,23 +282,24 @@ const NewProcedureComponent = () => {
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
-    axios
-      .get(`${Cosmetologybaseurl}Procedure/`)
-      .then((response) => {
+    const fetchProcedures = async () => {
+      const response = await apiRequest(`${Cosmetologybaseurl}Procedure/`, "GET")
+      if (response.success) {
         const formattedProceduresList = response.data.map((procedure, index) => ({
           id: procedure.id || `proc_${index}`,
           procedure: procedure.procedure || "",
         }))
         setProceduresList(formattedProceduresList)
-      })
-      .catch((error) => {
-        console.error("Error fetching procedures data:", error)
+      } else {
+        console.error("Error fetching procedures data:", response.error)
         toast.error("Error fetching procedures data")
-      })
+      }
+    }
+    fetchProcedures()
   }, [])
 
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
+    const code = localStorage.getItem("selected_branch")
     if (code) {
       setBranchCode(code)
     }
@@ -325,7 +326,7 @@ const NewProcedureComponent = () => {
 
     setIsLoadingProcedureBills(true)
     try {
-      const response = await axios.get(`${Cosmetologybaseurl}getnewprocedurebill/`, {
+      const response = await apiRequest(`${Cosmetologybaseurl}getnewprocedurebill/`, "GET", null, {}, {
         params: {
           patientUID: selectedPatient.patientUID,
           appointmentDate: selectedDate,
@@ -720,19 +721,18 @@ const NewProcedureComponent = () => {
       }
 
       try {
-        const response = await axios.post(`${Cosmetologybaseurl}Post_Procedure_Bill/`, payload, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        })
+        const response = await apiRequest(`${Cosmetologybaseurl}Post_Procedure_Bill/`, "POST", payload)
 
-        toast.success(`New procedure bill generated successfully for ${selectedPatient.patientName}`)
-        fetchExistingProcedureBills()
-        // Navigate back to patient list after successful save
-        setTimeout(() => {
-          handleBackClick()
-        }, 3000) // Wait 3 seconds to show success message
+        if (response.success) {
+          toast.success(`New procedure bill generated successfully for ${selectedPatient.patientName}`)
+          fetchExistingProcedureBills()
+          // Navigate back to patient list after successful save
+          setTimeout(() => {
+            handleBackClick()
+          }, 3000) // Wait 3 seconds to show success message
+        } else {
+          toast.error(`Error: ${response.error || "Error generating new procedure bill"}`)
+        }
       } catch (error) {
         toast.error("Error generating new procedure bill")
       }
@@ -821,7 +821,7 @@ const NewProcedureComponent = () => {
     const usableHeight = pageHeight - 90 // Reserve space for header and footer
 
     // Select PDF background based on branch code
-    const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+    const branchCode = localStorage.getItem("selected_branch") || "SCC001"
     const PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
 
     const convertToBase64 = (url, callback) => {

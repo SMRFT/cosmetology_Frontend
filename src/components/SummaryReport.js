@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import axios from "axios"
+import apiRequest from "./apiRequest"
 import styled from "styled-components"
 import { MDBTableHead, MDBTableBody } from "mdb-react-ui-kit"
 import DatePicker from "react-datepicker"
@@ -41,7 +41,7 @@ const SummaryReport = () => {
   }
 
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
+    const code = localStorage.getItem("selected_branch")
 
     if (code) {
       setBranchCode(code)
@@ -78,23 +78,28 @@ const SummaryReport = () => {
     }
 
     try {
-      const response = await axios.get(`${Cosmetologybaseurl}summary/${interval}/`, {
+      const response = await apiRequest(`${Cosmetologybaseurl}summary/${interval}/`, "GET", null, {}, {
         params: {
           appointmentDate: dateParam,
           branch_code: branchCode,
-        },
-        withCredentials: true,
+        }
       })
-      setSummaryData(response.data.summary_data)
 
-      if (!response.data.summary_data || Object.keys(response.data.summary_data).length === 0) {
-        toast.info("No data found for the selected criteria.")
+      if (response.success) {
+        setSummaryData(response.data.summary_data)
+        if (!response.data.summary_data || Object.keys(response.data.summary_data).length === 0) {
+          toast.info("No data found for the selected criteria.")
+        }
+      } else {
+        console.error("Error fetching data:", response.error)
+        setError("Failed to fetch summary data. Please try again.")
+        setSummaryData(null)
+        toast.error("Failed to fetch data.")
       }
     } catch (error) {
-      console.error("Error fetching data:", error.response ? error.response.data : error.message)
-      setError("Failed to fetch summary data. Please try again.")
-      setSummaryData(null)
-      toast.error("Failed to fetch data.")
+      console.error("Unexpected error:", error)
+      setError("An unexpected error occurred.")
+      toast.error("Something went wrong.")
     } finally {
       setLoading(false)
     }

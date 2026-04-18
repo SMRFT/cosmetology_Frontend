@@ -1,18 +1,18 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import axios from "axios"
 import { Typeahead } from "react-bootstrap-typeahead"
 import { Col, Row, Form, Button } from "react-bootstrap"
 import styled from "styled-components"
+import apiRequest from "./apiRequest" // ✅ USE COMMON API
 
 const TestsContainer = styled.div`
-flex: 1;
-margin: 0 15px;
-padding: 20px;
-background-color: #b798c0;
-border-radius: 10px;
-text-align: center;
+  flex: 1;
+  margin: 0 15px;
+  padding: 20px;
+  background-color: #b798c0;
+  border-radius: 10px;
+  text-align: center;
 `
 
 const CenteredFormGroup = styled.div`
@@ -35,21 +35,18 @@ const MessageContainer = styled.div`
   border-radius: 5px;
   font-weight: bold;
   z-index: 1000;
-  ${(props) => {
-    if (props.type === "error") {
-      return `
+  ${(props) =>
+    props.type === "error"
+      ? `
         background-color: white;
         color: #ff4444;
         border: 1px solid #cc0000;
       `
-    } else {
-      return `
+      : `
         background-color: white;
         color: #28a745;
         border: 1px solid #45a049;
-      `
-    }
-  }}
+      `}
 `
 
 const Tests = ({ preSelectedTests, onSelectTests }) => {
@@ -59,105 +56,110 @@ const Tests = ({ preSelectedTests, onSelectTests }) => {
   const [newTest, setNewTest] = useState("")
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState("success")
+
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
-const parseTests = (testsString) => {
+  // ✅ PARSER (unchanged)
+  const parseTests = (testsString) => {
     if (!testsString) return []
-    
-    // If it's already an array, return as is
+
     if (Array.isArray(testsString)) {
-      return testsString.map(test => ({ test: test.test || test }))
+      return testsString.map((test) => ({ test: test.test || test }))
     }
-    
-    // If it's a string, we need to parse it carefully
-    if (typeof testsString === 'string') {
-      // Handle the case where tests are separated by commas, but we need to respect parentheses
+
+    if (typeof testsString === "string") {
       const tests = []
-      let current = ''
+      let current = ""
       let parenthesesCount = 0
-      
+
       for (let i = 0; i < testsString.length; i++) {
         const char = testsString[i]
-        
-        if (char === '(') {
+
+        if (char === "(") {
           parenthesesCount++
-          current += char
-        } else if (char === ')') {
+        } else if (char === ")") {
           parenthesesCount--
-          current += char
-        } else if (char === ',' && parenthesesCount === 0) {
-          // Only split on commas that are not inside parentheses
-          if (current.trim()) {
-            tests.push({ test: current.trim() })
-          }
-          current = ''
+        }
+
+        if (char === "," && parenthesesCount === 0) {
+          if (current.trim()) tests.push({ test: current.trim() })
+          current = ""
         } else {
           current += char
         }
       }
-      
-      // Add the last test if there's any remaining content
-      if (current.trim()) {
-        tests.push({ test: current.trim() })
-      }
-      
+
+      if (current.trim()) tests.push({ test: current.trim() })
+
       return tests
     }
-    
+
     return []
   }
 
+  // ✅ PRESELECTED TESTS
   useEffect(() => {
     if (preSelectedTests) {
-      const parsedTests = parseTests(preSelectedTests)
-      setTestsInputs([{ selectedTests: parsedTests }])
+      const parsed = parseTests(preSelectedTests)
+      setTestsInputs([{ selectedTests: parsed }])
     } else {
       setTestsInputs([{ selectedTests: [] }])
     }
   }, [preSelectedTests])
 
+  // ✅ FETCH TESTS USING apiRequest
   useEffect(() => {
-    axios
-      .get(`${Cosmetologybaseurl}Tests/`)
-      .then((response) => {
-        const formattedTestsList = response.data.map((test) => ({
-          test: test.test || "",
+    const fetchTests = async () => {
+      const res = await apiRequest(
+        `${Cosmetologybaseurl}Tests/`,
+        "GET"
+      )
+
+      if (res.success) {
+        const formatted = res.data.map((t) => ({
+          test: t.test || "",
         }))
-        setTestsList(formattedTestsList)
-      })
-      .catch((error) => {
-        console.error("Error fetching tests data:", error)
-      })
+        setTestsList(formatted)
+      } else {
+        console.error("Fetch tests error:", res.error)
+      }
+    }
+
+    fetchTests()
   }, [])
 
+  // ✅ MESSAGE
   const showMessage = (msg, type = "success") => {
     setMessage(msg)
     setMessageType(type)
-    setTimeout(() => {
-      setMessage("")
-    }, 3000)
+    setTimeout(() => setMessage(""), 3000)
   }
 
-  const handleAddNewTest = () => {
+  // ✅ ADD NEW TEST USING apiRequest
+  const handleAddNewTest = async () => {
     if (!newTest.trim()) {
       showMessage("Test name cannot be empty.", "error")
       return
     }
 
-    axios
-      .post(`${Cosmetologybaseurl}Tests/`, { test: newTest })
-      .then((response) => {
-        setTestsList([...testsList, response.data])
-        setShowAddInput(false)
-        setNewTest("")
-        showMessage("New Test stored successfully!")
-      })
-      .catch((error) => {
-        console.error("Error adding Test:", error)
-        showMessage("Error adding new test.", "error")
-      })
+    const res = await apiRequest(
+      `${Cosmetologybaseurl}Tests/`,
+      "POST",
+      { test: newTest }
+    )
+
+    if (res.success) {
+      setTestsList([...testsList, res.data])
+      setShowAddInput(false)
+      setNewTest("")
+      showMessage("New Test stored successfully!")
+    } else {
+      console.error("Add test error:", res.error)
+      showMessage("Error adding new test.", "error")
+    }
   }
 
+  // ✅ HANDLE SELECT
   const handleTestChange = (selected, index) => {
     const newInputs = [...testsInputs]
     newInputs[index].selectedTests = selected
@@ -171,12 +173,12 @@ const parseTests = (testsString) => {
 
       {testsInputs.map((input, inputIndex) => (
         <Row className="justify-content-center mb-3" key={inputIndex}>
-          <CenteredFormGroup as={Col} md="4" controlId={`tests-${inputIndex}`}>
+          <CenteredFormGroup as={Col} md="4">
             <Form.Label>Tests</Form.Label>
             <FlexContainer>
               <Typeahead
                 className="ms-2"
-                id={`tests-typeahead-${inputIndex}`}
+                id={`tests-${inputIndex}`}
                 labelKey="test"
                 multiple
                 onChange={(selected) => handleTestChange(selected, inputIndex)}
@@ -208,7 +210,9 @@ const parseTests = (testsString) => {
         </Row>
       )}
 
-      <button onClick={() => setShowAddInput(!showAddInput)}>{showAddInput ? "Close" : "Add New Test"}</button>
+      <button onClick={() => setShowAddInput(!showAddInput)}>
+        {showAddInput ? "Close" : "Add New Test"}
+      </button>
     </TestsContainer>
   )
 }

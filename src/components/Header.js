@@ -8,6 +8,7 @@ import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons"
 import Notification from "./Notification"
 import Logo from "./images/salem-cosmetic-logo.png"
 import SignOut from "./SignOut"
+import apiRequest from "./apiRequest"
 
 const Header = ({ userRole }) => {
   const [branchName, setBranchName] = useState("")
@@ -16,53 +17,32 @@ const Header = ({ userRole }) => {
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
-    // Only get branch info for Admin and Doctor roles
-    if (userRole === "Admin" || userRole === "Doctor" || userRole === "Receptionist" || userRole === "Manager") {
-      const branchCode = localStorage.getItem("selectedBranch")
-      if (branchCode) {
-        fetchBranchName(branchCode)
-      } else {
-        // If cookie not found, try from localStorage as fallback
-        const branches = localStorage.getItem("availableBranches")
-        if (branches) {
-          try {
-            const parsedBranches = JSON.parse(branches)
-            if (Array.isArray(parsedBranches) && parsedBranches.length > 0) {
-              fetchBranchName(parsedBranches[0])
-            }
-          } catch (error) {
-            console.error("Error parsing branch data:", error)
-          }
-        }
-      }
+    const storedBranchName = localStorage.getItem("branch_name")
+
+    if (storedBranchName) {
+      setBranchName(storedBranchName)
+    } else {
+      // fallback
+      const branchCode = localStorage.getItem("selected_branch")
+      setBranchName(branchCode || "")
     }
-  }, [userRole])
+  }, [])
 
   const fetchBranchName = async (branchCode) => {
-    try {
-      const response = await fetch(`${Cosmetologybaseurl}branches/`)
-      if (!response.ok) {
-        throw new Error("Failed to fetch branches")
-      }
+    const res = await apiRequest(`${Cosmetologybaseurl}branches/`, "GET");
 
-      const data = await response.json()
-
-      if (Array.isArray(data)) {
-        const branch = data.find((b) => b.branch_code === branchCode)
-        if (branch) {
-          setBranchName(branch.branch_name)
-        } else {
-          setBranchName(branchCode) // Fallback to code if not found
-        }
+    if (res.success && Array.isArray(res.data)) {
+      const branch = res.data.find((b) => b.branch_code === branchCode);
+      if (branch) {
+        setBranchName(branch.branch_name);
       } else {
-        console.error("Expected branches to be an array")
-        setBranchName(branchCode) // Fallback to code
+        setBranchName(branchCode);
       }
-    } catch (error) {
-      console.error("Error fetching branch name:", error)
-      setBranchName(branchCode) // Fallback to code on error
+    } else {
+      console.error("Error fetching branch name:", res.error);
+      setBranchName(branchCode);
     }
-  }
+  };
 
   const getNavigationGroups = () => {
     switch (userRole) {

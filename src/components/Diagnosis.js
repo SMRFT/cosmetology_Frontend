@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Typeahead } from 'react-bootstrap-typeahead';
 import styled from 'styled-components';
 import { Col, Row, Form, Button } from 'react-bootstrap';
+import apiRequest from './apiRequest'; // ✅ use this
 
 const DiagnosisContainer = styled.div`
   flex: 1;
@@ -39,26 +39,24 @@ const MessageContainer = styled.div`
         background-color: white;
         color: #ff4444;
         border: 1px solid #cc0000;
-      `
+      `;
     } else {
       return `
         background-color: white;
         color: #28a745;
         border: 1px solid #45a049;
-      `
+      `;
     }
   }}
 `;
 
-
-const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis}) => {
+const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis }) => {
   const [diagnosisList, setDiagnosisList] = useState([]);
   const [diagnosisInputs, setDiagnosisInputs] = useState([{ selectedDiagnosis: [] }]);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newDiagnosis, setNewDiagnosis] = useState('');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
-  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
     if (preSelectedDiagnosis) {
@@ -68,41 +66,56 @@ const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis}) => {
     }
   }, [preSelectedDiagnosis]);
 
+  // ✅ GET Diagnosis
   useEffect(() => {
-    axios.get(`${Cosmetologybaseurl}diagnoses/`)
-      .then(response => {
-        setDiagnosisList(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching diagnosis data:', error);
-      });
-  }, []);
+    const fetchDiagnosis = async () => {
+      try {
+        const response = await apiRequest("diagnoses/", "GET")
+
+        if (response.success) {
+          setDiagnosisList(response.data || [])
+        } else {
+          console.error("Error fetching diagnosis:", response.error)
+          showMessage("Error fetching diagnosis", "error")
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching diagnosis:", error)
+        showMessage("Error fetching diagnosis", "error")
+      }
+    }
+
+    fetchDiagnosis()
+  }, [])
 
   const showMessage = (msg, type = 'success') => {
     setMessage(msg);
     setMessageType(type);
-    setTimeout(() => {
-      setMessage('');
-    }, 3000);
+    setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleAddNewDiagnosis = () => {
+  // ✅ POST Diagnosis
+  const handleAddNewDiagnosis = async () => {
     if (!newDiagnosis.trim()) {
-      showMessage('Disgnosis name cannot be empty.', 'error');
+      showMessage('Diagnosis name cannot be empty.', 'error');
       return;
     }
 
-    axios.post(`${Cosmetologybaseurl}diagnoses/`, { diagnosis: newDiagnosis })
-      .then(response => {
-        setDiagnosisList([...diagnosisList, response.data]);
-        setShowAddInput(false);
-        setNewDiagnosis('');
-        showMessage('New Disgnosis stored successfully!');
-      })
-      .catch(error => {
-        console.error('Error adding new Disgnosis:', error);
-        showMessage('Error adding new Disgnosis.', 'error');
-      });
+    try {
+      const response = await apiRequest("diagnoses/", "POST", { diagnosis: newDiagnosis })
+
+      if (response.success) {
+        setDiagnosisList((prev) => [...prev, response.data])
+        setShowAddInput(false)
+        setNewDiagnosis("")
+        showMessage("New Diagnosis stored successfully!")
+      } else {
+        console.error("Error adding diagnosis:", response.error)
+        showMessage("Error adding new diagnosis.", "error")
+      }
+    } catch (error) {
+      console.error("Unexpected error adding diagnosis:", error)
+      showMessage("Error adding new diagnosis.", "error")
+    }
   };
 
   const handleDiagnosisChange = (selected, index) => {
@@ -114,11 +127,7 @@ const Diagnosis = ({ preSelectedDiagnosis, onSelectDiagnosis}) => {
 
   return (
     <DiagnosisContainer>
-      {message && (
-        <MessageContainer type={messageType}>
-          {message}
-        </MessageContainer>
-      )}
+      {message && <MessageContainer type={messageType}>{message}</MessageContainer>}
 
       {diagnosisInputs.map((input, index) => (
         <Row className="justify-content-center mb-3" key={index}>

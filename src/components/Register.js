@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import apiRequest from "./apiRequest";
 import { Row, Form, Col, InputGroup } from "react-bootstrap";
 import Dropdown from "react-bootstrap/Dropdown";
 import styled from "styled-components";
@@ -15,7 +16,8 @@ const Register = () => {
   const [passwordError, setPasswordError] = useState("");
   const [touchedFields, setTouchedFields] = useState({});
   const [branches, setBranches] = useState([]);
-  const role = ["Admin", "Manager", "Doctor", "Receptionist"];
+  const [roles, setRoles] = useState([]);
+
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL;
   const [formData, setFormData] = useState({
     id: "",
@@ -32,22 +34,27 @@ const Register = () => {
   // Fetch branches on component mount
   useEffect(() => {
     const fetchBranches = async () => {
-      try {
-        const response = await fetch(`${Cosmetologybaseurl}branches/`);
-        if (response.ok) {
-          const data = await response.json();
-          setBranches(data);
-        } else {
-          console.error("Failed to fetch branches");
-          toast.error("Failed to load branches");
-        }
-      } catch (error) {
-        console.error("Error fetching branches:", error);
-        toast.error("Error loading branches");
+      const res = await apiRequest(`${Cosmetologybaseurl}branches/`, "GET");
+      if (res.success) {
+        setBranches(res.data);
+      } else {
+        console.error("Failed to fetch branches:", res.error);
+        toast.error("Failed to load branches");
+      }
+    };
+
+    const fetchRoles = async () => {
+      const res = await apiRequest(`${Cosmetologybaseurl}get_roles/`, "GET");
+      if (res.success) {
+        setRoles(res.data);
+      } else {
+        console.error("Failed to fetch roles:", res.error);
+        toast.error("Failed to load roles");
       }
     };
 
     fetchBranches();
+    fetchRoles();
   }, []);
 
   // Handle form field changes
@@ -132,16 +139,9 @@ const Register = () => {
     try {
       // Create a copy of formData and delete confirmPassword before sending
       const submitData = { ...formData };
+      const res = await apiRequest(`${Cosmetologybaseurl}registration/`, "POST", submitData);
 
-      const response = await fetch(`${Cosmetologybaseurl}registration/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(submitData),
-      });
-
-      if (response.ok) {
+      if (res.success) {
         toast.success("Registration successful!");
         // Reset form data and validation states
         setFormData({
@@ -157,13 +157,8 @@ const Register = () => {
         setTouchedFields({});
         setPasswordError("");
       } else {
-        const errorData = await response.json();
-        console.error("Failed to submit data:", errorData);
-        if (errorData && errorData.detail) {
-          toast.error(`Registration failed: ${errorData.detail}`);
-        } else {
-          toast.error("Failed to submit data. Please try again.");
-        }
+        console.error("Failed to submit data:", res.error);
+        toast.error(res.error || "Failed to submit data. Please try again.");
       }
     } catch (err) {
       console.error("Error occurred:", err);
@@ -278,8 +273,12 @@ const Register = () => {
                       alignItems: "center",
                     }}
                   >
-                    <span>{formData.role || "Select Role"}</span>
+                    <span>
+                      {roles.find((r) => r.role_code === formData.role)
+                        ?.role_name || "Select Role"}
+                    </span>
                     <span className="caret"></span>
+
                   </Dropdown.Toggle>
                   <Dropdown.Menu
                     style={{
@@ -290,11 +289,12 @@ const Register = () => {
                       scrollbarWidth: "thin",
                     }}
                   >
-                    {role.map((roleItem, index) => (
-                      <Dropdown.Item key={index} eventKey={roleItem}>
-                        {roleItem}
+                    {roles.map((roleItem, index) => (
+                      <Dropdown.Item key={index} eventKey={roleItem.role_code}>
+                        {roleItem.role_name}
                       </Dropdown.Item>
                     ))}
+
                   </Dropdown.Menu>
                   {shouldShowValidation("role") && !formData.role && (
                     <div className="invalid-feedback d-block">

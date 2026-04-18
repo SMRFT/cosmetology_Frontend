@@ -3,33 +3,37 @@ import styled from "styled-components"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import BranchManager from "./BranchManager"
+import apiRequest from "./apiRequest" // ✅ USE COMMON API
 
 const UserManagement = () => {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
   const [showBranchManager, setShowBranchManager] = useState(false)
- const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
+
   useEffect(() => {
     fetchUsers()
   }, [])
 
+  // ✅ UPDATED USING apiRequest
   const fetchUsers = async () => {
-    try {
-      // This endpoint would need to be created in your Django backend
-      const response = await fetch(`${Cosmetologybaseurl}registration/`)
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data)
-      } else {
-        toast.error("Failed to fetch users")
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error)
-      toast.error("Error loading users")
-    } finally {
-      setLoading(false)
+    setLoading(true)
+
+    const response = await apiRequest(
+      `${Cosmetologybaseurl}registration/`,
+      "GET"
+    )
+
+    if (response.success) {
+      setUsers(response.data || [])
+    } else {
+      console.error("Fetch users error:", response.error)
+      toast.error("Failed to fetch users")
     }
+
+    setLoading(false)
   }
 
   const handleManageBranches = (user) => {
@@ -53,6 +57,7 @@ const UserManagement = () => {
   return (
     <>
       <ToastContainer position="top-right" autoClose={3000} />
+
       <Container>
         <Header>
           <h3 className="text-center mb-4">User Management</h3>
@@ -73,19 +78,35 @@ const UserManagement = () => {
                 </UserInfo>
 
                 <BranchInfo>
-                  <BranchCount>{user.branch_code ? user.branch_code.length : 0} Branches</BranchCount>
+                  <BranchCount>
+                    {Array.isArray(user.branch_code)
+                      ? user.branch_code.length
+                      : 0}{" "}
+                    Branches
+                  </BranchCount>
+
                   <ActiveBranches>
-                    {user.branch_code ? user.branch_code.filter((b) => b.isactive).length : 0} Active
+                    {Array.isArray(user.branch_code)
+                      ? user.branch_code.filter((b) => b.isactive).length
+                      : 0}{" "}
+                    Active
                   </ActiveBranches>
                 </BranchInfo>
 
-                <ActionButton onClick={() => handleManageBranches(user)}>Manage Branches</ActionButton>
+                <ActionButton onClick={() => handleManageBranches(user)}>
+                  Manage Branches
+                </ActionButton>
               </UserCard>
             ))
           )}
         </UserGrid>
 
-        {showBranchManager && selectedUser && <BranchManager userId={selectedUser.id} onClose={closeBranchManager} />}
+        {showBranchManager && selectedUser && (
+          <BranchManager
+            userId={selectedUser.id}
+            onClose={closeBranchManager}
+          />
+        )}
       </Container>
     </>
   )

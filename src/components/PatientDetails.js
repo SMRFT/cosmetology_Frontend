@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import axios from "axios"
 import { IoPersonCircleSharp, IoAdd, IoSearch } from "react-icons/io5"
 import { Modal, Button } from "react-bootstrap"
 import PatientForm from "./PatientForm"
@@ -10,6 +9,8 @@ import MedicalHistory from "./MedicalHistory"
 import { ToastContainer, toast } from "react-toastify"
 import { FaEdit, FaEye, FaTrash, FaNotesMedical, FaFileInvoiceDollar } from "react-icons/fa"
 import "react-toastify/dist/ReactToastify.css"
+import apiRequest from "./apiRequest"
+
 
 const PatientDetails = () => {
   const [patients, setPatients] = useState([])
@@ -33,7 +34,7 @@ const PatientDetails = () => {
 
   useEffect(() => {
     // Get branch_code and user role from localStorage when component mounts
-    const code = localStorage.getItem("selectedBranch")
+    const code = localStorage.getItem("selected_branch")
     const role = localStorage.getItem("userRole") || ""
 
     if (code) {
@@ -46,24 +47,21 @@ const PatientDetails = () => {
     fetchPatients()
   }, [])
 
-  const fetchPatients = () => {
+  const fetchPatients = async () => {
     // Get branch_code from localStorage
-    const branchCode = localStorage.getItem("selectedBranch")
+    const branchCode = localStorage.getItem("selected_branch")
 
     // If branch code exists, add it as a query parameter
-    const url = branchCode
-      ? `${Cosmetologybaseurl}patients/?branch_code=${branchCode}`
-      : `${Cosmetologybaseurl}patients/`
+    const url = `${Cosmetologybaseurl}patients/`
 
-    axios
-      .get(url)
-      .then((response) => {
-        setPatients(response.data)
-      })
-      .catch((error) => {
-        console.error("There was an error fetching the patients!", error)
-        toast.error("Failed to load patients. Please try again.")
-      })
+    const response = await apiRequest(url, "GET")
+
+    if (response.success) {
+      setPatients(response.data || [])
+    } else {
+      console.error("There was an error fetching the patients!", response.error)
+      toast.error("Failed to load patients. Please try again.")
+    }
   }
 
   const handleSearch = (event) => {
@@ -122,31 +120,24 @@ const PatientDetails = () => {
     setShowDeleteConfirmModal(true)
   }
 
-  const confirmDeletePatient = () => {
+  const confirmDeletePatient = async () => {
     if (!patientToDelete) return
 
     const url = `${Cosmetologybaseurl}Patients_data/${patientToDelete.patientUID}/`
 
-    axios
-      .delete(url, {
-        data: {
-          branch_code: branchCode,
-        },
-      })
-      .then(() => {
-        toast.success("Patient deleted successfully")
-        setShowDeleteConfirmModal(false)
-        setPatientToDelete(null)
-        fetchPatients() // Refresh the list after deletion
-      })
-      .catch((error) => {
-        console.error("Error deleting patient:", error)
-        if (error.response?.data?.error) {
-          toast.error(`Error: ${error.response.data.error}`)
-        } else {
-          toast.error("Error deleting patient.")
-        }
-      })
+    const response = await apiRequest(url, "DELETE", {
+      branch_code: branchCode,
+    })
+
+    if (response.success) {
+      toast.success("Patient deleted successfully")
+      setShowDeleteConfirmModal(false)
+      setPatientToDelete(null)
+      fetchPatients() // Refresh the list after deletion
+    } else {
+      console.error("Error deleting patient:", response.error)
+      toast.error(`Error: ${response.error || "Error deleting patient."}`)
+    }
   }
 
   // New function to handle billing icon click

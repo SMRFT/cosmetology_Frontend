@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Form, Container, Row, Col, Modal } from "react-bootstrap"
-import axios from "axios"
+import apiRequest from "./apiRequest"
 import { LiaFileMedicalAltSolid } from "react-icons/lia"
 import "./PatientForm.css"
 import styled from "styled-components"
@@ -27,23 +27,12 @@ const PatientForm = ({ patientData, onClose }) => {
   })
   const [showModal, setShowModal] = useState(false)
   const [patientUID, setPatientUID] = useState("")
-  const [branchCode, setBranchCode] = useState("") // Added state for branch code
   
   // Validation states
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
-
-  useEffect(() => {
-    // Get branch_code from localStorage when component mounts
-    const code = localStorage.getItem("selectedBranch")
-    if (code) {
-      setBranchCode(code)
-    } else {
-      console.warn("Branch code not found in localStorage")
-    }
-  }, [])
 
   // Validation functions
   const validatePhoneNumber = (phone) => {
@@ -269,7 +258,7 @@ const PatientForm = ({ patientData, onClose }) => {
     }
   }, [patientData])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     
     // Prevent multiple submissions
@@ -288,45 +277,35 @@ const PatientForm = ({ patientData, onClose }) => {
     // Add branch code to request data
     const requestData = {
       ...formData,
-      branch_code: branchCode, // Include branch code in the request
     }
 
     if (patientData) {
       // If editing existing patient, include branch code in the URL
-      const url = branchCode
-        ? `${Cosmetologybaseurl}Patients_data/${formData.patientUID}/?branch_code=${branchCode}`
-        : `${Cosmetologybaseurl}Patients_data/${formData.patientUID}/`
+      const url = `${Cosmetologybaseurl}Patients_data/${formData.patientUID}/`
 
-      axios
-        .patch(url, { ...requestData, purposeOfVisit: finalPurposeOfVisit })
-        .then(() => {
-          toast.success("Patient Updated Successfully")
-          onClose()
-        })
-        .catch((error) => {
-          console.error("Error updating patient details:", error)
-        })
-        .finally(() => {
-          setIsSubmitting(false)
-        })
+      const response = await apiRequest(url, "PATCH", { ...requestData, purposeOfVisit: finalPurposeOfVisit })
+
+      if (response.success) {
+        toast.success("Patient Updated Successfully")
+        onClose()
+      } else {
+        console.error("Error updating patient details:", response.error)
+        toast.error(`Error: ${response.error || "Error updating patient."}`)
+      }
+      setIsSubmitting(false)
     } else {
       // If adding new patient, include branch code in the URL
-      const url = branchCode
-        ? `${Cosmetologybaseurl}Patients_data/?branch_code=${branchCode}`
-        : `${Cosmetologybaseurl}Patients_data/`
+      const url = `${Cosmetologybaseurl}Patients_data/`
 
-      axios
-        .post(url, { ...requestData, purposeOfVisit: finalPurposeOfVisit })
-        .then(() => {
-          toast.success("Patient Added Successfully")
-          onClose()
-        })
-        .catch((error) => {
-          console.error("Error adding patient:", error)
-        })
-        .finally(() => {
-          setIsSubmitting(false)
-        })
+      const response = await apiRequest(url, "POST", { ...requestData, purposeOfVisit: finalPurposeOfVisit })
+
+      if (response.success) {
+        toast.success("Patient Added Successfully")
+      } else {
+        console.error("Error adding patient:", response.error)
+        toast.error(`Error: ${response.error || "Error adding patient."}`)
+      }
+      setIsSubmitting(false)
     }
   }
 
