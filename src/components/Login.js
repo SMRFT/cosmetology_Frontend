@@ -84,7 +84,7 @@ const UnifiedLogin = ({ setUserRole }) => {
     setIsLoading(true)
 
     try {
-  
+
       // Single API call for authentication
       const response = await fetch(`${Cosmetologybaseurl}login/`, {
         method: "POST",
@@ -101,13 +101,13 @@ const UnifiedLogin = ({ setUserRole }) => {
 
       if (response.ok) {
         const responseData = await response.json()
-        const userRole = responseData.role
+        const userRoleName = responseData.role_name || (validate(responseData.token).role_name)
 
         // Get the appropriate endpoint for this role
-        const endpoint = getEndpointForRole(userRole)
+        const endpoint = getEndpointForRole(userRoleName)
 
         // Validate navigation path
-        const navigationPath = getNavigationPath(userRole)
+        const navigationPath = getNavigationPath(userRoleName)
 
         if (!navigationPath) {
           toast.error("Invalid user role")
@@ -199,22 +199,50 @@ const UnifiedLogin = ({ setUserRole }) => {
     // Proceed with login using stored userData
     proceedWithLogin(userData, selectedBranch, branchName, userData.endpoint, userData.navigationPath)
   }
-
+  function validate(token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const now = Math.floor(Date.now() / 1000);
+      if (!payload.exp || payload.exp < now) {
+        throw new Error('Token expired');
+      }
+      return payload;
+    } catch (err) {
+      throw new Error('Invalid token');
+    }
+  }
   // Common function to proceed with login after branch selection
+  // ONLY showing UPDATED parts (important changes)
+
   const proceedWithLogin = (responseData, branchCode, branchName, endpoint, navigationPath) => {
-    // Store essential data in localStorage
-    localStorage.setItem("userRole", responseData.role)
+    // ✅ Store everything consistently
+    // localStorage.setItem("userRole", responseData.role_name)
     localStorage.setItem("userId", responseData.id)
     localStorage.setItem("userName", responseData.name)
     localStorage.setItem("userContact", responseData.contact)
     localStorage.setItem("loggedInAs", endpoint)
-    localStorage.setItem("selectedBranch", branchCode)
-    localStorage.setItem("selectedBranchName", branchName)
+    localStorage.setItem("access_token", responseData.token)
 
-    setUserRole(responseData.role)
+    // ✅ FIXED KEY
+    localStorage.setItem("selected_branch", branchCode)
+
+    // ✅ Store branch name (no need API in header)
+    localStorage.setItem("branch_name", branchName)
+
+    // ✅ Store available branches (for fallback)
+    localStorage.setItem(
+      "availableBranches",
+      JSON.stringify(responseData.branch_codes || [])
+    )
+
+    const userPayload = validate(responseData.token)
+
+    localStorage.setItem("user_payload", JSON.stringify(userPayload))
+    localStorage.setItem("userRole", userPayload.role_name)
+
+    setUserRole(userPayload.role_name)
 
     toast.success(`Login successful! Welcome to ${branchName}`)
-    setIsLoading(false)
 
     setTimeout(() => {
       navigate(navigationPath)
@@ -312,7 +340,7 @@ const UnifiedLogin = ({ setUserRole }) => {
                 <p>
                   <strong>Welcome, {userData?.name}!</strong>
                 </p>
-                <p>Role: {userData?.role}</p>
+                {/* <p>Role:{localStorage.getItem("userRole1")}</p> */}
                 <p>Please select your branch to continue:</p>
               </UserInfo>
               <Form onSubmit={handleBranchLogin}>

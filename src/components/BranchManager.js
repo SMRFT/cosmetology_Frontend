@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import apiRequest from "./apiRequest";
 import styled from "styled-components";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -18,24 +19,21 @@ const BranchManager = ({ userId, onClose }) => {
     setLoading(true);
     try {
       // 1. Fetch all available branches
-      const allBranchesResponse = await fetch(`${Cosmetologybaseurl}branches/`);
-      if (!allBranchesResponse.ok) {
-        throw new Error("Failed to fetch all branches");
+      const allBranchesRes = await apiRequest(`${Cosmetologybaseurl}branches/`, "GET");
+      if (allBranchesRes.success) {
+        setAllBranches(allBranchesRes.data);
+      } else {
+        throw new Error(allBranchesRes.error || "Failed to fetch all branches");
       }
-      const allBranchesData = await allBranchesResponse.json();
-      setAllBranches(allBranchesData);
 
       // 2. Fetch branches specifically assigned to the user
-      const userBranchesResponse = await fetch(
-        `${Cosmetologybaseurl}user-branches/${userId}/`
-      );
-      if (!userBranchesResponse.ok) {
-        throw new Error("Failed to fetch user branches");
+      const userBranchesRes = await apiRequest(`${Cosmetologybaseurl}user-branches/${userId}/`, "GET");
+      if (userBranchesRes.success) {
+        setUserAssignedBranches(userBranchesRes.data.branches || []);
+        setUserName(userBranchesRes.data.name || "");
+      } else {
+        throw new Error(userBranchesRes.error || "Failed to fetch user branches");
       }
-      const userBranchesData = await userBranchesResponse.json();
-      setUserAssignedBranches(userBranchesData.branches || []);
-      setUserName(userBranchesData.name || "");
-
     } catch (error) {
       console.error("Error fetching branches:", error);
       toast.error(error.message || "Error loading branches");
@@ -60,25 +58,16 @@ const BranchManager = ({ userId, onClose }) => {
     }));
   };
 
-
-  const toggleBranchStatus = async (branchCode, currentIsActive, currentIsAssigned) => {
+  const toggleBranchStatus = async (userId, branchCode, currentIsActive) => {
     try {
       const newStatus = !currentIsActive;
-      const response = await fetch(`${Cosmetologybaseurl}toggle-branch-status/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          branch_code: branchCode,
-          isactive: newStatus,
-        }),
+      const res = await apiRequest(`${Cosmetologybaseurl}toggle-branch-status/`, "POST", {
+        user_id: userId,
+        branch_code: branchCode,
+        isactive: newStatus,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-
+      if (res.success) {
         // Update local state for userAssignedBranches to reflect the change
         setUserAssignedBranches(prevBranches => {
           const existingBranchIndex = prevBranches.findIndex(
@@ -86,12 +75,10 @@ const BranchManager = ({ userId, onClose }) => {
           );
 
           if (existingBranchIndex > -1) {
-            // Branch exists, update its status
             const updated = [...prevBranches];
             updated[existingBranchIndex] = { ...updated[existingBranchIndex], isactive: newStatus };
             return updated;
           } else {
-            // Branch was not assigned, now it is being activated
             return [...prevBranches, { branch_code: branchCode, isactive: newStatus }];
           }
         });
@@ -100,8 +87,7 @@ const BranchManager = ({ userId, onClose }) => {
           `Branch ${branchCode} ${newStatus ? "activated" : "deactivated"} successfully`
         );
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || "Failed to update branch status");
+        toast.error(res.error || "Failed to update branch status");
       }
     } catch (error) {
       console.error("Error toggling branch status:", error);
@@ -147,7 +133,7 @@ const BranchManager = ({ userId, onClose }) => {
                       type="checkbox"
                       // The checkbox should be checked if it's active for the user
                       checked={branch.isactive}
-                      onChange={() => toggleBranchStatus(branch.branch_code, branch.isactive, branch.isAssigned)}
+                      onChange={() => toggleBranchStatus(userId, branch.branch_code, branch.isactive)}
                     />
                     <ToggleSlider />
                   </ToggleSwitch>

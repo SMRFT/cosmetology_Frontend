@@ -4,6 +4,7 @@ import styled from "styled-components"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import Swal from "sweetalert2"
+import apiRequest from "./apiRequest"
 import {
   FaDownload,
   FaArrowRight,
@@ -160,7 +161,7 @@ const PharmacyComponent = () => {
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
+    const code = localStorage.getItem("selected_branch")
     const role = localStorage.getItem("userRole")
 
     if (code) {
@@ -193,60 +194,63 @@ const PharmacyComponent = () => {
   const fetchPharmacyData = async (code) => {
     setLoading(true)
     try {
-      const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(code || "")}`)
-      const data = await response.json()
-
-      if (data.length === 0) {
-        setFormData([
-          {
-            medicineName: "",
-            medicineCategory: "",
-            companyName: "",
-            price: "",
-            CGSTPercentage: "",
-            CGSTValue: "",
-            SGSTPercentage: "",
-            SGSTValue: "",
-            newStock: "",
-            decreaseStock: "",
-            stock: "",
-            receivedDate: "",
-            expiryDate: "",
-            batchNumber: "",
-          },
-        ])
-      } else {
-        setFormData(
-          data.map((item) => {
-            const stock = item.stock || 0
-            return {
-              _id: item._id,
-              medicineName: item.medicine_name || "",
-              medicineCategory: item.medicine_category || "",
-              companyName: item.company_name || "",
-              price: item.price ? item.price.toString() : "",
-              CGSTPercentage: item.CGST_percentage ? item.CGST_percentage.toString() : "",
-              CGSTValue: item.CGST_value ? item.CGST_value.toString() : "",
-              SGSTPercentage: item.SGST_percentage ? item.SGST_percentage.toString() : "",
-              SGSTValue: item.SGST_value ? item.SGST_value.toString() : "",
+      const response = await apiRequest(`${Cosmetologybaseurl}pharmacy/data/`, "GET", null, {})
+      
+      if (response.success) {
+        const data = response.data
+        if (data.length === 0) {
+          setFormData([
+            {
+              medicineName: "",
+              medicineCategory: "",
+              companyName: "",
+              price: "",
+              CGSTPercentage: "",
+              CGSTValue: "",
+              SGSTPercentage: "",
+              SGSTValue: "",
               newStock: "",
               decreaseStock: "",
-              stock: stock.toString(),
-              // Use flexible date parsing and formatting
-              receivedDate: formatDateForInput(item.received_date || ""),
-              expiryDate: formatDateForInput(item.expiry_date || ""),
-              batchNumber: item.batch_number || "",
-              // Store display versions for showing to user
-              receivedDateDisplay: formatDateForDisplay(item.received_date || ""),
-              expiryDateDisplay: formatDateForDisplay(item.expiry_date || ""),
-            }
-          }),
-        )
+              stock: "",
+              receivedDate: "",
+              expiryDate: "",
+              batchNumber: "",
+            },
+          ])
+        } else {
+          setFormData(
+            data.map((item) => {
+              const stock = item.stock || 0
+              return {
+                _id: item._id,
+                medicineName: item.medicine_name || "",
+                medicineCategory: item.medicine_category || "",
+                companyName: item.company_name || "",
+                price: item.price ? item.price.toString() : "",
+                CGSTPercentage: item.CGST_percentage ? item.CGST_percentage.toString() : "",
+                CGSTValue: item.CGST_value ? item.CGST_value.toString() : "",
+                SGSTPercentage: item.SGST_percentage ? item.SGST_percentage.toString() : "",
+                SGSTValue: item.SGST_value ? item.SGST_value.toString() : "",
+                newStock: "",
+                decreaseStock: "",
+                stock: stock.toString(),
+                receivedDate: formatDateForInput(item.received_date || ""),
+                expiryDate: formatDateForInput(item.expiry_date || ""),
+                batchNumber: item.batch_number || "",
+                receivedDateDisplay: formatDateForDisplay(item.received_date || ""),
+                expiryDateDisplay: formatDateForDisplay(item.expiry_date || ""),
+              }
+            }),
+          )
+        }
+      } else {
+        console.error("Error fetching data:", response.error)
+        toast.error("Failed to load pharmacy data!")
       }
       setEditedRows({})
       setPendingStockUpdates({})
     } catch (error) {
-      console.error("Error fetching data:", error)
+      console.error("Unexpected error in fetchPharmacyData:", error)
       toast.error("Failed to load pharmacy data!")
     } finally {
       setLoading(false)
@@ -372,25 +376,17 @@ const PharmacyComponent = () => {
     })
 
     try {
-      const updateData = {
-        _id: item._id,
-        new_stock: newStockValue,
-      }
-
-      const response = await fetch(
-        `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
+      const response = await apiRequest(`${Cosmetologybaseurl}pharmacy/data/`, "PATCH", {
+        data: [
+          {
+            _id: item._id,
+            new_stock: newStockValue,
           },
-          withCredentials: true,
-          body: JSON.stringify([updateData]),
-        },
-      )
+        ]
+      }, {})
 
-      if (response.ok) {
-        const result = await response.json()
+      if (response.success) {
+        const result = response.data
         if (result.length > 0) {
           const newPendingUpdates = { ...pendingStockUpdates }
           delete newPendingUpdates[updateKey]
@@ -465,25 +461,17 @@ const PharmacyComponent = () => {
     })
 
     try {
-      const updateData = {
-        _id: item._id,
-        new_stock: -decreaseStockValue, // Negative value to decrease
-      }
-
-      const response = await fetch(
-        `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
+      const response = await apiRequest(`${Cosmetologybaseurl}pharmacy/data/`, "PATCH", {
+        data: [
+          {
+            _id: item._id,
+            new_stock: -decreaseStockValue,
           },
-          withCredentials: true,
-          body: JSON.stringify([updateData]),
-        },
-      )
+        ]
+      }, {})
 
-      if (response.ok) {
-        const result = await response.json()
+      if (response.success) {
+        const result = response.data
         if (result.length > 0) {
           const newPendingUpdates = { ...pendingStockUpdates }
           delete newPendingUpdates[updateKey]
@@ -558,19 +546,9 @@ const PharmacyComponent = () => {
       })
 
       if (newEntries.length > 0) {
-        const response = await fetch(
-          `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            withCredentials: true,
-            body: JSON.stringify(newEntries),
-          },
-        )
+        const response = await apiRequest(`${Cosmetologybaseurl}pharmacy/data/`, "POST", { data: newEntries }, {})
 
-        if (response.ok) {
+        if (response.success) {
           toast.success(`${newEntries.length} medicine(s) added successfully!`)
         } else {
           toast.error("Error saving new entries")
@@ -578,19 +556,9 @@ const PharmacyComponent = () => {
       }
 
       if (updatedEntries.length > 0) {
-        const response = await fetch(
-          `${Cosmetologybaseurl}pharmacy/data/?branch_code=${encodeURIComponent(branchCode)}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            withCredentials: true,
-            body: JSON.stringify(updatedEntries),
-          },
-        )
+        const response = await apiRequest(`${Cosmetologybaseurl}pharmacy/data/`, "PUT", { data: updatedEntries }, {})
 
-        if (response.ok) {
+        if (response.success) {
           toast.success(`${updatedEntries.length} medicine(s) updated successfully!`)
           setEditedRows({})
         } else {
@@ -656,12 +624,11 @@ const PharmacyComponent = () => {
 
       if (result.isConfirmed) {
         try {
-          const response = await fetch(`${Cosmetologybaseurl}pharmacy/data/?_id=${itemToRemove._id}`, {
-            method: "DELETE",
-            withCredentials: true,
+          const response = await apiRequest(`${Cosmetologybaseurl}pharmacy/data/`, "DELETE", null, {}, {
+            params: { _id: itemToRemove._id }
           })
 
-          if (response.ok) {
+          if (response.success) {
             toast.success("Medicine deleted successfully!")
             const newFormData = [...formData]
             newFormData.splice(originalIndex, 1)

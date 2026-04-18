@@ -24,8 +24,12 @@ const SignOut = () => {
     localStorage.removeItem('userName');
     localStorage.removeItem('userContact');
     localStorage.removeItem('loggedInAs');
+    localStorage.removeItem('selected_branch');
     localStorage.removeItem('selectedBranch');
     localStorage.removeItem('selectedBranchName');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_payload');
+    localStorage.removeItem('availableBranches');
     navigate('/'); // Redirect to HomePage after logout
   };
 

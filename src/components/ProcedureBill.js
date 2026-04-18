@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
-import axios from "axios"
+import apiRequest from "./apiRequest"
 import styled from "styled-components"
 import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
@@ -382,7 +382,7 @@ const ProcedureComponent = () => {
 
   // Initialize branch code from localStorage
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
+    const code = localStorage.getItem("selected_branch")
     if (code) {
       setBranchCode(code)
     } else {
@@ -449,14 +449,19 @@ const ProcedureComponent = () => {
   // Fetch procedures list from API
   const fetchProceduresList = async () => {
     try {
-      const response = await axios.get(`${Cosmetologybaseurl}Procedure/`)
-      const formattedProceduresList = response.data.map((procedure, index) => ({
-        id: procedure.id || `proc_${index}`,
-        procedure: procedure.procedure || "",
-      }))
-      setProceduresList(formattedProceduresList)
+      const response = await apiRequest(`${Cosmetologybaseurl}Procedure/`, "GET")
+      if (response.success) {
+        const formattedProceduresList = response.data.map((procedure, index) => ({
+          id: procedure.id || `proc_${index}`,
+          procedure: procedure.procedure || "",
+        }))
+        setProceduresList(formattedProceduresList)
+      } else {
+        console.error("Error fetching procedures data:", response.error)
+        toast.error("Error fetching procedures data")
+      }
     } catch (error) {
-      console.error("Error fetching procedures data:", error)
+      console.error("Unexpected error fetching procedures data:", error)
       toast.error("Error fetching procedures data")
     }
   }
@@ -467,13 +472,13 @@ const ProcedureComponent = () => {
     setIsLoading(true)
     const formattedDate = format(date, "yyyy-MM-dd")
     try {
-      const response = await axios.get(`${Cosmetologybaseurl}summary/post/`, {
+      const response = await apiRequest(`${Cosmetologybaseurl}summary/post/`, "GET", null, {}, {
         params: {
           appointmentDate: formattedDate,
           branch_code: branchCode,
         },
       })
-      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+      if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
         // Filter patients to only include those with proceduresList data
         const patientsWithProcedures = response.data.filter((patient) => hasProceduresListData(patient.proceduresList))
         if (patientsWithProcedures.length > 0) {
@@ -507,7 +512,7 @@ const ProcedureComponent = () => {
     setIsLoading(true)
     const formattedDate = format(selectedDate, "yyyy-MM-dd")
     try {
-      const response = await axios.get(`${Cosmetologybaseurl}get_patient_procedurebill_data/`, {
+      const response = await apiRequest(`${Cosmetologybaseurl}get_patient_procedurebill_data/`, "GET", null, {}, {
         params: {
           patientUID: patient.patientUID,
           appointmentDate: formattedDate,
@@ -515,7 +520,7 @@ const ProcedureComponent = () => {
         },
       })
       console.log("Full API Response:", response.data)
-      if (response.data) {
+      if (response.success && response.data) {
         // Check if it's stored procedure bill data (has procedures array directly)
         if (response.data.procedures && Array.isArray(response.data.procedures)) {
           console.log("Found stored procedure data")
@@ -1115,18 +1120,16 @@ const ProcedureComponent = () => {
         branch_code: branchCode,
       }
       console.log("Saving payload:", payload)
-      const response = await axios.post(`${Cosmetologybaseurl}Post_Procedure_Bill/`, payload, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-      toast.success(`Procedure bill saved successfully for ${selectedPatient.patientName}`)
+      const response = await apiRequest(`${Cosmetologybaseurl}Post_Procedure_Bill/`, "POST", payload)
+      if (response.success) {
+        toast.success(`Procedure bill saved successfully for ${selectedPatient.patientName}`)
       // Navigate back to patient list after successful save
       setTimeout(() => {
         handleBackClick()
       }, 2000) // Wait 2 seconds to show success message
       // Refresh data after save
       fetchPatientProcedureData(selectedPatient)
+      }
     } catch (error) {
       console.error("Error saving procedure bill:", error)
       toast.error("Error saving procedure bill")
@@ -1142,7 +1145,7 @@ const ProcedureComponent = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
     const margin = 14
-    const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+    const branchCode = localStorage.getItem("selected_branch") || "SCC001"
     const PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
     const convertToBase64 = (url, callback) => {
       const img = new Image()

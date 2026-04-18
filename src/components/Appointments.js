@@ -19,7 +19,7 @@ import {
   faTrash,
 } from "@fortawesome/free-solid-svg-icons"
 import PatientList from "./PatientList"
-import axios from "axios"
+import apiRequest from "./apiRequest";
 
 const Appointment = () => {
   const [timeSlots, setTimeSlots] = useState([])
@@ -44,17 +44,20 @@ const Appointment = () => {
 
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
+  // Fetch data and initialize time slots on mount
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
-    if (code) {
-      setBranchCode(code)
-      fetchAppointments(code)
-    } else {
-      console.warn("Branch code not found in localStorage")
+    fetchAppointments();
+    // Initialize time slots for the default selected date (today)
+    setTimeSlots(getTimeSlotsForDate(new Date(selectedDate), 30));
+  }, []);
+
+  // Update time slots whenever the selected date changes (if not already handled)
+  useEffect(() => {
+    if (selectedDate) {
+      setTimeSlots(getTimeSlotsForDate(new Date(selectedDate), 30));
+      fetchAppointments();
     }
-    const interval = 30
-    setTimeSlots(getTimeSlotsForDate(new Date(), interval))
-  }, [])
+  }, [selectedDate]);
 
   // Auto-hide success message after 3 seconds
   useEffect(() => {
@@ -80,33 +83,31 @@ const Appointment = () => {
     }
   }, [errorMessage])
 
-  const fetchAppointments = (code) => {
-    axios
-      .get(`${Cosmetologybaseurl}AppointmentView/?branch_code=${code}`)
-      .then((response) => {
-        setAppointmentsData(response.data)
-      })
-      .catch((error) => {
-        console.error("Error fetching appointments:", error)
-      })
-  }
+const fetchAppointments = async () => {
+  const res = await apiRequest(
+    `${Cosmetologybaseurl}AppointmentView/`,
+    "GET"
+  );
 
-  const fetchDoctors = () => {
-    const url = `${Cosmetologybaseurl}get_doctors/?branch_code=${branchCode}`
-    axios
-      .get(url, { withCredentials: true })
-      .then((response) => {
-        if (response.data.success) {
-          setDoctors(response.data.doctors)
-        } else {
-          setErrorMessage("Failed to fetch doctors")
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching doctors:", error)
-        setErrorMessage("Failed to fetch doctors")
-      })
+  if (res.success) {
+    setAppointmentsData(res.data);
+  } else {
+    console.error("Error fetching appointments:", res.error);
   }
+};
+
+const fetchDoctors = async () => {
+  const res = await apiRequest(
+    `${Cosmetologybaseurl}get_doctors/`,
+    "GET"
+  );
+
+  if (res.success) {
+    setDoctors(res.data.doctors);
+  } else {
+    setErrorMessage("Failed to fetch doctors");
+  }
+};
 
   const generateTimeSlots = (startTime, endTime, interval) => {
     const slots = []
@@ -172,52 +173,40 @@ const Appointment = () => {
     setShowDoctorList(true)
   }
 
-  const handleSelectDoctor = (doctor) => {
-    setSelectedDoctor(doctor)
-    const appointmentData = {
-      patientUID: selectedPatient.patientUID,
-      patientName: selectedPatient.patientName,
-      mobileNumber: selectedPatient.mobileNumber,
-      appointmentTime: selectedSlot,
-      appointmentDate: selectedDate.toISOString().split("T")[0],
-      branch_code: branchCode,
-      patient_handledby: doctor.name,
-    }
+const handleSelectDoctor = async (doctor) => {
+  setSelectedDoctor(doctor);
 
-    // Save the appointment
-    axios
-      .post(`${Cosmetologybaseurl}Appointmentpost/`, appointmentData, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        withCredentials: true,
-      })
-      .then((response) => {
-        // Show success message
-        setSuccessMessage(
-          `Appointment booked successfully! Patient: ${selectedPatient.patientName}, Doctor: Dr. ${doctor.name}, Time: ${selectedSlot}`,
-        )
-        // Close modals and reset state
-        setShowDoctorList(false)
-        setIsCreatingAppointment(false)
-        setSelectedPatient(null)
-        setSelectedDoctor(null)
-        setSelectedSlot(null)
-        // Refresh appointments data
-        fetchAppointments(branchCode)
-      })
-      .catch((error) => {
-        console.error("Error saving appointment:", error)
-        console.error("Error response:", error.response) // Debug log
-        const errorMessage =
-          error.response?.data?.error ||
-          error.response?.data?.message ||
-          "Failed to book appointment. Please try again."
-        setErrorMessage(errorMessage)
-        // Don't close modals on error, allow user to try again
-      })
+  const appointmentData = {
+    patientUID: selectedPatient.patientUID,
+    patientName: selectedPatient.patientName,
+    mobileNumber: selectedPatient.mobileNumber,
+    appointmentTime: selectedSlot,
+    appointmentDate: selectedDate.toISOString().split("T")[0],
+    patient_handledby: doctor.name,
+  };
+
+  const res = await apiRequest(
+    `${Cosmetologybaseurl}Appointmentpost/`,
+    "POST",
+    appointmentData
+  );
+
+  if (res.success) {
+    setSuccessMessage(
+      `Appointment booked successfully! Patient: ${selectedPatient.patientName}, Doctor: Dr. ${doctor.name}, Time: ${selectedSlot}`
+    );
+
+    setShowDoctorList(false);
+    setIsCreatingAppointment(false);
+    setSelectedPatient(null);
+    setSelectedDoctor(null);
+    setSelectedSlot(null);
+
+    fetchAppointments(); // ✅ no branch param
+  } else {
+    setErrorMessage(res.error || "Failed to book appointment");
   }
-
+};
   const handleCloseDoctorModal = () => {
     setShowDoctorList(false)
     setSelectedPatient(null)
@@ -256,42 +245,35 @@ const Appointment = () => {
   }
 
   // Function to confirm cancellation
-  const confirmCancelAppointment = () => {
-    if (!appointmentToCancel) return
+const confirmCancelAppointment = async () => {
+  if (!appointmentToCancel) return;
 
-    const cancelData = {
-      patientUID: appointmentToCancel.patientUID,
-      appointmentDate: appointmentToCancel.appointmentDate,
-      appointmentTime: appointmentToCancel.appointmentTime,
-      branch_code: appointmentToCancel.branch_code,
-    }
+  const cancelData = {
+    patientUID: appointmentToCancel.patientUID,
+    appointmentDate: appointmentToCancel.appointmentDate,
+    appointmentTime: appointmentToCancel.appointmentTime,
+  };
 
-    axios
-      .delete(`${Cosmetologybaseurl}appointment/cancel/`, {
-        data: cancelData,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        withCredentials: true,
-      })
-      .then((response) => {
-        setSuccessMessage(`Appointment canceled successfully for ${appointmentToCancel.patientName}`)
-        setShowCancelConfirm(false)
-        setAppointmentToCancel(null)
-        // Refresh appointments data
-        fetchAppointments(branchCode)
-      })
-      .catch((error) => {
-        console.error("Error canceling appointment:", error)
-        const errorMessage =
-          error.response?.data?.error ||
-          error.response?.data?.message ||
-          "Failed to cancel appointment. Please try again."
-        setErrorMessage(errorMessage)
-        setShowCancelConfirm(false)
-        setAppointmentToCancel(null)
-      })
+  const res = await apiRequest(
+    `${Cosmetologybaseurl}appointment/cancel/`,
+    "DELETE",
+    cancelData
+  );
+
+  if (res.success) {
+    setSuccessMessage(
+      `Appointment canceled successfully for ${appointmentToCancel.patientName}`
+    );
+    setShowCancelConfirm(false);
+    setAppointmentToCancel(null);
+
+    fetchAppointments();
+  } else {
+    setErrorMessage(res.error);
+    setShowCancelConfirm(false);
+    setAppointmentToCancel(null);
   }
+};
 
   const handleCloseSuccessMessage = () => {
     setShowSuccessMessage(false)

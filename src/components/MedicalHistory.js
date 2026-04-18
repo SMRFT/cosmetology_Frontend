@@ -1,8 +1,8 @@
 import { useLocation } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import styled from 'styled-components';
 import { PiTestTubeThin } from "react-icons/pi";
+import apiRequest from "./apiRequest"; // adjust path if needed
 
 const Container = styled.div`
     display: flex;
@@ -544,32 +544,25 @@ const parseTests = (testsString) => {
         return types.join(', ');
     };
 
-    useEffect(() => {
-        const code = localStorage.getItem('selectedBranch');
-        if (code) {
-            setBranchCode(code);
-        } else {
-            console.warn('Branch code not found in localStorage');
-        }
+useEffect(() => {
+    if (!id) return;
 
-        if (id && code) {
-            const handleFetchDetails = async () => {
-                try {
-                    const response = await axios.post(`${Cosmetologybaseurl}get_patient_details/`, {
-                         id,
-                        branch_code: code
-                    }, {
-                        withCredentials: true
-                    });
-                    setPatientHistory(response.data);
-                } catch (error) {
-                    console.error('Error fetching patient history:', error);
-                }
-            };
+    const fetchPatientHistory = async () => {
+        try {
+            const response = await apiRequest(
+                "post",
+                `${Cosmetologybaseurl}get_patient_details/`,
+                { id } // ✅ no branch_code
+            );
 
-            handleFetchDetails();
+            setPatientHistory(response.data);
+        } catch (error) {
+            console.error("Error fetching patient history:", error);
         }
-    }, [id, branchCode, Cosmetologybaseurl]);
+    };
+
+    fetchPatientHistory();
+}, [id, Cosmetologybaseurl]);
 
     const handleAppointmentClick = (appointment) => {
         setSelectedAppointment(appointment);

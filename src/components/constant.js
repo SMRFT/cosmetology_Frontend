@@ -12,4 +12,46 @@ export const purposeOfVisit=[
   'Skin brightening and lightening'
 ]
 
-export const consumerItems = ['Gloves', 'needles'];
+export const consumerItems = [
+  "Ex glove",
+  "7 size surgical glove",
+  "Sv scalp vein set",
+  "IV infusion set",
+  "10 ml syringe",
+  "5 ml syringe",
+  "2 ml syringe",
+  "Insulin syringe",
+  "BD 3 ml syringe",
+  "BD 20 ml syringe",
+  "BD 50 ml syringe",
+  "Alcohol swap",
+  "Rubicort injection",
+  "Medi grip bandage",
+  "Easyfix",
+  "Surgical blade 15 size",
+  "Surgical blade 11 size",
+  "Strile water 5 ml",
+  "Strile water 10 ml",
+  "Prilox cream",
+  "NS 100 ml",
+  "Micro needle -36",
+  "GFC tube",
+  "PRP tube",
+  "Pico laser",
+  "CO2 laser",
+  "MNRF laser",
+  "5fu injection",
+  "Micropore tabe",
+  "Weight Analysis",
+  "Skin Analysis",
+  "Hair Analysis",
+  "Bactigras",
+  "Chemical peels",
+  "Venflon iv canula",
+  "OR 678 Neo injection",
+  "Asce EXosome-skin",
+  "Asce EXosome-Hair",
+  "Plasma pen",
+  "Diode laser"
+];
+

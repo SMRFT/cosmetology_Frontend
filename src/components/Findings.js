@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Typeahead } from 'react-bootstrap-typeahead';
 import { Col, Row, Form, Button } from 'react-bootstrap';
 import styled from 'styled-components';
+import apiRequest from './apiRequest'; // ✅ import this
 
 const FindingsContainer = styled.div`
 flex: 1;
@@ -50,14 +50,13 @@ const MessageContainer = styled.div`
   }}
 `;
 
-const Findings = ({ preSelectedFindings, onSelectFindings}) => {
+const Findings = ({ preSelectedFindings, onSelectFindings }) => {
   const [findingsList, setFindingsList] = useState([]);
   const [findingsInputs, setFindingsInputs] = useState([{ selectedFindings: [] }]);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newFinding, setNewFinding] = useState('');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
-  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
     if (preSelectedFindings) {
@@ -67,41 +66,56 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
     }
   }, [preSelectedFindings]);
 
+  // ✅ Fetch Findings using apiRequest
   useEffect(() => {
-    axios.get(`${Cosmetologybaseurl}Findings/`)
-      .then(response => {
-        setFindingsList(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching findings data:', error);
-      });
-  }, []);
+    const fetchFindings = async () => {
+      try {
+        const response = await apiRequest("Findings/", "GET")
+
+        if (response.success) {
+          setFindingsList(response.data || [])
+        } else {
+          console.error("Error fetching findings:", response.error)
+          showMessage("Error fetching findings", "error")
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching findings:", error)
+        showMessage("Error fetching findings", "error")
+      }
+    }
+
+    fetchFindings()
+  }, [])
 
   const showMessage = (msg, type = 'success') => {
     setMessage(msg);
     setMessageType(type);
-    setTimeout(() => {
-      setMessage('');
-    }, 3000);
+    setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleAddNewFinding = () => {
+  // ✅ Add new finding using apiRequest
+  const handleAddNewFinding = async () => {
     if (!newFinding.trim()) {
       showMessage('Finding name cannot be empty.', 'error');
       return;
     }
 
-    axios.post(`${Cosmetologybaseurl}Findings/`, { findings: newFinding })
-      .then(response => {
-        setFindingsList([...findingsList, response.data]);
-        setShowAddInput(false);
-        setNewFinding('');
-        showMessage('New finding stored successfully!');
-      })
-      .catch(error => {
-        console.error('Error adding new finding:', error);
-        showMessage('Error adding new finding.', 'error');
-      });
+    try {
+      const response = await apiRequest("Findings/", "POST", { findings: newFinding })
+
+      if (response.success) {
+        setFindingsList((prev) => [...prev, response.data])
+        setShowAddInput(false)
+        setNewFinding("")
+        showMessage("New finding stored successfully!")
+      } else {
+        console.error("Error adding new finding:", response.error)
+        showMessage("Error adding new finding.", "error")
+      }
+    } catch (error) {
+      console.error("Unexpected error adding new finding:", error)
+      showMessage("Error adding new finding.", "error")
+    }
   };
 
   const handleFindingChange = (selected, index) => {
@@ -113,12 +127,8 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
 
   return (
     <FindingsContainer>
-      {message && (
-        <MessageContainer type={messageType}>
-          {message}
-        </MessageContainer>
-      )}
-      
+      {message && <MessageContainer type={messageType}>{message}</MessageContainer>}
+
       {findingsInputs.map((input, index) => (
         <Row className="justify-content-center mb-3" key={index}>
           <CenteredFormGroup as={Col} md="4" controlId={`findings-${index}`}>
@@ -150,7 +160,9 @@ const Findings = ({ preSelectedFindings, onSelectFindings}) => {
                 onChange={(e) => setNewFinding(e.target.value)}
                 placeholder="Enter new finding"
               />
-              <Button onClick={handleAddNewFinding} style={{ marginLeft: '10px' }}>Save</Button>
+              <Button onClick={handleAddNewFinding} style={{ marginLeft: '10px' }}>
+                Save
+              </Button>
             </FlexContainer>
           </CenteredFormGroup>
         </Row>

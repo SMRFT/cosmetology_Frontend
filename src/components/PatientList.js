@@ -1,50 +1,37 @@
 import { useEffect, useState } from "react"
-import axios from "axios"
 import { IoPersonCircleSharp, IoAdd, IoSearch } from "react-icons/io5"
 import { Modal } from "react-bootstrap"
 import styled from "styled-components"
 import PatientForm from "./PatientForm"
-import "./PatientList.css"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import apiRequest from "./apiRequest"
 
 const PatientList = ({ onSelectPatient }) => {
   const [patients, setPatients] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [showModal, setShowModal] = useState(false)
-  const [branchCode, setBranchCode] = useState("") // Add branch code state
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
-  useEffect(() => {
-    // Get branch_code from localStorage when component mounts
-    const code = localStorage.getItem("selectedBranch")
-    if (code) {
-      setBranchCode(code)
-    } else {
-      console.warn("Branch code not found in localStorage")
-    }
 
+
+  const fetchPatients = async () => {
+    try {
+      const response = await apiRequest(`${Cosmetologybaseurl}patients/`, "GET")
+
+      if (response.success && Array.isArray(response.data)) {
+        setPatients(response.data)
+      } else {
+        setPatients([])
+      }
+    } catch (error) {
+      console.error("Error fetching patients:", error)
+      toast.error("Failed to load patients. Please try again.")
+    }
+  }
+
+  useEffect(() => {
     fetchPatients()
   }, [])
-
-  const fetchPatients = () => {
-    // Get branch_code from localStorage
-    const branchCode = localStorage.getItem("selectedBranch")
-
-    // If branch code exists, add it as a query parameter
-    const url = branchCode
-      ? `${Cosmetologybaseurl}patients/?branch_code=${branchCode}`
-      : `${Cosmetologybaseurl}patients/`
-
-    axios
-      .get(url)
-      .then((response) => {
-        setPatients(response.data)
-      })
-      .catch((error) => {
-        console.error("There was an error fetching the patients!", error)
-        toast.error("Failed to load patients. Please try again.")
-      })
-  }
 
   const handleSearch = (event) => {
     setSearchTerm(event.target.value)
@@ -52,7 +39,8 @@ const PatientList = ({ onSelectPatient }) => {
 
   const filteredPatients = patients.filter(
     (patient) =>
-      patient.patientName.toLowerCase().includes(searchTerm.toLowerCase()) || patient.mobileNumber.includes(searchTerm),
+      patient.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.mobileNumber.includes(searchTerm)
   )
 
   const handleAddPatientClick = () => {
@@ -61,39 +49,55 @@ const PatientList = ({ onSelectPatient }) => {
 
   const handleCloseModal = () => {
     setShowModal(false)
-    fetchPatients() // Fetch the latest patient data when the modal closes
+    fetchPatients()
   }
 
   return (
     <StyledContainer className="patient">
       <ToastContainer position="top-right" autoClose={5000} />
+
       <SearchHeader className="header1">
         <SearchBar className="search-bar">
           <IoSearch className="search-icon" />
-          <SearchInput type="text" placeholder="Name or Mobile Number" value={searchTerm} onChange={handleSearch} />
+          <SearchInput
+            type="text"
+            placeholder="Name or Mobile Number"
+            value={searchTerm}
+            onChange={handleSearch}
+          />
         </SearchBar>
+
         <IoAdd className="icon" onClick={handleAddPatientClick} />
       </SearchHeader>
 
       <PatientListContainer className="patient-list">
         {filteredPatients.length > 0 ? (
           filteredPatients.map((patient) => (
-            <PatientItem key={patient.id} className="patient-item" onClick={() => onSelectPatient(patient)}>
+            <PatientItem
+              key={patient.id}
+              className="patient-item"
+              onClick={() => onSelectPatient(patient)}
+            >
               <PatientInfo className="patient-info">
                 <ProfileIcon>
                   <IoPersonCircleSharp className="person" />
                 </ProfileIcon>
+
                 <PatientDetails>
                   <PatientName>{patient.patientName}</PatientName>
                   <PatientMobile>{patient.mobileNumber}</PatientMobile>
-                  {patient.purposeOfVisit && <PatientPurpose>{patient.purposeOfVisit}</PatientPurpose>}
+                  {patient.purposeOfVisit && (
+                    <PatientPurpose>{patient.purposeOfVisit}</PatientPurpose>
+                  )}
                 </PatientDetails>
               </PatientInfo>
             </PatientItem>
           ))
         ) : (
           <NoPatients>
-            {searchTerm ? "No patients match your search" : "No patients found. Add a new patient to get started."}
+            {searchTerm
+              ? "No patients match your search"
+              : "No patients found. Add a new patient to get started."}
           </NoPatients>
         )}
       </PatientListContainer>
@@ -102,6 +106,7 @@ const PatientList = ({ onSelectPatient }) => {
         <Modal.Header closeButton>
           <Modal.Title>Add Patient</Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
           <PatientForm onClose={handleCloseModal} />
         </Modal.Body>

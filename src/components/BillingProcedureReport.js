@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import axios from "axios"
+import apiRequest from "./apiRequest"
 import styled from "styled-components"
 import { MDBTableHead, MDBTableBody } from "mdb-react-ui-kit"
 import DatePicker from "react-datepicker"
@@ -22,8 +22,8 @@ const BillingProcedureReport = () => {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedWeek, setSelectedWeek] = useState(null)
   const [activeTab, setActiveTab] = useState("procedure")
-  const [branchCode, setBranchCode] = useState("")
-  const [userRole, setUserRole] = useState("")
+  const [branchCode, setBranchCode] = useState(localStorage.getItem("selected_branch") || "")
+  const [userRole, setUserRole] = useState(localStorage.getItem("userRole") || sessionStorage.getItem("userRole") || "")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
@@ -43,36 +43,19 @@ const BillingProcedureReport = () => {
 
   // Effect to get branch_code and userRole from localStorage/sessionStorage
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
-    const role = localStorage.getItem("userRole") || sessionStorage.getItem("userRole")
-
-    if (code) {
-      setBranchCode(code)
-    } else {
-      console.warn("Branch code not found in localStorage")
-      setError("Branch code not found. Please ensure you are logged in.")
-    }
-
-    if (role) {
-      setUserRole(role)
-    } else {
-      console.warn("User role not found")
-    }
-
     // Initialize selectedWeek if interval is 'week' on first load
     if (selectedInterval === "week" && !selectedWeek) {
       setSelectedWeek(startOfWeek(new Date(), { weekStartsOn: 1 }))
     }
-  }, [selectedInterval, selectedWeek]) // Added dependencies
+  }, [selectedInterval, selectedWeek])
 
-  // Effect to fetch data whenever relevant dependencies change
+  // ADDED: Effect to fetch data when interval, date, week, or branch changes
   useEffect(() => {
     if (branchCode) {
-      // Clear previous data immediately when interval changes
-      setBillingData(null)
       fetchData(selectedInterval)
     }
   }, [selectedInterval, selectedDate, selectedWeek, branchCode])
+
 
   const fetchData = async (interval) => {
     if (!branchCode) {
@@ -118,19 +101,21 @@ const BillingProcedureReport = () => {
     try {
       console.log(`Fetching ${interval} data for date: ${dateParam}, branch: ${branchCode}`)
       
-      const response = await axios.get(`${Cosmetologybaseurl}procedurebilling/${interval}/`, {
+      const response = await apiRequest(`${Cosmetologybaseurl}procedurebilling/${interval}/`, "GET", null, null, {
         params: {
           appointmentDate: dateParam,
-          branch_code: branchCode,
-        },
-        withCredentials: true,
+          },
       })
       
-      console.log(`Received ${response.data.length} records for ${interval}`)
-      setBillingData(response.data)
-      
-      if (response.data.length === 0) {
-        toast.info("No data found for the selected criteria.")
+      if (response.success) {
+        console.log(`Received ${response.data.length} records for ${interval}`)
+        setBillingData(response.data)
+        
+        if (response.data.length === 0) {
+          toast.info("No data found for the selected criteria.")
+        }
+      } else {
+        throw new Error(response.error || "Failed to fetch data")
       }
     } catch (error) {
       console.error("Error fetching procedure billing data:", error)
@@ -353,8 +338,6 @@ const rows = billingData.flatMap((item) => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
-
         let PDFMain
 
         if (branchCode === "SCC002") {
@@ -469,8 +452,7 @@ const rows = billingData.flatMap((item) => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    // Select PDF background based on branch code without directly using branch names
-    const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+    // Select PDF background based on branch code without directly using branch name
 
     let PDFMain
 
@@ -560,17 +542,13 @@ const rows = billingData.flatMap((item) => {
     }
 
     try {
-      const response = await axios.delete(`${Cosmetologybaseurl}delete_procedure_data/`, {
-        data: {
-          patientUID: patientUID,
-          consumerBillNumber: billType === "consumer" ? billNumber : undefined,
-          procedureBillNumber: billType === "procedure" ? billNumber : undefined,
-          branch_code: branchCode,
-        },
-        withCredentials: true,
-      })
+      const response = await apiRequest(`${Cosmetologybaseurl}delete_procedure_data/`, "DELETE", {
+        patientUID: patientUID,
+        consumerBillNumber: billType === "consumer" ? billNumber : undefined,
+        procedureBillNumber: billType === "procedure" ? billNumber : undefined,
+        })
 
-      if (response.status === 200) {
+      if (response.success) {
         setBillingData((prevData) =>
           prevData.filter(
             (item) =>

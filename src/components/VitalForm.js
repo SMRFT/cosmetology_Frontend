@@ -1,134 +1,123 @@
-import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import axios from 'axios';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useState } from "react"
+import styled from "styled-components"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import apiRequest from "./apiRequest" // ✅ use your apiRequest
 
 function VitalForm({ patientUID, patientName, mobileNumber }) {
-    const [formData, setFormData] = useState({
-        height: '',
-        weight: '',
-        pulseRate: '',
-        bloodPressure: '',
-        patientUID: patientUID,
-        patientName: patientName,
-        mobileNumber: mobileNumber,
-        branch_code: '' // Added branch_code field
-    });
-     const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
-    // Add useEffect to get branch_code from cookies when component mounts
+  const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
-      useEffect(() => {
-        const code = localStorage.getItem("selectedBranch")
-        if (code) {
-            setFormData(prevData => ({
-                ...prevData,
-                branch_code: code
-            }));
-        } else {
-          console.warn("Branch code not found in localStorage")
-        }
+  const [formData, setFormData] = useState({
+    height: "",
+    weight: "",
+    pulseRate: "",
+    bloodPressure: "",
+    patientUID,
+    patientName,
+    mobileNumber,
+  })
 
-      }, [])
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    try {
+      const response = await apiRequest(
+        `${Cosmetologybaseurl}vitalform/`,
+        "POST",
+        formData
+      )
+
+      if (response.success) {
+        toast.success(`Vital data for ${patientName} submitted successfully!`)
+
+        // Reset form (keep patient info)
         setFormData({
-            ...formData,
-            [name]: value
-        });
-    };
+          height: "",
+          weight: "",
+          pulseRate: "",
+          bloodPressure: "",
+          patientUID,
+          patientName,
+          mobileNumber,
+        })
+      } else {
+        throw new Error(response.error)
+      }
+    } catch (error) {
+      console.error("Error submitting vital data:", error)
+      toast.error("Error submitting form data. Please try again.")
+    }
+  }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            // Include branch code in the URL as a query parameter
-            const url = formData.branch_code 
-                ? `${Cosmetologybaseurl}vitalform/?branch_code=${formData.branch_code}`
-                : `${Cosmetologybaseurl}vitalform/`;
-                
-            const vitalResponse = await axios.post(url, formData, {
-                withCredentials: true // Enable sending cookies with the request
-            });
-            
-            toast.success(`Vital data for ${patientName} submitted successfully!`);
-            // Reset form data after submission but keep branch_code
-            setFormData({
-                height: '',
-                weight: '',
-                pulseRate: '',
-                bloodPressure: '',
-                patientUID: patientUID,
-                patientName: patientName,
-                mobileNumber: mobileNumber,
-                branch_code: formData.branch_code // Preserve branch_code
-            });
-        } catch (error) {
-            console.error('Error submitting vital data:', error);
-            toast.error('Error submitting form data. Please try again.');
-        }
-    };
+  return (
+    <FormContainer>
+      <ToastContainer position="top-right" autoClose={5000} />
+      <h3 className="text-center mb-4">Patient Vitals</h3>
 
-    return (
-        <FormContainer>
-            <ToastContainer position="top-right" autoClose={5000}/> 
-            <h3 className="text-center mb-4">Patient Vitals</h3>
-            <Form onSubmit={handleSubmit}>
-                <FormRow>
-                    <FormGroup>
-                        <Label htmlFor="height">Height (cm)</Label>
-                        <Input
-                            type="text"
-                            id="height"
-                            name="height"
-                            value={formData.height}
-                            onChange={handleChange}
-                            required
-                        />
-                    </FormGroup>
-                    <FormGroup>
-                        <Label htmlFor="weight">Weight (kg)</Label>
-                        <Input
-                            type="text"
-                            id="weight"
-                            name="weight"
-                            value={formData.weight}
-                            onChange={handleChange}
-                            required
-                        />
-                    </FormGroup>
-                </FormRow>
-                <FormRow>
-                    <FormGroup>
-                        <Label htmlFor="pulseRate">Pulse Rate (bpm)</Label>
-                        <Input
-                            type="text"
-                            id="pulseRate"
-                            name="pulseRate"
-                            value={formData.pulseRate}
-                            onChange={handleChange}
-                            required
-                        />
-                    </FormGroup>
-                    <FormGroup>
-                        <Label htmlFor="bloodPressure">Blood Pressure (mmHg)</Label>
-                        <Input
-                            type="text"
-                            id="bloodPressure"
-                            name="bloodPressure"
-                            value={formData.bloodPressure}
-                            onChange={handleChange}
-                            placeholder="e.g., 120/80"
-                            required
-                        />
-                    </FormGroup>
-                </FormRow>
-                <ButtonContainer>
-                    <SubmitButton type="submit">Submit</SubmitButton>
-                </ButtonContainer>
-            </Form>
-        </FormContainer>
-    );
+      <Form onSubmit={handleSubmit}>
+        <FormRow>
+          <FormGroup>
+            <Label>Height (cm)</Label>
+            <Input
+              type="text"
+              name="height"
+              value={formData.height}
+              onChange={handleChange}
+              required
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Weight (kg)</Label>
+            <Input
+              type="text"
+              name="weight"
+              value={formData.weight}
+              onChange={handleChange}
+              required
+            />
+          </FormGroup>
+        </FormRow>
+
+        <FormRow>
+          <FormGroup>
+            <Label>Pulse Rate (bpm)</Label>
+            <Input
+              type="text"
+              name="pulseRate"
+              value={formData.pulseRate}
+              onChange={handleChange}
+              required
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Blood Pressure (mmHg)</Label>
+            <Input
+              type="text"
+              name="bloodPressure"
+              value={formData.bloodPressure}
+              onChange={handleChange}
+              placeholder="e.g., 120/80"
+              required
+            />
+          </FormGroup>
+        </FormRow>
+
+        <ButtonContainer>
+          <SubmitButton type="submit">Submit</SubmitButton>
+        </ButtonContainer>
+      </Form>
+    </FormContainer>
+  )
 }
 
 const FormContainer = styled.div`

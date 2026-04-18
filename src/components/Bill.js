@@ -13,8 +13,8 @@ import Kumarapalayam from "./images/KumarapalayamBill.jpg"
 import Salem from "./images/Salembill.jpg"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import axios from "axios"
 import Select from "react-select"
+import apiRequest from "./apiRequest"
 
 const StyledContainer = styled.div`
   padding: 10px;
@@ -422,7 +422,7 @@ const Bill = () => {
   const [section, setSection] = useState("Pharmacy")
   const [editablePrices, setEditablePrices] = useState({})
   const [editableTotals, setEditableTotals] = useState({})
-  const [branchCode, setBranchCode] = useState("")
+  const [branchCode, setBranchCode] = useState(localStorage.getItem("selected_branch") || "SCC001")
   const [medicineErrors, setMedicineErrors] = useState({})
   const [isDataFromStored, setIsDataFromStored] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -436,25 +436,6 @@ const Bill = () => {
   const [selectAll, setSelectAll] = useState(false)
 
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
-
-  // Initialize branch code and fetch current date data
-  useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
-    if (code) {
-      setBranchCode(code)
-    } else {
-      console.warn("Branch code not found in localStorage")
-    }
-  }, [])
-
-  // Fetch current date data when component mounts and branch code is available
-  useEffect(() => {
-    if (branchCode) {
-      const currentDate = new Date()
-      setStartDate(currentDate)
-      fetchInitialPatientData(currentDate)
-    }
-  }, [branchCode])
 
   // Helper function to check if prescription data is present and valid
   const hasPrescriptionData = (prescription) => {
@@ -475,88 +456,111 @@ const Bill = () => {
   }
 
   // Fetch initial patient data from summary API - only patients with prescription data
-  const fetchInitialPatientData = async (date) => {
-    if (!branchCode || !date) return
-    setIsLoading(true)
-    const formattedDate = format(date, "yyyy-MM-dd")
-    try {
-      const response = await fetch(
-        `${Cosmetologybaseurl}summary/post/?appointmentDate=${formattedDate}&branch_code=${branchCode}`,
-      )
-      if (response.ok) {
-        const summaryData = await response.json()
-        if (summaryData && Array.isArray(summaryData) && summaryData.length > 0) {
-          const patientsWithPrescriptions = summaryData.filter((patient) => hasPrescriptionData(patient.prescription))
-          if (patientsWithPrescriptions.length > 0) {
-            const transformedPatients = patientsWithPrescriptions.map((patient) => ({
-              ...patient,
-              dataSource: "summary",
-            }))
-            setPatientData(transformedPatients)
-            setHasData(true)
-          } else {
-            setPatientData([])
-            setHasData(false)
-            toast.info("No patients with prescription data found for the selected date")
-          }
+
+const fetchInitialPatientData = async (date) => {
+  if (!date) return
+
+  setIsLoading(true)
+
+  const formattedDate = format(date, "yyyy-MM-dd")
+
+  try {
+    const response = await apiRequest(
+      `${Cosmetologybaseurl}summary/post/?appointmentDate=${formattedDate}`,
+      "GET"
+    )
+
+    if (response.success) {
+      const summaryData = response.data
+
+      if (Array.isArray(summaryData) && summaryData.length > 0) {
+        const patientsWithPrescriptions = summaryData.filter((patient) =>
+          hasPrescriptionData(patient.prescription)
+        )
+
+        if (patientsWithPrescriptions.length > 0) {
+          const transformedPatients = patientsWithPrescriptions.map((patient) => ({
+            ...patient,
+            dataSource: "summary",
+          }))
+
+          setPatientData(transformedPatients)
+          setHasData(true)
         } else {
           setPatientData([])
           setHasData(false)
-          toast.info("No patient data found for the selected date")
+          toast.info("No patients with prescription data found for the selected date")
         }
       } else {
-        throw new Error("Failed to fetch summary data")
+        setPatientData([])
+        setHasData(false)
+        toast.info("No patient data found for the selected date")
       }
-    } catch (error) {
-      console.error("Error fetching initial patient data:", error)
-      setPatientData([])
-      setHasData(false)
-      toast.error("Error fetching patient data. Please try again.")
-    } finally {
-      setIsLoading(false)
+    } else {
+      throw new Error(response.error)
     }
+  } catch (error) {
+    console.error("Error fetching initial patient data:", error)
+    setPatientData([])
+    setHasData(false)
+    toast.error("Error fetching patient data. Please try again.")
+  } finally {
+    setIsLoading(false)
   }
+}
 
   // Fetch patient billing data from unified API
-  const fetchPatientBillingData = async (patient) => {
-    if (!branchCode || !startDate) return
-    setIsLoading(true)
-    const formattedDate = format(startDate, "yyyy-MM-dd")
-    try {
-      const response = await fetch(
-        `${Cosmetologybaseurl}get_patientbilling_data/?patientUID=${patient.patientUID}&appointmentDate=${formattedDate}&branch_code=${branchCode}`,
-      )
-      if (response.ok) {
-        const result = await response.json()
-        if (result.source === "billing") {
-          setIsDataFromStored(true)
-          loadStoredBillingData(result.data)
-        } else if (result.source === "summary") {
-          if (hasPrescriptionData(result.data.prescription)) {
-            setIsDataFromStored(false)
-            loadSummaryBillingData(result.data)
-          } else {
-            setIsDataFromStored(false)
-            setBillingData([])
-            setAdditionalRows([])
-            toast.info("No prescription data found for this patient")
-          }
+const fetchPatientBillingData = async (patient) => {
+  if (!patient || !startDate) return
+
+  setIsLoading(true)
+
+  const formattedDate = format(startDate, "yyyy-MM-dd")
+
+  try {
+    const response = await apiRequest(
+      `${Cosmetologybaseurl}get_patientbilling_data/?patientUID=${patient.patientUID}&appointmentDate=${formattedDate}`,
+      "GET"
+    )
+
+    if (response.success) {
+      const result = response.data
+
+      if (result?.source === "billing") {
+        setIsDataFromStored(true)
+        loadStoredBillingData(result.data)
+      } else if (result?.source === "summary") {
+        if (hasPrescriptionData(result.data?.prescription)) {
+          setIsDataFromStored(false)
+          loadSummaryBillingData(result.data)
+        } else {
+          setIsDataFromStored(false)
+          setBillingData([])
+          setAdditionalRows([])
+          toast.info("No prescription data found for this patient")
         }
-      } else if (response.status === 204) {
+      } else {
+        // fallback if unexpected response
         setIsDataFromStored(false)
         setBillingData([])
         setAdditionalRows([])
         toast.info("No billing data found for this patient")
-      } else {
-        throw new Error("Failed to fetch billing data")
       }
-    } catch (error) {
-      console.error("Error fetching patient billing data:", error)
-      toast.error("Error fetching billing data. Please try again.")
-    } finally {
-      setIsLoading(false)
+    } else if (response.status === 204) {
+      setIsDataFromStored(false)
+      setBillingData([])
+      setAdditionalRows([])
+      toast.info("No billing data found for this patient")
+    } else {
+      throw new Error(response.error)
     }
+  } catch (error) {
+    console.error("Error fetching patient billing data:", error)
+    toast.error("Error fetching billing data. Please try again.")
+  } finally {
+    setIsLoading(false)
   }
+}
 
   // Load stored billing data
   const loadStoredBillingData = (storedData) => {
@@ -623,58 +627,72 @@ const Bill = () => {
     }, 100)
   }
 
-  // Fetch medicine options for dropdown
+  // Fetch initial patient data for the default date (today) on mount
   useEffect(() => {
-    if (!branchCode) return
-    axios
-      .get(`${Cosmetologybaseurl}get_medicine_price/`, {
-        params: { branch_code: branchCode },
-      })
-      .then((response) => {
-        if (response.data && Array.isArray(response.data)) {
-          const medicineData = response.data.map((medicine) => {
-            const normalizeValue = (value, defaultValue = 0) => {
-              if (value === null || value === undefined || value === "") return defaultValue
-              if (typeof value === "string") {
-                const parsed = Number.parseFloat(value)
-                return isNaN(parsed) ? defaultValue : parsed
-              }
-              return typeof value === "number" ? value : defaultValue
-            }
+    fetchInitialPatientData(startDate)
+  }, [])
 
-            const normalizeString = (value, defaultValue = "Unknown") => {
-              if (value === null || value === undefined || value === "") return defaultValue
-              return String(value)
-            }
+  // Fetch medicine options for dropdown
+useEffect(() => {
+  const fetchMedicineData = async () => {
+    try {
+      const response = await apiRequest(
+        `${Cosmetologybaseurl}get_medicine_price/`,
+        "GET"
+      )
 
-            return {
-              id: medicine.medicine_name + "_" + medicine.batch_number,
-              label: normalizeString(medicine.medicine_name, "Unknown Medicine"),
-              price: normalizeValue(medicine.price, 0),
-              stock: normalizeValue(medicine.stock, 0),
-              CGST_percentage: normalizeValue(medicine.CGST_percentage, 0),
-              CGST_value: normalizeValue(medicine.CGST_value, 0),
-              SGST_percentage: normalizeValue(medicine.SGST_percentage, 0),
-              SGST_value: normalizeValue(medicine.SGST_value, 0),
-              batch_number: normalizeString(medicine.batch_number, "N/A"),
-              company_name: normalizeString(medicine.company_name, "N/A"),
-              expiry_date: normalizeString(medicine.expiry_date, "N/A"),
-              received_date: normalizeString(medicine.received_date, "N/A"),
-              fullData: medicine,
+      if (response.success) {
+        const data = response.data
+
+        if (Array.isArray(data)) {
+          const normalizeValue = (value, defaultValue = 0) => {
+            if (value === null || value === undefined || value === "") return defaultValue
+            if (typeof value === "string") {
+              const parsed = Number.parseFloat(value)
+              return isNaN(parsed) ? defaultValue : parsed
             }
-          })
+            return typeof value === "number" ? value : defaultValue
+          }
+
+          const normalizeString = (value, defaultValue = "Unknown") => {
+            if (value === null || value === undefined || value === "") return defaultValue
+            return String(value)
+          }
+
+          const medicineData = data.map((medicine) => ({
+            id: `${medicine.medicine_name}_${medicine.batch_number}`,
+            label: normalizeString(medicine.medicine_name, "Unknown Medicine"),
+            price: normalizeValue(medicine.price, 0),
+            stock: normalizeValue(medicine.stock, 0),
+            CGST_percentage: normalizeValue(medicine.CGST_percentage, 0),
+            CGST_value: normalizeValue(medicine.CGST_value, 0),
+            SGST_percentage: normalizeValue(medicine.SGST_percentage, 0),
+            SGST_value: normalizeValue(medicine.SGST_value, 0),
+            batch_number: normalizeString(medicine.batch_number, "N/A"),
+            company_name: normalizeString(medicine.company_name, "N/A"),
+            expiry_date: normalizeString(medicine.expiry_date, "N/A"),
+            received_date: normalizeString(medicine.received_date, "N/A"),
+            fullData: medicine,
+          }))
+
           setMedicineOptions(medicineData)
         } else {
-          console.warn("No medicine data received or invalid format")
+          console.warn("Invalid medicine data format")
           setMedicineOptions([])
           toast.warning("No medicines available for this branch")
         }
-      })
-      .catch((error) => {
-        console.error("Error fetching medicine names:", error)
-        setMedicineOptions([])
-      })
-  }, [branchCode])
+      } else {
+        throw new Error(response.error)
+      }
+    } catch (error) {
+      console.error("Error fetching medicine names:", error)
+      setMedicineOptions([])
+      toast.error("Failed to load medicine data")
+    }
+  }
+
+  fetchMedicineData()
+}, [])
 
   const handlePaymentTypeChange = (e) => {
     setPaymentType(e.target.value)
@@ -740,19 +758,28 @@ const Bill = () => {
   }
 
   // Fetch medicine details using get_medicine_price endpoint
-  const fetchMedicineDetails = async (medicine_name, batch_number = null) => {
-    try {
-      let url = `${Cosmetologybaseurl}get_medicine_price/?medicine_name=${encodeURIComponent(medicine_name)}&branch_code=${branchCode}`
-      if (batch_number && batch_number !== "N/A") {
-        url += `&batch_number=${encodeURIComponent(batch_number)}`
+const fetchMedicineDetails = async (medicine_name, batch_number = null) => {
+  try {
+    const response = await apiRequest(
+      `${Cosmetologybaseurl}get_medicine_price/`,
+      "GET",
+      null,
+      {},
+      {
+        params: {
+          medicine_name,
+          ...(batch_number && batch_number !== "N/A" && { batch_number }),
+        },
       }
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
+    )
+
+    if (response.success) {
+      const data = response.data
+
       if (Array.isArray(data) && data.length > 0) {
         const medicineData = data[0]
+
+        // ✅ Clear error
         setMedicineErrors((prev) => {
           const newErrors = { ...prev }
           delete newErrors[medicine_name]
@@ -760,73 +787,65 @@ const Bill = () => {
         })
 
         const normalizeValue = (value, defaultValue = 0) => {
-          if (value === null || value === undefined || value === "") return defaultValue
-          if (typeof value === "string") {
-            const parsed = Number.parseFloat(value)
-            return isNaN(parsed) ? defaultValue : parsed
-          }
-          return typeof value === "number" ? value : defaultValue
+          if (value == null || value === "") return defaultValue
+          const parsed = parseFloat(value)
+          return isNaN(parsed) ? defaultValue : parsed
         }
 
         const normalizeString = (value, defaultValue = "N/A") => {
-          if (value === null || value === undefined || value === "") return defaultValue
-          return String(value)
+          return value ? String(value) : defaultValue
         }
 
         return {
-          price: normalizeValue(medicineData.price, 0),
-          CGST_percentage: normalizeValue(medicineData.CGST_percentage, 0),
-          CGST_value: normalizeValue(medicineData.CGST_value, 0),
-          SGST_percentage: normalizeValue(medicineData.SGST_percentage, 0),
-          SGST_value: normalizeValue(medicineData.SGST_value, 0),
-          batch_number: normalizeString(medicineData.batch_number, "N/A"),
-          stock: normalizeValue(medicineData.stock, 0),
-          company_name: normalizeString(medicineData.company_name, "N/A"),
+          price: normalizeValue(medicineData.price),
+          CGST_percentage: normalizeValue(medicineData.CGST_percentage),
+          CGST_value: normalizeValue(medicineData.CGST_value),
+          SGST_percentage: normalizeValue(medicineData.SGST_percentage),
+          SGST_value: normalizeValue(medicineData.SGST_value),
+          batch_number: normalizeString(medicineData.batch_number),
+          stock: normalizeValue(medicineData.stock),
+          company_name: normalizeString(medicineData.company_name),
           medicine_name: normalizeString(medicineData.medicine_name, medicine_name),
-          expiry_date: normalizeString(medicineData.expiry_date, "N/A"),
-          received_date: normalizeString(medicineData.received_date, "N/A"),
+          expiry_date: normalizeString(medicineData.expiry_date),
+          received_date: normalizeString(medicineData.received_date),
         }
       } else {
-        console.warn(`Medicine not found: ${medicine_name}`)
+        // ❗ Not found
         setMedicineErrors((prev) => ({
           ...prev,
           [medicine_name]: "Medicine not found or out of stock",
         }))
-        return {
-          price: 0,
-          CGST_percentage: 0,
-          CGST_value: 0,
-          SGST_percentage: 0,
-          SGST_value: 0,
-          batch_number: "N/A",
-          stock: 0,
-          company_name: "N/A",
-          medicine_name: medicine_name,
-          expiry_date: "N/A",
-          received_date: "N/A",
-        }
+
+        return getDefaultMedicine(medicine_name)
       }
-    } catch (error) {
-      console.error("Error fetching medicine details:", error)
-      setMedicineErrors((prev) => ({
-        ...prev,
-        [medicine_name]: "Failed to fetch medicine details",
-      }))
-      return {
-        price: 0,
-        CGST_percentage: 0,
-        CGST_value: 0,
-        SGST_percentage: 0,
-        SGST_value: 0,
-        batch_number: "N/A",
-        stock: 0,
-        company_name: "N/A",
-        medicine_name: medicine_name,
-        expiry_date: "N/A",
-        received_date: "N/A",
-      }
+    } else {
+      throw new Error(response.error)
     }
+  } catch (error) {
+    console.error("Error fetching medicine details:", error)
+
+    setMedicineErrors((prev) => ({
+      ...prev,
+      [medicine_name]: "Failed to fetch medicine details",
+    }))
+
+    return getDefaultMedicine(medicine_name)
   }
+}
+
+const getDefaultMedicine = (medicine_name) => ({
+  price: 0,
+  CGST_percentage: 0,
+  CGST_value: 0,
+  SGST_percentage: 0,
+  SGST_value: 0,
+  batch_number: "N/A",
+  stock: 0,
+  company_name: "N/A",
+  medicine_name,
+  expiry_date: "N/A",
+  received_date: "N/A",
+})
 
   const handleDateChange = (date) => {
     setStartDate(date)
@@ -1197,240 +1216,236 @@ const Bill = () => {
     return !hasStockIssues
   }
 
-  const handleSaveData = async () => {
-    // Check if any medicines are selected
-    if (!hasSelectedMedicines()) {
-      toast.error("Please select at least one medicine or add consultation fee before saving.")
-      return
-    }
+const handleSaveData = async () => {
+  // ✅ Validation
+  if (!hasSelectedMedicines()) {
+    toast.error("Please select at least one medicine or add consultation fee before saving.")
+    return
+  }
 
-    // Validate stock
-    if (!validateStock()) {
-      toast.error("Cannot save billing due to low stock issues. Please check the highlighted medicines.")
-      return
-    }
+  if (!validateStock()) {
+    toast.error("Cannot save billing due to low stock issues. Please check the highlighted medicines.")
+    return
+  }
 
-    const errorMessages = []
-    const table_data = []
+  const errorMessages = []
+  const table_data = []
 
-    // Process billing data with correct prescription indices
-    billingData
-      .filter((item) => item.patientUID === selectedPatient.patientUID)
-      .forEach((item, itemIndex) => {
-        const prescriptions = extractPrescriptionDetails(item.prescription)
-        prescriptions.forEach((prescription, originalPrescriptionIndex) => {
-          const key = `${itemIndex}-${originalPrescriptionIndex}`
+  // ===== Process prescriptions =====
+  billingData
+    .filter((item) => item.patientUID === selectedPatient.patientUID)
+    .forEach((item, itemIndex) => {
+      const prescriptions = extractPrescriptionDetails(item.prescription)
 
-          // Only process selected prescriptions
-          if (selectedPrescriptions[key]) {
-            const qty = quantity[key] !== undefined ? quantity[key] : prescription.totalDosage
-            const medicineName = prescription.particulars
+      prescriptions.forEach((prescription, originalPrescriptionIndex) => {
+        const key = `${itemIndex}-${originalPrescriptionIndex}`
 
-            // Validate quantity
-            if (qty === "" || qty === null || qty === undefined) {
-              errorMessages.push(`The quantity for medicine "${medicineName}" is empty.`)
-              return
-            }
+        if (selectedPrescriptions[key]) {
+          const qty = quantity[key] ?? prescription.totalDosage
+          const medicineName = prescription.particulars
 
-            if (Number.parseFloat(qty) <= 0) {
-              errorMessages.push(`The quantity for medicine "${medicineName}" must be greater than zero.`)
-              return
-            }
-
-            const { particulars } = prescription
-            const medicineDetail = medicineDetails[particulars] || {}
-            const price = editablePrices[key] || medicineDetail.price || "0.00"
-            const total = editableTotals[key] || calculateTotal(price, qty)
-
-            table_data.push({
-              particulars,
-              qty,
-              price,
-              total,
-              CGST_percentage: medicineDetail.CGST_percentage || "N/A",
-              CGST_value: medicineDetail.CGST_value || "N/A",
-              SGST_percentage: medicineDetail.SGST_percentage || "N/A",
-              SGST_value: medicineDetail.SGST_value || "N/A",
-              batch_number: medicineDetail.batch_number || "N/A",
-            })
+          if (!qty || Number.parseFloat(qty) <= 0) {
+            errorMessages.push(`Invalid quantity for "${medicineName}".`)
+            return
           }
-        })
-      })
 
-    // Add additional rows to table_data (only selected ones)
-    const additionalRowsData = additionalRows
-      .filter((row) => row.selected && !row.isSaved)
-      .map((row) => {
-        if (Number.parseFloat(row.quantity) <= 0) {
-          errorMessages.push(`The quantity for medicine "${row.particulars}" must be greater than zero.`)
-          return null
-        }
-        return {
-          particulars: row.particulars,
-          qty: row.quantity,
-          price: row.price,
-          total: editableTotals[row.id] || (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
-          CGST_percentage: row.CGST_percentage,
-          CGST_value: row.CGST_value,
-          SGST_percentage: row.SGST_percentage,
-          SGST_value: row.SGST_value,
-          batch_number: row.batch_number,
+          const medicineDetail = medicineDetails[prescription.particulars] || {}
+          const price = editablePrices[key] || medicineDetail.price || "0.00"
+          const total = editableTotals[key] || calculateTotal(price, qty)
+
+          table_data.push({
+            particulars: prescription.particulars,
+            qty,
+            price,
+            total,
+            CGST_percentage: medicineDetail.CGST_percentage || "N/A",
+            CGST_value: medicineDetail.CGST_value || "N/A",
+            SGST_percentage: medicineDetail.SGST_percentage || "N/A",
+            SGST_value: medicineDetail.SGST_value || "N/A",
+            batch_number: medicineDetail.batch_number || "N/A",
+          })
         }
       })
-      .filter(Boolean)
+    })
 
-    // Add saved billing data to table_data (only selected ones)
-    const savedRowsData = additionalRows
-      .filter((row) => row.selected && row.isSaved)
-      .map((row) => ({
+  // ===== Additional rows =====
+  const additionalRowsData = additionalRows
+    .filter((row) => row.selected && !row.isSaved)
+    .map((row) => {
+      if (Number.parseFloat(row.quantity) <= 0) {
+        errorMessages.push(`Invalid quantity for "${row.particulars}".`)
+        return null
+      }
+      return {
         particulars: row.particulars,
         qty: row.quantity,
         price: row.price,
-        total: editableTotals[row.id] || row.total,
+        total:
+          editableTotals[row.id] ||
+          (Number.parseFloat(row.price) * Number.parseFloat(row.quantity)).toFixed(2),
         CGST_percentage: row.CGST_percentage,
         CGST_value: row.CGST_value,
         SGST_percentage: row.SGST_percentage,
         SGST_value: row.SGST_value,
         batch_number: row.batch_number,
-      }))
-
-    const allTableData = [...table_data, ...additionalRowsData, ...savedRowsData]
-
-    // Add consultation fee if present
-    if (consultationFee > 0) {
-      allTableData.push({
-        particulars: "Consultation Fee",
-        qty: 1,
-        price: consultationFee,
-        total: consultationFee.toFixed(2),
-        CGST_percentage: "N/A",
-        CGST_value: "N/A",
-        SGST_percentage: "N/A",
-        SGST_value: "N/A",
-        batch_number: "N/A",
-      })
-    }
-
-    if (errorMessages.length > 0) {
-      toast.error(errorMessages.join(" "))
-      return
-    }
-
-    let calculatedNetAmount = 0
-    allTableData.forEach((item) => {
-      calculatedNetAmount += Number.parseFloat(item.total) || 0
-    })
-
-    const discountAmount = (calculatedNetAmount * discount) / 100
-    const discountedNetAmount = calculatedNetAmount - discountAmount
-    setNetAmount(discountedNetAmount.toFixed(2))
-
-    const dataToSubmit = {
-      patientName: selectedPatient.patientName,
-      patientUID: selectedPatient.patientUID,
-      patient_handledby: selectedPatient.patient_handledby || "N/A",
-      appointmentDate: format(startDate, "yyyy-MM-dd"),
-      table_data: allTableData,
-      paymentType,
-      section,
-      netAmount: discountedNetAmount.toFixed(2),
-      discount: `${discount}%`,
-      consultationFee: consultationFee,
-      branch_code: branchCode,
-    }
-
-    try {
-      const response = await fetch(`${Cosmetologybaseurl}save/billing/data/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dataToSubmit),
-      })
-      if (!response.ok) {
-        throw new Error("Failed to submit data")
       }
-      const data = await response.json()
-      toast.success(`Billing was generated successfully for ${selectedPatient.patientName}`)
-      
-      // After successful save, make fields non-editable by setting isDataFromStored to true
+    })
+    .filter(Boolean)
+
+  const savedRowsData = additionalRows
+    .filter((row) => row.selected && row.isSaved)
+    .map((row) => ({
+      particulars: row.particulars,
+      qty: row.quantity,
+      price: row.price,
+      total: editableTotals[row.id] || row.total,
+      CGST_percentage: row.CGST_percentage,
+      CGST_value: row.CGST_value,
+      SGST_percentage: row.SGST_percentage,
+      SGST_value: row.SGST_value,
+      batch_number: row.batch_number,
+    }))
+
+  let allTableData = [...table_data, ...additionalRowsData, ...savedRowsData]
+
+  // ===== Consultation Fee =====
+  if (consultationFee > 0) {
+    allTableData.push({
+      particulars: "Consultation Fee",
+      qty: 1,
+      price: consultationFee,
+      total: consultationFee.toFixed(2),
+      CGST_percentage: "N/A",
+      CGST_value: "N/A",
+      SGST_percentage: "N/A",
+      SGST_value: "N/A",
+      batch_number: "N/A",
+    })
+  }
+
+  if (errorMessages.length > 0) {
+    toast.error(errorMessages.join(" "))
+    return
+  }
+
+  // ===== Net Amount =====
+  let calculatedNetAmount = allTableData.reduce(
+    (sum, item) => sum + (parseFloat(item.total) || 0),
+    0
+  )
+
+  const discountAmount = (calculatedNetAmount * discount) / 100
+  const discountedNetAmount = calculatedNetAmount - discountAmount
+
+  setNetAmount(discountedNetAmount.toFixed(2))
+
+  const dataToSubmit = {
+    patientName: selectedPatient.patientName,
+    patientUID: selectedPatient.patientUID,
+    patient_handledby: selectedPatient.patient_handledby || "N/A",
+    appointmentDate: format(startDate, "yyyy-MM-dd"),
+    table_data: allTableData,
+    paymentType,
+    section,
+    netAmount: discountedNetAmount.toFixed(2),
+    discount: `${discount}%`,
+    consultationFee,
+  }
+
+  try {
+    const response = await apiRequest(
+      `${Cosmetologybaseurl}save/billing/data/`,
+      "POST",
+      dataToSubmit
+    )
+
+    if (response.success) {
+      toast.success(`Billing generated for ${selectedPatient.patientName}`)
+
       setIsDataFromStored(true)
-      
+
       const stockUpdated = await updateStock()
       if (!stockUpdated) {
         console.error("Stock update failed.")
       }
+
       setTimeout(() => {
         handleBackClick()
       }, 2000)
-    } catch (error) {
-      console.error("Error submitting data:", error)
-      toast.error("Error saving billing data. Please try again.")
+    } else {
+      throw new Error(response.error)
     }
+  } catch (error) {
+    console.error("Error submitting data:", error)
+    toast.error("Error saving billing data. Please try again.")
   }
+}
 
-  const updateStock = async () => {
-    const stockUpdates = []
+const updateStock = async () => {
+  const stockUpdates = []
 
-    // Process billing data with correct prescription indices
-    billingData
-      .filter((item) => item.patientUID === selectedPatient.patientUID)
-      .forEach((item, itemIndex) => {
-        const prescriptions = extractPrescriptionDetails(item.prescription)
-        prescriptions.forEach((prescription, originalPrescriptionIndex) => {
-          const key = `${itemIndex}-${originalPrescriptionIndex}`
+  // ===== Prescription-based updates =====
+  billingData
+    .filter((item) => item.patientUID === selectedPatient.patientUID)
+    .forEach((item, itemIndex) => {
+      const prescriptions = extractPrescriptionDetails(item.prescription)
 
-          if (selectedPrescriptions[key]) {
-            const { particulars } = prescription
-            const qty = quantity[key] !== undefined ? quantity[key] : prescription.totalDosage
-            const medicineDetail = medicineDetails[particulars] || {}
-            const actualBatchNumber = medicineDetail.batch_number || "N/A"
+      prescriptions.forEach((prescription, originalPrescriptionIndex) => {
+        const key = `${itemIndex}-${originalPrescriptionIndex}`
 
-            stockUpdates.push({
-              medicine_name: particulars,
-              qty,
-              branch_code: branchCode,
-              batch_number: actualBatchNumber,
-            })
-          }
-        })
-      })
+        if (selectedPrescriptions[key]) {
+          const qty = quantity[key] ?? prescription.totalDosage
+          const medicineDetail = medicineDetails[prescription.particulars] || {}
 
-    const additionalStockUpdates = additionalRows
-      .filter((row) => row.selected)
-      .map((row) => ({
-        medicine_name: row.particulars,
-        qty: row.quantity,
-        branch_code: branchCode,
-        batch_number: row.batch_number,
-      }))
-
-    const allStockUpdates = [...stockUpdates, ...additionalStockUpdates]
-
-    let allStockUpdated = true
-    for (const stockUpdate of allStockUpdates) {
-      try {
-        const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(stockUpdate),
-        })
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || "Failed to update stock")
+          stockUpdates.push({
+            medicine_name: prescription.particulars,
+            qty,
+            batch_number: medicineDetail.batch_number || "N/A",
+          })
         }
-        const data = await response.json()
-        toast.success("Stock updated successfully!")
-      } catch (error) {
-        console.error("Error updating stock:", error)
-        allStockUpdated = false
-        break
-      }
+      })
+    })
+
+  // ===== Additional rows =====
+  const additionalStockUpdates = additionalRows
+    .filter((row) => row.selected)
+    .map((row) => ({
+      medicine_name: row.particulars,
+      qty: row.quantity,
+      batch_number: row.batch_number,
+    }))
+
+  const allStockUpdates = [...stockUpdates, ...additionalStockUpdates]
+
+  if (allStockUpdates.length === 0) return true
+
+  try {
+    // 🚀 Run all API calls in parallel (FAST)
+    const responses = await Promise.all(
+      allStockUpdates.map((stockUpdate) =>
+        apiRequest(
+          `${Cosmetologybaseurl}update_stock/`,
+          "PUT",
+          stockUpdate
+        )
+      )
+    )
+
+    // ❗ Check if any failed
+    const failed = responses.find((res) => !res.success)
+
+    if (failed) {
+      throw new Error(failed.error || "Some stock updates failed")
     }
-    return allStockUpdated
+
+    toast.success("Stock updated successfully!")
+    return true
+  } catch (error) {
+    console.error("Error updating stock:", error)
+    toast.error("Stock update failed. Please try again.")
+    return false
   }
+}
 
   const handleDownload = () => {
     // Check if any medicines are selected
@@ -1502,14 +1517,20 @@ const Bill = () => {
       return sum + (isNaN(total) ? 0 : total)
     }, 0)
 
-    const discountedTotal = discount > 0 ? totalSum * ((100 - discount) / 100) : totalSum
-    const netAmount = discountedTotal + (consultationFee || 0)
+    const medicineTotal = allPDFRows.reduce((sum, row) => {
+      const total = Number.parseFloat(row[8])
+      return sum + (isNaN(total) ? 0 : total)
+    }, 0)
+
+    const totalWithFee = medicineTotal + (consultationFee || 0)  // include fee BEFORE discount
+    const discountedTotal = discount > 0 ? totalWithFee * ((100 - discount) / 100) : totalWithFee
+    const netAmount = discountedTotal
 
     const doc = new jsPDF("p", "mm", "a4")
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
     const margin = 14
-    const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+    const branchCode = localStorage.getItem("selected_branch") || "SCC001"
     const PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
 
     const convertToBase64 = (url, callback) => {

@@ -10,7 +10,7 @@ import male from "./images/male.png"
 import female from "./images/female.png"
 import { BsPatchPlusFill } from "react-icons/bs"
 import { MdDelete } from "react-icons/md"
-import axios from "axios"
+import apiRequest from "./apiRequest"
 import { FaCalendarAlt } from "react-icons/fa"
 import DatePicker from "react-datepicker"
 import Diagnosis from "./Diagnosis"
@@ -527,7 +527,7 @@ const PrescriptionDetails = () => {
   const [medicineOptions, setMedicineOptions] = useState([])
   const [vital, setVital] = useState([])
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
+    const code = localStorage.getItem("selected_branch")
     if (code) {
       setBranchCode(code)
     } else {
@@ -536,11 +536,9 @@ const PrescriptionDetails = () => {
   }, [])
   useEffect(() => {
     if (!branchCode) return
-    axios
-      .get(`${Cosmetologybaseurl}pharmacy/data/`, {
-        params: { branch_code: branchCode },
-      })
-      .then((response) => {
+    const fetchPharmacyData = async () => {
+      const response = await apiRequest(`${Cosmetologybaseurl}pharmacy/data/`, "GET", null, {})
+      if (response.success) {
         const medicineData = response.data.map((medicine) => ({
           label: medicine.medicine_name,
           category: medicine.medicine_category,
@@ -548,10 +546,11 @@ const PrescriptionDetails = () => {
           fullData: medicine,
         }))
         setMedicineOptions(medicineData)
-      })
-      .catch((error) => {
-        console.error("Error fetching medicine names:", error)
-      })
+      } else {
+        console.error("Error fetching medicine names:", response.error)
+      }
+    }
+    fetchPharmacyData()
   }, [branchCode])
   const getMedicineStock = (medicineName) => {
     const medicine = medicineOptions.find((option) => option.label.toLowerCase() === medicineName.toLowerCase())
@@ -753,14 +752,10 @@ const PrescriptionDetails = () => {
     if (!patientUID || !appointmentDate || !branchCode) return
     const fetchSummaryData = async () => {
       try {
-        const response = await axios.get(`${Cosmetologybaseurl}summary_get/`, {
-          params: {
-            patientUID,
-            appointmentDate,
-            branch_code: branchCode,
-          },
+        const response = await apiRequest(`${Cosmetologybaseurl}summary_get/`, "GET", null, {}, {
+          params: { patientUID, appointmentDate },
         })
-        if (response.data && response.data.length > 0) {
+        if (response.success && response.data && response.data.length > 0) {
           const data = response.data[0]
           setSummaryData(data)
           if (data.nextVisit) {
@@ -956,13 +951,11 @@ const PrescriptionDetails = () => {
       }
       if (!vitalsFound) {
         try {
-          const response = await axios.get(`${Cosmetologybaseurl}vitalform/`, {
-            params: {
-              patientUID,
-              branch_code: branchCode,
-            },
+          const response = await apiRequest(`${Cosmetologybaseurl}vitalform/`, "GET", null, null, {
+            params: { patientUID, appointmentDate },
           })
-          const vitalData = response.data.vital[0] || {}
+          if (response.success) {
+            const vitalData = response.data.vital[0] || {}
           if (vitalData && (vitalData.height || vitalData.weight || vitalData.pulseRate || vitalData.bloodPressure)) {
             console.log("Loading vitals from vitals API:", vitalData)
             setVital(vitalData)
@@ -974,7 +967,8 @@ const PrescriptionDetails = () => {
             })
             vitalsFound = true
           }
-        } catch (error) {
+        }
+      } catch (error) {
           console.error("Error fetching vital data:", error)
         }
       }
@@ -997,9 +991,8 @@ const PrescriptionDetails = () => {
     }
     fetchVitals()
   }, [patientUID, branchCode, summaryData])
-  // NEW: Enhanced handleSubmit with save state management
+
   const handleSubmit = async () => {
-    // NEW: Prevent multiple saves if already saved and no changes
     if (isSaved && !hasUnsavedChanges) {
       setSuccessMessage("No changes to save")
       setTimeout(() => {
@@ -1008,26 +1001,26 @@ const PrescriptionDetails = () => {
       return
     }
 
-    // NEW: Prevent multiple clicks by setting saving state immediately
     if (isSaving) return
     setIsSaving(true)
 
     try {
       const userName = localStorage.getItem("userName") || "Unknown"
       const userRole = localStorage.getItem("userRole") || "Doctor"
-      // FIXED: Enhanced prescription filtering to include manually typed medicines
+      
       const validPrescriptions = prescriptionInputs.filter((input) => {
-        // Check if prescription is selected and has a valid label
         if (!input.selectedPrescription || input.selectedPrescription.length === 0) {
           return false
         }
         const label = input.selectedPrescription[0]?.label
         return label && label.trim() !== ""
       })
+
       const validPlans = Object.entries(planDetails)
         .filter(([key, value]) => value && value.trim() !== "")
         .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
         .join("\n")
+
       const removeDuplicates = (str) => {
         if (!str || typeof str !== "string") return str
         return [
@@ -1039,10 +1032,12 @@ const PrescriptionDetails = () => {
           ),
         ].join(", ")
       }
+
       const cleanArrayData = (data) => {
         if (!data || !Array.isArray(data)) return data
         return [...new Set(data.map((item) => (typeof item === "string" ? item.trim() : item)))].filter(Boolean)
       }
+
       const currentSummaryData = {
         patientName,
         patientUID,
@@ -1095,81 +1090,54 @@ const PrescriptionDetails = () => {
           .map((proc) => `Procedure: ${proc.procedure} - Date: ${proc.date}`)
           .join("\n"),
       }
-      const getResponse = await axios.get(`${Cosmetologybaseurl}summary_get/`, {
-        params: {
-          patientUID,
-          appointmentDate,
-          branch_code: branchCode,
-        },
+
+      const getResponse = await apiRequest(`${Cosmetologybaseurl}summary_get/`, "GET", null, null, {
+        params: { patientUID, appointmentDate },
       })
-      if (getResponse.data && getResponse.data.length > 0) {
+
+      if (getResponse.success && getResponse.data && getResponse.data.length > 0) {
         const existingData = getResponse.data[0]
+        
         const normalizeValue = (value) => {
           if (value === null || value === undefined) return ""
           if (typeof value === "string") {
             const trimmed = value.trim()
-            if (trimmed.includes(",")) {
-              return removeDuplicates(trimmed)
-            }
+            if (trimmed.includes(",")) return removeDuplicates(trimmed)
             return trimmed
           }
           if (typeof value === "object") {
-            if (Array.isArray(value)) {
-              return JSON.stringify(value.map((item) => (typeof item === "object" ? item : String(item).trim())))
-            }
+            if (Array.isArray(value)) return removeDuplicates(cleanArrayData(value).join(", "))
             return JSON.stringify(value)
           }
-          return String(value).trim()
+          return String(value)
         }
+
         const areObjectsEqual = (obj1, obj2) => {
-          const keys1 = Object.keys(obj1)
-          const keys2 = Object.keys(obj2)
-          const allKeys = [...new Set([...keys1, ...keys2])]
-          for (const key of allKeys) {
-            const val1 = normalizeValue(obj1[key])
-            const val2 = normalizeValue(obj2[key])
-            if (val1 !== val2) {
-              console.log(`Difference found in key "${key}":`, {
-                current: val1,
-                existing: val2,
-                currentLength: val1.length,
-                existingLength: val2.length,
-              })
-              return false
-            }
+          const keys = Object.keys(obj1)
+          for (let key of keys) {
+            if (normalizeValue(obj1[key]) !== normalizeValue(obj2[key])) return false
           }
           return true
         }
-        const existingDataComparable = {
-          patientName: existingData.patientName || "",
-          patientUID: existingData.patientUID || "",
-          mobileNumber: existingData.mobileNumber || "",
-          appointmentDate: existingData.appointmentDate || "",
-          branch_code: existingData.branch_code || "",
-          patient_handledby: existingData.patient_handledby || "",
-          diagnosis: removeDuplicates(existingData.diagnosis || ""),
-          complaints: existingData.complaints || "",
-          findings: removeDuplicates(existingData.findings || ""),
-          prescription: existingData.prescription || "",
-          plans: existingData.plans || "",
-          tests: removeDuplicates(existingData.tests || ""),
-          nextVisit: existingData.nextVisit || null,
-          vital: existingData.vital || "",
-          proceduresList: existingData.proceduresList || "",
-        }
-        const hasChanges = !areObjectsEqual(currentSummaryData, existingDataComparable)
+
+        const hasChanges = !areObjectsEqual(currentSummaryData, existingData)
+
         if (!hasChanges) {
-          setSuccessMessage("No changes made")
-          // NEW: Mark as saved even if no changes
-          setIsSaved(true)
-          setHasUnsavedChanges(false)
-        } else {
-          await axios.patch(`${Cosmetologybaseurl}summary/post/`, {
-            ...currentSummaryData,
-            id: existingData.id,
-          })
+          setSuccessMessage("No changes to update")
+          setTimeout(() => {
+            setSuccessMessage("")
+          }, 3000)
+          setIsSaving(false)
+          return
+        }
+
+        const patchRes = await apiRequest(`${Cosmetologybaseurl}summary/post/`, "PATCH", {
+          ...currentSummaryData,
+          id: existingData.id,
+        })
+
+        if (patchRes.success) {
           setSuccessMessage("Updated successfully")
-          // NEW: Mark as saved after successful update
           setIsSaved(true)
           setHasUnsavedChanges(false)
           setTimeout(() => {
@@ -1179,57 +1147,46 @@ const PrescriptionDetails = () => {
               icon: "question",
               showCancelButton: true,
               confirmButtonText: "Yes, take me there",
-              cancelButtonText: "No, stay here",
-              confirmButtonColor: "#3085d6",
               cancelButtonColor: "#d33",
             }).then((result) => {
               if (result.isConfirmed) {
-                const navigationPath = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
-                window.location.href = navigationPath
+                window.location.href = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
               }
               setSuccessMessage("")
             })
           }, 3000)
-          return
         }
       } else {
-        await axios.post(`${Cosmetologybaseurl}summary/post/`, currentSummaryData)
-        setSuccessMessage("Saved successfully")
-        // NEW: Mark as saved after successful creation
-        setIsSaved(true)
-        setHasUnsavedChanges(false)
-        setTimeout(() => {
-          Swal.fire({
-            title: "Saved successfully !",
-            text: "Do you want to go back to the appointments page?",
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonText: "Yes, take me there",
-            cancelButtonText: "No, stay here",
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-          }).then((result) => {
-            if (result.isConfirmed) {
-              const navigationPath = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
-              window.location.href = navigationPath
-            }
-            setSuccessMessage("")
-          })
-        }, 3000)
-        return
+        const postRes = await apiRequest(`${Cosmetologybaseurl}summary/post/`, "POST", currentSummaryData)
+        if (postRes.success) {
+          setSuccessMessage("Saved successfully")
+          setIsSaved(true)
+          setHasUnsavedChanges(false)
+          setTimeout(() => {
+            Swal.fire({
+              title: "Saved successfully !",
+              text: "Do you want to go back to the appointments page?",
+              icon: "question",
+              showCancelButton: true,
+              confirmButtonText: "Yes, take me there",
+            }).then((result) => {
+              if (result.isConfirmed) {
+                window.location.href = userRole === "Admin" ? "/Admin/BookedAppointments" : "/Doctor/BookedAppointments"
+              }
+              setSuccessMessage("")
+            })
+          }, 3000)
+        }
       }
-      setTimeout(() => {
-        setSuccessMessage("")
-      }, 3000)
     } catch (error) {
       console.error("Error submitting data", error)
       setSuccessMessage("Error submitting data")
-      setIsSaving(false) // Reset saving state on error
-      setTimeout(() => {
-        setSuccessMessage("")
-      }, 3000)
+    } finally {
+      setIsSaving(false)
+      setTimeout(() => setSuccessMessage(""), 3000)
     }
   }
+
   const summaryRef = useRef(null)
   const getMergedData = () => {
     const mergedDiagnosis = [...loadedData.diagnosis]

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import axios from "axios"
+import apiRequest from "./apiRequest"
 import styled from "styled-components"
 import { MDBTableHead, MDBTableBody } from "mdb-react-ui-kit"
 import DatePicker from "react-datepicker"
@@ -49,7 +49,7 @@ const BillingReport = () => {
 
   // Initialize branch code and user role
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch");
+    const code = localStorage.getItem("selected_branch");
     const role =
       localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
 
@@ -120,21 +120,28 @@ const BillingReport = () => {
 
       console.log(`Fetching ${selectedInterval} data for date: ${dateParam}, branch: ${branchCode}`);
 
-      const response = await axios.get(
+      const response = await apiRequest(
         `${Cosmetologybaseurl}billing/${selectedInterval}/`,
+        "GET",
+        null,
+        {},
         {
           params: {
             appointmentDate: dateParam,
-            branch_code: branchCode,
-          },
-          withCredentials: true,
+            },
         }
       );
 
-      setBillingData(response.data.billing_data);
-
-      if (!response.data.billing_data || Object.keys(response.data.billing_data).length === 0) {
-        toast.info("No data found for the selected criteria.");
+      if (response.success) {
+        setBillingData(response.data.billing_data);
+        if (!response.data.billing_data || Object.keys(response.data.billing_data).length === 0) {
+          toast.info("No data found for the selected criteria.");
+        }
+      } else {
+        console.error("Error fetching data:", response.error);
+        setError("Failed to fetch billing data. Please try again.");
+        setBillingData(null);
+        toast.error("Failed to fetch data.");
       }
 
     } catch (error) {
@@ -309,7 +316,7 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
 
-  const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+  const branchCode = localStorage.getItem("selected_branch") || "SCC001"
 
   let PDFMain
 
@@ -461,15 +468,20 @@ const generatePharmacyPDF = (patientUID, billNumber) => {
       return;
     }
     try {
-      await axios.delete(`${Cosmetologybaseurl}delete/billing/data/`, {
-        data: { patientUID, billNumber, branch_code: branchCode },
-        withCredentials: true,
-      })
-      fetchData() // Refetch data after deletion
-      toast.success("Data deleted successfully")
+      const response = await apiRequest(`${Cosmetologybaseurl}delete/billing/data/`, "DELETE", {
+        patientUID,
+        billNumber,
+        })
+      if (response.success) {
+        fetchData() // Refetch data after deletion
+        toast.success("Data deleted successfully")
+      } else {
+        console.error("Error deleting data:", response.error)
+        toast.error(`Error: ${response.error || "Error deleting data."}`)
+      }
     } catch (error) {
-      console.error("Error deleting data:", error)
-      toast.error("Error deleting data.")
+      console.error("Error in delete workflow:", error)
+      toast.error("Something went wrong.")
     }
   }
 

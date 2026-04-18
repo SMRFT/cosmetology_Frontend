@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import axios from "axios"
+import apiRequest from "./apiRequest"
 import styled from "styled-components"
 import { format } from "date-fns"
 import { FaPlus, FaTrash, FaDownload, FaCalendarAlt } from "react-icons/fa"
@@ -286,25 +286,23 @@ const NewBill = () => {
   const Cosmetologybaseurl = process.env.REACT_APP_BACKEND_COSMETOLOGY_BASE_URL
 
   useEffect(() => {
-    axios
-      .get(`${Cosmetologybaseurl}Procedure/`)
-      .then((response) => {
-        // This seems to fetch procedures, but NewBill is for pharmacy.
-        // Keeping it as is, but it might be a copy-paste artifact.
+    const fetchProcedures = async () => {
+      const response = await apiRequest(`${Cosmetologybaseurl}Procedure/`, "GET")
+      if (response.success) {
         const formattedProceduresList = response.data.map((procedure, index) => ({
           id: procedure.id || `proc_${index}`,
           procedure: procedure.procedure || "",
         }))
-        // setProceduresList(formattedProceduresList) // Not used in this component
-      })
-      .catch((error) => {
-        console.error("Error fetching procedures data:", error)
+      } else {
+        console.error("Error fetching procedures data:", response.error)
         toast.error("Error fetching procedures data")
-      })
+      }
+    }
+    fetchProcedures()
   }, [])
 
   useEffect(() => {
-    const code = localStorage.getItem("selectedBranch")
+    const code = localStorage.getItem("selected_branch")
     if (code) {
       setBranchCode(code)
     }
@@ -328,11 +326,9 @@ const NewBill = () => {
 
   useEffect(() => {
     if (!branchCode) return
-    axios
-      .get(`${Cosmetologybaseurl}pharmacy/data/`, {
-        params: { branch_code: branchCode },
-      })
-      .then((response) => {
+    const fetchPharmacyData = async () => {
+      const response = await apiRequest(`${Cosmetologybaseurl}pharmacy/data/`, "GET", null, {})
+      if (response.success) {
         const medicineData = response.data.map((medicine) => ({
           id: medicine.id || medicine.medicine_name,
           label: medicine.medicine_name || "Unknown Medicine",
@@ -347,18 +343,19 @@ const NewBill = () => {
           fullData: medicine,
         }))
         setMedicineOptions(medicineData)
-      })
-      .catch((error) => {
-        console.error("Error fetching medicine names:", error)
+      } else {
+        console.error("Error fetching medicine names:", response.error)
         toast.error("Failed to fetch medicine data")
-      })
+      }
+    }
+    fetchPharmacyData()
   }, [branchCode])
 
   const fetchExistingBills = async () => {
     if (!selectedPatient || !branchCode || !selectedDate) return
     setIsLoadingBills(true)
     try {
-      const response = await axios.get(`${Cosmetologybaseurl}getnewbill/`, {
+      const response = await apiRequest(`${Cosmetologybaseurl}getnewbill/`, "GET", null, {}, {
         params: {
           patientUID: selectedPatient.patientUID,
           appointmentDate: selectedDate,
@@ -503,29 +500,19 @@ const NewBill = () => {
     let allStockUpdated = true
     for (const item of billedItems) {
       try {
-        const response = await fetch(`${Cosmetologybaseurl}update_stock/`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            medicine_name: item.particulars,
-            qty: item.qty,
-            branch_code: branchCode,
-            batch_number: item.batch_number,
-          }),
+        const response = await apiRequest(`${Cosmetologybaseurl}update_stock/`, "PUT", {
+          medicine_name: item.particulars,
+          qty: item.qty,
+          branch_code: branchCode,
+          batch_number: item.batch_number,
         })
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || `Failed to update stock for ${item.particulars}`)
+        if (!response.success) {
+          throw new Error(response.error || `Failed to update stock for ${item.particulars}`)
         }
-        // Optionally, you can show a success toast for each item or a general one
-        // toast.success(`Stock updated for ${item.particulars}`);
       } catch (error) {
         console.error("Error updating stock:", error)
         toast.error(`Failed to update stock for ${item.particulars}.`)
         allStockUpdated = false
-        // Continue processing other items even if one fails, or break if critical
       }
     }
     return allStockUpdated
@@ -606,16 +593,10 @@ const NewBill = () => {
     }
 
     try {
-      const response = await fetch(`${Cosmetologybaseurl}save/billing/data/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(dataToSubmit),
-      })
+      const response = await apiRequest(`${Cosmetologybaseurl}save/billing/data/`, "POST", dataToSubmit)
 
-      if (!response.ok) {
-        throw new Error("Failed to submit data")
+      if (!response.success) {
+        throw new Error(response.error || "Failed to submit data")
       }
       toast.success(`Billing was generated successfully for ${selectedPatient.patientName}`)
 
@@ -743,7 +724,7 @@ const NewBill = () => {
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
     const margin = 14
-    const branchCode = localStorage.getItem("selectedBranch") || "SCC001"
+    const branchCode = localStorage.getItem("selected_branch") || "SCC001"
     const PDFMain = branchCode === "SCC002" ? Kumarapalayam : Salem
 
     const convertToBase64 = (url, callback) => {
